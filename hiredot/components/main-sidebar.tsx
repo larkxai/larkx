@@ -37,30 +37,42 @@ const menuItems = [
     href: "/reports",
   },
   {
-    title: "Jobs",
-    icon: Briefcase,
-    href: "/jobs",
-  },
-  {
-    title: "Publishing",
-    icon: DocumentTextIcon,
-    href: "/publishing",
-  },
-  {
     title: "Candidates",
     icon: Users,
     href: "/candidates",
   },
   {
-    title: "Workflows",
-    icon: GitBranch,
-    href: "/workflows",
+    title: "Jobs",
+    icon: Briefcase,
+    children: [
+      {
+        title: "Roles",
+        href: "/jobs/roles",
+      },
+      {
+        title: "Openings",
+        href: "/jobs/openings",
+      },
+      {
+        title: "Workflows",
+        href: "/jobs/workflows",
+      },
+    ],
   },
 ];
 
 export function MainSidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+
+  const toggleSubmenu = (title: string) => {
+    setExpandedMenus((current) =>
+      current.includes(title)
+        ? current.filter((item) => item !== title)
+        : [...current, title]
+    );
+  };
 
   return (
     <div
@@ -84,19 +96,62 @@ export function MainSidebar() {
 
       <nav className="flex flex-col gap-1 p-4">
         {menuItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900",
-              pathname === item.href && "bg-gray-100 text-gray-900",
-              isCollapsed && "justify-center px-2"
+          <div key={item.title}>
+            {item.children ? (
+              <>
+                <button
+                  onClick={() => toggleSubmenu(item.title)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900",
+                    isCollapsed && "justify-center px-2"
+                  )}
+                  title={isCollapsed ? item.title : undefined}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {!isCollapsed && (
+                    <>
+                      <span className="flex-1">{item.title}</span>
+                      <ChevronLeft
+                        className={cn(
+                          "h-4 w-4 transition-transform",
+                          expandedMenus.includes(item.title) && "-rotate-90"
+                        )}
+                      />
+                    </>
+                  )}
+                </button>
+                {!isCollapsed && expandedMenus.includes(item.title) && (
+                  <div className="ml-4 flex flex-col gap-1">
+                    {item.children.map((child) => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900",
+                          pathname === child.href && "bg-gray-100 text-gray-900"
+                        )}
+                      >
+                        <span>{child.title}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <Link
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg px-3 py-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900",
+                  pathname === item.href && "bg-gray-100 text-gray-900",
+                  isCollapsed && "justify-center px-2"
+                )}
+                title={isCollapsed ? item.title : undefined}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                {!isCollapsed && <span>{item.title}</span>}
+              </Link>
             )}
-            title={isCollapsed ? item.title : undefined}
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            {!isCollapsed && <span>{item.title}</span>}
-          </Link>
+          </div>
         ))}
       </nav>
 

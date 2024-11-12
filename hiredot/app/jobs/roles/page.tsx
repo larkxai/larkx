@@ -155,7 +155,7 @@ export default function JobsPage() {
       <div className="grid gap-4">
         {filteredJobs.map((job) => (
           <Card key={job.id}>
-            <Link href={`/jobs/${job.id}`}>
+            <Link href={`/jobs/roles/${job.id}`}>
               <CardHeader>
                 <CardTitle>{job.title}</CardTitle>
               </CardHeader>
