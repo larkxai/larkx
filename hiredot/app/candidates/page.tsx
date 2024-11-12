@@ -16,19 +16,21 @@ import { Button } from "@/components/ui/button";
 export default function CandidatesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
-  const [selectedCandidate, setSelectedCandidate] = useState<typeof mockCandidates[0] | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<
+    (typeof mockCandidates)[0] | null
+  >(null);
   const [newTag, setNewTag] = useState("");
 
   const filteredCandidates = mockCandidates.filter((candidate) => {
-    const matchesSearch = 
+    const matchesSearch =
       `${candidate.firstName} ${candidate.lastName}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      candidate.tags.some(tag => 
+      candidate.tags.some((tag) =>
         tag.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
-    const matchesStage = 
+    const matchesStage =
       stageFilter === "all" || candidate.currentStage === stageFilter;
 
     return matchesSearch && matchesStage;
@@ -36,26 +38,26 @@ export default function CandidatesPage() {
 
   const handleAddTag = (candidateId: string, tag: string) => {
     if (!tag.trim()) return;
-    
-    const updatedCandidates = mockCandidates.map(candidate => {
+
+    const updatedCandidates = mockCandidates.map((candidate) => {
       if (candidate.id === candidateId) {
         return {
           ...candidate,
-          tags: [...new Set([...candidate.tags, tag.trim()])]
+          tags: [...new Set([...candidate.tags, tag.trim()])],
         };
       }
       return candidate;
     });
-    
+
     setNewTag("");
   };
 
   const handleRemoveTag = (candidateId: string, tagToRemove: string) => {
-    const updatedCandidates = mockCandidates.map(candidate => {
+    const updatedCandidates = mockCandidates.map((candidate) => {
       if (candidate.id === candidateId) {
         return {
           ...candidate,
-          tags: candidate.tags.filter(tag => tag !== tagToRemove)
+          tags: candidate.tags.filter((tag) => tag !== tagToRemove),
         };
       }
       return candidate;
@@ -65,7 +67,10 @@ export default function CandidatesPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Candidates</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Candidates</h1>
+          <p className="text-muted-foreground">Track your candidates</p>
+        </div>
         <div className="flex gap-4">
           <input
             type="text"
@@ -93,30 +98,34 @@ export default function CandidatesPage() {
 
       <div className="grid gap-4">
         {filteredCandidates.map((candidate) => (
-          <Card 
-            key={candidate.id} 
+          <Card
+            key={candidate.id}
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => setSelectedCandidate(candidate)}
           >
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
                 <div>
-                  <span>{candidate.firstName} {candidate.lastName}</span>
+                  <span>
+                    {candidate.firstName} {candidate.lastName}
+                  </span>
                   <span className="text-sm text-muted-foreground ml-4">
                     {candidate.job.title}
                   </span>
                 </div>
-                <span className={`text-sm px-3 py-1 rounded-full ${
-                  {
-                    'New': 'bg-blue-100 text-blue-800',
-                    'Screening': 'bg-yellow-100 text-yellow-800',
-                    'Interview': 'bg-purple-100 text-purple-800',
-                    'Technical Test': 'bg-orange-100 text-orange-800',
-                    'Offer': 'bg-green-100 text-green-800',
-                    'Hired': 'bg-emerald-100 text-emerald-800',
-                    'Rejected': 'bg-red-100 text-red-800',
-                  }[candidate.currentStage]
-                }`}>
+                <span
+                  className={`text-sm px-3 py-1 rounded-full ${
+                    {
+                      New: "bg-blue-100 text-blue-800",
+                      Screening: "bg-yellow-100 text-yellow-800",
+                      Interview: "bg-purple-100 text-purple-800",
+                      "Technical Test": "bg-orange-100 text-orange-800",
+                      Offer: "bg-green-100 text-green-800",
+                      Hired: "bg-emerald-100 text-emerald-800",
+                      Rejected: "bg-red-100 text-red-800",
+                    }[candidate.currentStage]
+                  }`}
+                >
                   {candidate.currentStage}
                 </span>
               </CardTitle>
@@ -125,7 +134,9 @@ export default function CandidatesPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Job Details</p>
-                  <p>{candidate.job.department} • {candidate.job.location}</p>
+                  <p>
+                    {candidate.job.department} • {candidate.job.location}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Source</p>
@@ -154,7 +165,10 @@ export default function CandidatesPage() {
         ))}
       </div>
 
-      <Dialog open={!!selectedCandidate} onOpenChange={() => setSelectedCandidate(null)}>
+      <Dialog
+        open={!!selectedCandidate}
+        onOpenChange={() => setSelectedCandidate(null)}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Candidate Details</DialogTitle>
@@ -166,16 +180,21 @@ export default function CandidatesPage() {
                   <h3 className="font-semibold text-lg">
                     {selectedCandidate.firstName} {selectedCandidate.lastName}
                   </h3>
-                  <p className="text-muted-foreground">{selectedCandidate.email}</p>
+                  <p className="text-muted-foreground">
+                    {selectedCandidate.email}
+                  </p>
                   {selectedCandidate.phone && (
-                    <p className="text-muted-foreground">{selectedCandidate.phone}</p>
+                    <p className="text-muted-foreground">
+                      {selectedCandidate.phone}
+                    </p>
                   )}
                 </div>
                 <div>
                   <h4 className="font-medium">Applied Position</h4>
                   <p>{selectedCandidate.job.title}</p>
                   <p className="text-sm text-muted-foreground">
-                    {selectedCandidate.job.department} • {selectedCandidate.job.location}
+                    {selectedCandidate.job.department} •{" "}
+                    {selectedCandidate.job.location}
                   </p>
                 </div>
               </div>
@@ -207,7 +226,7 @@ export default function CandidatesPage() {
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
                     onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         handleAddTag(selectedCandidate.id, newTag);
                       }
                     }}
@@ -239,7 +258,7 @@ export default function CandidatesPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">
-                            {format(entry.date, 'MMM d, yyyy')}
+                            {format(entry.date, "MMM d, yyyy")}
                           </p>
                           <p className="text-sm">{entry.author}</p>
                         </div>
@@ -254,4 +273,4 @@ export default function CandidatesPage() {
       </Dialog>
     </div>
   );
-} 
+}

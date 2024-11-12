@@ -67,8 +67,8 @@ export default function PublishingPage() {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Published Jobs</h1>
-          <p className="text-muted-foreground">Track your job postings across platforms</p>
+          <h1 className="text-2xl font-bold">Openings</h1>
+          <p className="text-muted-foreground">Track your job openings</p>
         </div>
       </div>
 

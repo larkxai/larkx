@@ -73,7 +73,7 @@ export default function JobsPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Jobs</h1>
-          <p className="text-muted-foreground">Manage and post job openings</p>
+          <p className="text-muted-foreground">Manage and track job roles</p>
         </div>
         <Button onClick={() => setShowNewJobForm(true)}>
           <PlusCircle className="mr-2 h-4 w-4" />

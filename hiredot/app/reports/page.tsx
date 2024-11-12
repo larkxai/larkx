@@ -87,7 +87,12 @@ export default function ReportsPage() {
   return (
     <div className="container mx-auto p-6 space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Reports & KPIs</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Reports & KPIs</h1>
+          <p className="text-muted-foreground">
+            Track your reports and key performance indicators
+          </p>
+        </div>
         <div className="flex items-center space-x-2">
           <CalendarIcon className="w-5 h-5 text-gray-500" />
           <Select value={dateRange} onValueChange={setDateRange}>
