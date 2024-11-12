@@ -65,6 +65,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar variant="inset" {...props}>
+      <SidebarHeader>Hiredot</SidebarHeader>
       <SidebarContent>
         {navigation.map((group) => (
           <SidebarGroup key={group.title}>
