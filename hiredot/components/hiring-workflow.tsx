@@ -18,16 +18,6 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { StageDetails } from './stage-details'
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { X } from "lucide-react"
-import { type StageData } from '@/mocks/candidates'
 
 const initialNodes: Node[] = [
   { id: '1', position: { x: 0, y: 100 }, data: { label: 'Application Form' } },
@@ -44,76 +34,6 @@ const initialEdges: Edge[] = [
   { id: 'e3-4', source: '3', target: '4', animated: true, label: 'Pass' },
   { id: 'e3-5', source: '3', target: '5', animated: true, label: 'Fail' },
 ]
-
-function TagManager({ tags, onAddTag, onRemoveTag }: {
-  tags: string[]
-  onAddTag: (tag: string) => void
-  onRemoveTag: (tag: string) => void
-}) {
-  const [newTag, setNewTag] = useState('')
-
-  const handleAddTag = () => {
-    if (newTag.trim()) {
-      onAddTag(newTag.trim())
-      setNewTag('')
-    }
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <Input
-          value={newTag}
-          onChange={(e) => setNewTag(e.target.value)}
-          placeholder="Add new tag..."
-          onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-        />
-        <Button onClick={handleAddTag}>Add</Button>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {tags.map((tag) => (
-          <Badge key={tag} className="flex items-center gap-1">
-            {tag}
-            <X
-              className="h-3 w-3 cursor-pointer"
-              onClick={() => onRemoveTag(tag)}
-            />
-          </Badge>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function StageDataDisplay({ stageData }: { stageData: StageData }) {
-  if (!stageData) return null;
-
-  return (
-    <div className="mt-4">
-      {stageData.applicationForm && (
-        <div className="space-y-2">
-          <h4 className="font-semibold">Application Form Details</h4>
-          <p>Submitted: {stageData.applicationForm.submissionDate.toLocaleDateString()}</p>
-          <p>Completed Fields: {stageData.applicationForm.completedFields.join(', ')}</p>
-          <p>Attachments: {stageData.applicationForm.attachments.join(', ')}</p>
-        </div>
-      )}
-      {stageData.initialEvaluation && (
-        <div className="space-y-2">
-          <h4 className="font-semibold">Initial Evaluation</h4>
-          <p>Evaluator: {stageData.initialEvaluation.evaluator}</p>
-          <div>
-            Skills Assessment:
-            {Object.entries(stageData.initialEvaluation.skillAssessment).map(([skill, score]) => (
-              <div key={skill}>{skill}: {score}/5</div>
-            ))}
-          </div>
-        </div>
-      )}
-      {/* Add similar sections for interview and offer data */}
-    </div>
-  )
-}
 
 export function EnhancedHiringWorkflowComponent() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)

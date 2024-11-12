@@ -32,9 +32,9 @@ const menuItems = [
     href: "/",
   },
   {
-    title: "Candidates",
-    icon: Users,
-    href: "/candidates",
+    title: "Reports & KPIs",
+    icon: BarChart,
+    href: "/reports",
   },
   {
     title: "Jobs",
@@ -42,19 +42,19 @@ const menuItems = [
     href: "/jobs",
   },
   {
-    title: "Workflows",
-    icon: GitBranch,
-    href: "/workflows",
-  },
-  {
-    title: "Reports & KPIs",
-    icon: BarChart,
-    href: "/reports",
-  },
-  {
     title: "Publishing",
     icon: DocumentTextIcon,
     href: "/publishing",
+  },
+  {
+    title: "Candidates",
+    icon: Users,
+    href: "/candidates",
+  },
+  {
+    title: "Workflows",
+    icon: GitBranch,
+    href: "/workflows",
   },
 ];
 

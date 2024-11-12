@@ -10,11 +10,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PlusIcon, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function CandidatesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [selectedCandidate, setSelectedCandidate] = useState<typeof mockCandidates[0] | null>(null);
+  const [newTag, setNewTag] = useState("");
 
   const filteredCandidates = mockCandidates.filter((candidate) => {
     const matchesSearch = 
@@ -30,6 +33,34 @@ export default function CandidatesPage() {
 
     return matchesSearch && matchesStage;
   });
+
+  const handleAddTag = (candidateId: string, tag: string) => {
+    if (!tag.trim()) return;
+    
+    const updatedCandidates = mockCandidates.map(candidate => {
+      if (candidate.id === candidateId) {
+        return {
+          ...candidate,
+          tags: [...new Set([...candidate.tags, tag.trim()])]
+        };
+      }
+      return candidate;
+    });
+    
+    setNewTag("");
+  };
+
+  const handleRemoveTag = (candidateId: string, tagToRemove: string) => {
+    const updatedCandidates = mockCandidates.map(candidate => {
+      if (candidate.id === candidateId) {
+        return {
+          ...candidate,
+          tags: candidate.tags.filter(tag => tag !== tagToRemove)
+        };
+      }
+      return candidate;
+    });
+  };
 
   return (
     <div className="container mx-auto p-6">
@@ -151,15 +182,46 @@ export default function CandidatesPage() {
 
               <div className="mb-6">
                 <h4 className="font-medium mb-2">Tags</h4>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-2">
                   {selectedCandidate.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-sm"
+                      className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-sm flex items-center gap-1"
                     >
                       {tag}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveTag(selectedCandidate.id, tag);
+                        }}
+                        className="hover:text-red-500 focus:outline-none"
+                      >
+                        <X size={14} />
+                      </button>
                     </span>
                   ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddTag(selectedCandidate.id, newTag);
+                      }
+                    }}
+                    placeholder="Add a tag..."
+                    className="px-2 py-1 border rounded-md text-sm flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => handleAddTag(selectedCandidate.id, newTag)}
+                    disabled={!newTag.trim()}
+                  >
+                    <PlusIcon size={16} className="mr-1" />
+                    Add
+                  </Button>
                 </div>
               </div>
 
