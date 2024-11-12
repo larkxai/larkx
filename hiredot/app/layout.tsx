@@ -5,7 +5,7 @@ import { MainSidebar } from "@/components/main-sidebar"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Enhanced Hiring Workflow",
+  title: "Hiredot",
   description: "Streamline your hiring process",
 }
 
@@ -19,9 +19,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <div className="flex min-h-screen">
           <MainSidebar />
-          <main className="flex-1">
-            {children}
-          </main>
+          <main className="flex-1">{children}</main>
         </div>
       </body>
     </html>

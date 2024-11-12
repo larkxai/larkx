@@ -1,18 +1,29 @@
-"use client"
+"use client";
 
-import { Home, Users, Briefcase, GitBranch, BarChart, ChevronLeft, User2, Settings, LogOut } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { useState } from "react"
+import {
+  Home,
+  Users,
+  Briefcase,
+  GitBranch,
+  BarChart,
+  ChevronLeft,
+  User2,
+  Settings,
+  LogOut,
+  FileText as DocumentTextIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 const menuItems = [
   {
@@ -40,24 +51,34 @@ const menuItems = [
     icon: BarChart,
     href: "/reports",
   },
-]
+  {
+    title: "Publishing",
+    icon: DocumentTextIcon,
+    href: "/publishing",
+  },
+];
 
 export function MainSidebar() {
-  const pathname = usePathname()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const pathname = usePathname();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className={cn(
-      "relative min-h-screen border-r bg-white transition-all duration-300",
-      isCollapsed ? "w-16" : "w-64"
-    )}>
+    <div
+      className={cn(
+        "relative min-h-screen border-r bg-white transition-all duration-300",
+        isCollapsed ? "w-16" : "w-64"
+      )}
+    >
       <div className="flex h-16 items-center justify-between border-b px-4">
-        <Link href="/" className={cn(
-          "flex items-center gap-2 font-semibold",
-          isCollapsed && "justify-center"
-        )}>
-          {!isCollapsed && <span className="text-xl">Enhanced Hiring</span>}
-          {isCollapsed && <span className="text-xl">EH</span>}
+        <Link
+          href="/"
+          className={cn(
+            "flex items-center gap-2 font-semibold",
+            isCollapsed && "justify-center"
+          )}
+        >
+          {!isCollapsed && <span className="text-xl">Hiredot</span>}
+          {isCollapsed && <span className="text-xl">H.</span>}
         </Link>
       </div>
 
@@ -87,10 +108,12 @@ export function MainSidebar() {
         className="absolute -right-4 top-20 hidden h-8 w-8 rounded-full border shadow-md md:flex"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        <ChevronLeft className={cn(
-          "h-4 w-4 transition-transform",
-          isCollapsed && "rotate-180"
-        )} />
+        <ChevronLeft
+          className={cn(
+            "h-4 w-4 transition-transform",
+            isCollapsed && "rotate-180"
+          )}
+        />
       </Button>
 
       {/* Profile Section */}
@@ -131,5 +154,5 @@ export function MainSidebar() {
         </DropdownMenu>
       </div>
     </div>
-  )
-} 
+  );
+}
