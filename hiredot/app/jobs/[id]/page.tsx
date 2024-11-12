@@ -11,47 +11,50 @@ export default function JobDetailsPage({ params }: JobDetailsPageProps) {
   const mockJob = {
     id: params.id,
     title: "Senior Frontend Developer",
-    department: "Engineering",
+    department: "Engineering", 
     location: "Remote",
     status: "Active",
     applicants: 45,
     description: "We are looking for an experienced Frontend Developer...",
     requirements: [
       "5+ years of experience with React",
-      "Strong TypeScript skills",
+      "Strong TypeScript skills", 
       "Experience with Next.js",
     ],
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">{mockJob.title}</h1>
+    <div className="container mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">{mockJob.title}</h1>
+        <p className="text-muted-foreground">View and manage job details</p>
+      </div>
       
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold mb-2">Details</h2>
-          <div className="space-y-2">
-            <p>Department: {mockJob.department}</p>
-            <p>Location: {mockJob.location}</p>
-            <p>Status: {mockJob.status}</p>
-            <p>Total Applicants: {mockJob.applicants}</p>
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className="bg-card p-6 rounded-lg border">
+          <h2 className="text-xl font-semibold mb-4">Details</h2>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Department: <span className="text-foreground">{mockJob.department}</span></p>
+            <p className="text-sm text-muted-foreground">Location: <span className="text-foreground">{mockJob.location}</span></p>
+            <p className="text-sm text-muted-foreground">Status: <span className="text-foreground">{mockJob.status}</span></p>
+            <p className="text-sm text-muted-foreground">Total Applicants: <span className="text-foreground">{mockJob.applicants}</span></p>
           </div>
         </div>
         
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="font-semibold mb-2">Requirements</h2>
-          <ul className="list-disc pl-4">
+        <div className="bg-card p-6 rounded-lg border">
+          <h2 className="text-xl font-semibold mb-4">Requirements</h2>
+          <ul className="space-y-2">
             {mockJob.requirements.map((req, index) => (
-              <li key={index}>{req}</li>
+              <li key={index} className="text-sm text-muted-foreground">{req}</li>
             ))}
           </ul>
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow">
-        <h2 className="font-semibold mb-2">Description</h2>
-        <p>{mockJob.description}</p>
+      <div className="bg-card p-6 rounded-lg border">
+        <h2 className="text-xl font-semibold mb-4">Description</h2>
+        <p className="text-sm text-muted-foreground">{mockJob.description}</p>
       </div>
     </div>
   );
-} 
+}
