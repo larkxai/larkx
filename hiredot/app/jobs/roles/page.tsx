@@ -3,45 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
-
-interface Job {
-  id: string;
-  title: string;
-  description: string;
-  workflowId?: string;
-  createdAt: Date;
-}
-
-const mockJobs: Job[] = [
-  {
-    id: "1",
-    title: "Senior Frontend Developer",
-    description: "We are looking for an experienced Frontend Developer...",
-    workflowId: "workflow-1",
-    createdAt: new Date("2024-03-15"),
-  },
-  {
-    id: "2",
-    title: "Product Manager",
-    description: "Seeking a Product Manager to lead our core product initiatives...",
-    createdAt: new Date("2024-03-14"),
-  },
-  {
-    id: "3",
-    title: "DevOps Engineer",
-    description: "Join our infrastructure team as a DevOps Engineer...",
-    workflowId: "workflow-2",
-    createdAt: new Date("2024-03-13"),
-  },
-];
+import { mockJobs } from "@/mocks/roles";
 
 export default function JobsPage() {
   const [showNewJobForm, setShowNewJobForm] = useState(false);
@@ -104,7 +68,9 @@ export default function JobsPage() {
                 <input
                   type="text"
                   value={newJob.title}
-                  onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
+                  onChange={(e) =>
+                    setNewJob({ ...newJob, title: e.target.value })
+                  }
                   className="w-full p-2 border rounded"
                   required
                 />

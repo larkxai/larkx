@@ -12,10 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { PlusIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WorkflowStage } from "@/@types/workflow";
 
 export default function CandidatesPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [stageFilter, setStageFilter] = useState<string>("all");
+  const [stageFilter, setStageFilter] = useState<WorkflowStage["title"] | "all">("all");
   const [selectedCandidate, setSelectedCandidate] = useState<
     (typeof mockCandidates)[0] | null
   >(null);
@@ -31,7 +32,7 @@ export default function CandidatesPage() {
       );
 
     const matchesStage =
-      stageFilter === "all" || candidate.currentStage === stageFilter;
+      stageFilter === "all" || candidate.currentStage.title === stageFilter;
 
     return matchesSearch && matchesStage;
   });
@@ -39,28 +40,20 @@ export default function CandidatesPage() {
   const handleAddTag = (candidateId: string, tag: string) => {
     if (!tag.trim()) return;
 
-    const updatedCandidates = mockCandidates.map((candidate) => {
+    mockCandidates.forEach((candidate) => {
       if (candidate.id === candidateId) {
-        return {
-          ...candidate,
-          tags: [...new Set([...candidate.tags, tag.trim()])],
-        };
+        candidate.tags = [...new Set([...candidate.tags, tag.trim()])];
       }
-      return candidate;
     });
 
     setNewTag("");
   };
 
   const handleRemoveTag = (candidateId: string, tagToRemove: string) => {
-    const updatedCandidates = mockCandidates.map((candidate) => {
+    mockCandidates.forEach((candidate) => {
       if (candidate.id === candidateId) {
-        return {
-          ...candidate,
-          tags: candidate.tags.filter((tag) => tag !== tagToRemove),
-        };
+        candidate.tags = candidate.tags.filter((tag) => tag !== tagToRemove);
       }
-      return candidate;
     });
   };
 
@@ -82,16 +75,14 @@ export default function CandidatesPage() {
           <select
             className="px-4 py-2 border rounded-md"
             value={stageFilter}
-            onChange={(e) => setStageFilter(e.target.value)}
+            onChange={(e) => setStageFilter(e.target.value as WorkflowStage["title"] | "all")}
           >
             <option value="all">All Stages</option>
-            <option value="New">New</option>
-            <option value="Screening">Screening</option>
-            <option value="Interview">Interview</option>
-            <option value="Technical Test">Technical Test</option>
-            <option value="Offer">Offer</option>
-            <option value="Hired">Hired</option>
-            <option value="Rejected">Rejected</option>
+            <option value="form">Form</option>
+            <option value="feedback">Feedback</option>
+            <option value="interview">Interview</option>
+            <option value="offer">Offer</option>
+            <option value="rejection">Rejection</option>
           </select>
         </div>
       </div>
@@ -123,10 +114,10 @@ export default function CandidatesPage() {
                       Offer: "bg-green-100 text-green-800",
                       Hired: "bg-emerald-100 text-emerald-800",
                       Rejected: "bg-red-100 text-red-800",
-                    }[candidate.currentStage]
+                    }[candidate.currentStage.title]
                   }`}
                 >
-                  {candidate.currentStage}
+                  {candidate.currentStage.title}
                 </span>
               </CardTitle>
             </CardHeader>
