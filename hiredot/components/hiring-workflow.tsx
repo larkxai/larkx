@@ -11,6 +11,9 @@ import ReactFlow, {
   addEdge,
   Connection,
   ConnectionMode,
+  EdgeLabelRenderer,
+  BaseEdge,
+  getStraightPath,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,12 +31,83 @@ const initialNodes: Node[] = [
 ]
 
 const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', animated: true, label: 'Submit' },
-  { id: 'e2-3', source: '2', target: '3', animated: true, label: 'Approve' },
-  { id: 'e2-5', source: '2', target: '5', animated: true, label: 'Reject' },
+  { 
+    id: 'e1-2', 
+    source: '1', 
+    target: '2', 
+    animated: true, 
+    type: 'custom',
+    data: { 
+      action: 'Submit',
+      condition: 'Form Complete'
+    }
+  },
+  { 
+    id: 'e2-3', 
+    source: '2', 
+    target: '3', 
+    animated: true, 
+    type: 'custom',
+    data: { 
+      action: 'Approve',
+      condition: 'Score > 7'
+    }
+  },
+  { 
+    id: 'e2-5', 
+    source: '2', 
+    target: '5', 
+    animated: true, 
+    type: 'custom',
+    data: { 
+      action: 'Reject',
+      condition: 'Score < 4'
+    }
+  },
   { id: 'e3-4', source: '3', target: '4', animated: true, label: 'Pass' },
   { id: 'e3-5', source: '3', target: '5', animated: true, label: 'Fail' },
 ]
+
+// Add a custom edge type
+const CustomEdge = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  data,
+  style = {},
+}) => {
+  const [edgePath, labelX, labelY] = getStraightPath({
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+  });
+
+  return (
+    <>
+      <BaseEdge path={edgePath} style={style} />
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            background: '#f0f0f0',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            border: '1px solid #ccc',
+          }}
+          className="nodrag nopan"
+        >
+          <div>{data?.action}</div>
+          <div className="text-xs text-gray-500">{data?.condition}</div>
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+};
 
 export function EnhancedHiringWorkflowComponent() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
@@ -49,6 +123,11 @@ export function EnhancedHiringWorkflowComponent() {
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node)
   }, [])
+
+  // Add the custom edge type to the nodeTypes object
+  const edgeTypes = {
+    custom: CustomEdge,
+  };
 
   return (
     <div className="flex h-[calc(100vh-1rem)] relative">
@@ -79,6 +158,7 @@ export function EnhancedHiringWorkflowComponent() {
                   onConnect={onConnect}
                   onNodeClick={onNodeClick}
                   connectionMode={ConnectionMode.Loose}
+                  edgeTypes={edgeTypes}
                   fitView
                 >
                   <Background />
