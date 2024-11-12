@@ -28,6 +28,12 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { StageDetails } from "./stage-details";
 import { workflowMocks } from "@/mocks/workflow";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const initialNodes: Node[] = workflowMocks.map((stage, index) => ({
   id: stage.id,
@@ -125,6 +131,7 @@ export function EnhancedHiringWorkflowComponent() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isGraphMode, setIsGraphMode] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const onConnect = useCallback(
     (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -133,6 +140,7 @@ export function EnhancedHiringWorkflowComponent() {
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
+    setIsDialogOpen(true);
   }, []);
 
   // Add the custom edge type to the nodeTypes object
@@ -195,14 +203,17 @@ export function EnhancedHiringWorkflowComponent() {
           </CardContent>
         </Card>
       </div>
-      {isGraphMode && selectedNode && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <StageDetails
-            node={selectedNode}
-            trigger={<Button>View {selectedNode.data.label} Stage</Button>}
-          />
-        </div>
-      )}
+      
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        {selectedNode && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{selectedNode.data.label}</DialogTitle>
+            </DialogHeader>
+            <StageDetails node={selectedNode} />
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }
