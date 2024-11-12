@@ -4,13 +4,11 @@ import {
   Home,
   Users,
   Briefcase,
-  GitBranch,
   BarChart,
   ChevronLeft,
   User2,
   Settings,
   LogOut,
-  FileText as DocumentTextIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
