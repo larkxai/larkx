@@ -3,12 +3,13 @@ export interface PublishingData {
   corporateWebsite: number;
   indeed: number;
   totalApplications: number;
+  conversionRate: number;
 }
 
 export interface ApplicationSourceData {
   source: string;
   applications: number;
-  percentage: string;
+  percentage: number;
 }
 
 export interface TopPerformingJob {

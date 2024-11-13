@@ -1,3 +1,5 @@
+import { ISODateString } from "./common";
+
 export type QuestionType = "text" | "checkbox" | "multipleChoice";
 
 export interface Trigger {
@@ -10,12 +12,21 @@ export interface Trigger {
   action: string;
 }
 
+export interface FormQuestionValidation {
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  customValidation?: (value: string | boolean | string[]) => boolean;
+}
+
 export interface FormQuestion {
   id: string;
   type: QuestionType;
   question: string;
   required: boolean;
-  options?: string[]; // For checkbox and multipleChoice questions
+  options?: string[];
+  validation?: FormQuestionValidation;
+  helpText?: string;
 }
 
 export interface TimeSlot {
@@ -71,4 +82,7 @@ export interface Workflow {
   name: string;
   description?: string;
   stages: WorkflowStage[];
+  status: "active" | "draft" | "archived";
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
 }

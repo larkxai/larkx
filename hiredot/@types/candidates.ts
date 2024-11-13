@@ -1,3 +1,4 @@
+import { ISODateString } from "./common";
 import { JobListing } from "./jobListings";
 import { WorkflowStage } from "./workflow";
 
@@ -32,6 +33,7 @@ export interface StageData {
     benefits: string[];
     status: "Pending" | "Accepted" | "Declined";
   };
+  [key: string]: any;
 }
 
 export interface HistoryEntry {
@@ -52,14 +54,14 @@ export interface HistoryEntry {
 }
 
 export interface Candidate {
-  id: string;
+  readonly id: string;
+  readonly createdAt: ISODateString;
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
   source: CandidateSource;
   currentStage: WorkflowStage;
-  createdAt: Date;
   updatedAt: Date;
   tags: string[];
   listing?: JobListing;
@@ -67,6 +69,8 @@ export interface Candidate {
   resumeFile?: string;
   coverLetterFile?: string;
   notes: Note[];
+  status: "active" | "archived" | "hired" | "rejected";
+  lastActivityDate: ISODateString;
 }
 
 export interface Note {

@@ -1,4 +1,4 @@
-import { JobListing } from "@/@types/JobRequisition";
+import { JobListing } from "@/@types/jobRequisition";
 
 export const publishedJobs: JobListing[] = [
   {
