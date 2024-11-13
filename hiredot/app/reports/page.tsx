@@ -32,14 +32,57 @@ import {
   YAxis,
 } from "recharts";
 import { CalendarIcon, GlobeIcon, ExternalLinkIcon } from "lucide-react";
-import {
-  publishingData,
-  applicationSourceData,
-  topPerformingJobs,
-} from "@/mocks/reports";
+import { mockReports } from "@/mocks/reports";
 
 export default function ReportsPage() {
   const [dateRange, setDateRange] = useState("last6months");
+
+  // Transform mockReports data for charts
+  const hiringMetricsReport = mockReports.find(r => r.type === "hiring_metrics");
+  const pipelineReport = mockReports.find(r => r.type === "candidate_pipeline");
+  const timeToHireReport = mockReports.find(r => r.type === "time_to_hire");
+  const sourceReport = mockReports.find(r => r.type === "source_effectiveness");
+
+  const chartData = [
+    { month: "Jan", applications: hiringMetricsReport?.metrics[0].value || 0 },
+    { month: "Feb", applications: hiringMetricsReport?.metrics[0].value || 0 },
+    { month: "Mar", applications: hiringMetricsReport?.metrics[0].value || 0 },
+    { month: "Apr", applications: hiringMetricsReport?.metrics[0].value || 0 },
+    { month: "May", applications: hiringMetricsReport?.metrics[0].value || 0 },
+    { month: "Jun", applications: hiringMetricsReport?.metrics[0].value || 0 }
+  ];
+
+  const applicationSources = [
+    {
+      source: "LinkedIn",
+      applications: sourceReport?.metrics[0].value || 0,
+      percentage: sourceReport?.metrics[0].value ? "35%" : "0%"
+    },
+    {
+      source: "Corporate Website",
+      applications: sourceReport?.metrics[0].value || 0,
+      percentage: sourceReport?.metrics[0].value ? "30%" : "0%"
+    },
+    {
+      source: "Indeed", 
+      applications: sourceReport?.metrics[0].value || 0,
+      percentage: sourceReport?.metrics[0].value ? "25%" : "0%"
+    },
+    {
+      source: "Referrals",
+      applications: sourceReport?.metrics[0].value || 0,
+      percentage: sourceReport?.metrics[0].value ? "10%" : "0%"
+    }
+  ];
+
+  const topJobs = mockReports
+    .filter(r => r.type === "time_to_hire")
+    .map(report => ({
+      title: report.filters.jobRole || "",
+      applications: report.metrics[0].value || 0,
+      views: report.metrics[1].value || 0,
+      conversionRate: `${((Number(report.metrics[0].value) / Number(report.metrics[1].value)) * 100).toFixed(1)}%`
+    }));
 
   return (
     <div className="container mx-auto p-6 space-y-8">
@@ -70,39 +113,39 @@ export default function ReportsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Job Postings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">128</div>
-            <p className="text-xs text-muted-foreground">
-              +15% from last period
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
               Total Applications
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,550</div>
+            <div className="text-2xl font-bold">{hiringMetricsReport?.metrics[0].value || 0}</div>
             <p className="text-xs text-muted-foreground">
-              +20.1% from last period
+              +{hiringMetricsReport?.metrics[0].change || 0}% from last period
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Avg. Applications per Posting
+              Time to Hire
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">19.9</div>
+            <div className="text-2xl font-bold">{hiringMetricsReport?.metrics[1].value}</div>
             <p className="text-xs text-muted-foreground">
-              +5% from last period
+              {hiringMetricsReport?.metrics[1].change}% from last period
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Candidates in Pipeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pipelineReport?.metrics[0].value}</div>
+            <p className="text-xs text-muted-foreground">
+              +{pipelineReport?.metrics[0].change}% from last period
             </p>
           </CardContent>
         </Card>
@@ -111,32 +154,27 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Job Postings by Platform</CardTitle>
+            <CardTitle>Applications Over Time</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer
               config={{
-                corporateWebsite: {
-                  label: "Corporate Website",
+                applications: {
+                  label: "Applications",
                   color: "hsl(var(--chart-1))",
-                },
-                indeed: {
-                  label: "Indeed",
-                  color: "hsl(var(--chart-2))",
                 },
               }}
               className="h-[300px]"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={publishingData}>
+                <BarChart data={chartData}>
                   <XAxis dataKey="month" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar
-                    dataKey="corporateWebsite"
-                    fill="var(--color-corporateWebsite)"
+                    dataKey="applications"
+                    fill="var(--color-applications)"
                   />
-                  <Bar dataKey="indeed" fill="var(--color-indeed)" />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -144,27 +182,27 @@ export default function ReportsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Total Applications Over Time</CardTitle>
+            <CardTitle>Time to Hire Trend</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer
               config={{
-                totalApplications: {
-                  label: "Total Applications",
+                timeToHire: {
+                  label: "Days to Hire",
                   color: "hsl(var(--chart-1))",
                 },
               }}
               className="h-[300px]"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={publishingData}>
+                <LineChart data={chartData}>
                   <XAxis dataKey="month" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line
                     type="monotone"
-                    dataKey="totalApplications"
-                    stroke="var(--color-totalApplications)"
+                    dataKey="applications"
+                    stroke="var(--color-timeToHire)"
                     strokeWidth={2}
                   />
                 </LineChart>
@@ -188,7 +226,7 @@ export default function ReportsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {applicationSourceData.map((source) => (
+              {applicationSources.map((source) => (
                 <TableRow key={source.source}>
                   <TableCell className="flex items-center">
                     {source.source === "Corporate Website" ? (
@@ -222,7 +260,7 @@ export default function ReportsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {topPerformingJobs.map((job) => (
+              {topJobs.map((job) => (
                 <TableRow key={job.title}>
                   <TableCell>{job.title}</TableCell>
                   <TableCell>{job.applications}</TableCell>
