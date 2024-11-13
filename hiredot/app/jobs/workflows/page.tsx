@@ -1,11 +1,24 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { PlusCircle, GitBranch, Users, Calendar, ArrowRight, Power } from "lucide-react"
-import Link from "next/link"
-import { mockWorkflow } from "@/mocks/workflow"
-import { Workflow, WorkflowStep } from "@/@types/workflow"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  PlusCircle,
+  GitBranch,
+  Users,
+  Calendar,
+  ArrowRight,
+  Power,
+} from "lucide-react";
+import Link from "next/link";
+import { workflow } from "@/mocks/workflow";
 
 export default function WorkflowsPage() {
   return (
@@ -24,50 +37,54 @@ export default function WorkflowsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockWorkflow.map((workflow: WorkflowStep) => (
-          <Card key={workflow.id}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <GitBranch className="h-5 w-5" />
-                  {workflow.name}
-                </div>
-                <Power className={`h-4 w-4 ${workflow.enabled ? 'text-green-500' : 'text-gray-400'}`} />
-              </CardTitle>
-              <CardDescription>{workflow.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center text-sm">
-                  <GitBranch className="mr-2 h-4 w-4" />
-                  <span>{workflow.steps.length} steps</span>
-                </div>
-                <div className="flex items-center text-sm">
-                  <Users className="mr-2 h-4 w-4" />
-                  <span>{workflow.metadata?.executionCount || 0} executions</span>
-                </div>
-                {workflow.metadata?.averageExecutionTime && (
-                  <div className="flex items-center text-sm">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    <span>Avg. time: {workflow.metadata.averageExecutionTime} hours</span>
-                  </div>
-                )}
+        <Card key={workflow.id}>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <GitBranch className="h-5 w-5" />
+                {workflow.name}
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" size="sm">
-                Edit
+              <Power
+                className={`h-4 w-4 ${
+                  workflow.enabled ? "text-green-500" : "text-gray-400"
+                }`}
+              />
+            </CardTitle>
+            <CardDescription>{workflow.description}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center text-sm">
+                <GitBranch className="mr-2 h-4 w-4" />
+                <span>{workflow.steps.length} steps</span>
+              </div>
+              <div className="flex items-center text-sm">
+                <Users className="mr-2 h-4 w-4" />
+                <span>{workflow.metadata?.executionCount} executions</span>
+              </div>
+              {workflow.metadata?.averageExecutionTime && (
+                <div className="flex items-center text-sm">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  <span>
+                    Avg. time: {workflow.metadata?.averageExecutionTime} hours
+                  </span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" size="sm">
+              Edit
+            </Button>
+            <Link href={`/jobs/workflows/${workflow.id}`}>
+              <Button size="sm">
+                View Details
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Link href={`/jobs/workflows/${workflow.id}`}>
-                <Button size="sm">
-                  View Details
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </CardFooter>
-          </Card>
-        ))}
+            </Link>
+          </CardFooter>
+        </Card>
       </div>
     </div>
-  )
-} 
+  );
+}

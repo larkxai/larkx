@@ -26,7 +26,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { StageDetails } from "./stage-details";
-import { mockWorkflow } from "@/mocks/workflow";
+import { workflow } from "@/mocks/workflow";
 import { WorkflowStep, ComplexCondition } from "@/@types/workflow";
 import {
   Dialog,
@@ -47,7 +47,7 @@ const formatConditions = (condition: ComplexCondition): string => {
     .join(` ${condition.logic} `);
 };
 
-const initialNodes: Node[] = mockWorkflow.map(
+const initialNodes: Node[] = workflow.steps.map(
   (step: WorkflowStep, index: number) => ({
     id: step.id,
     position: {
@@ -62,7 +62,7 @@ const initialNodes: Node[] = mockWorkflow.map(
   })
 );
 
-const initialEdges: Edge[] = mockWorkflow.reduce(
+const initialEdges: Edge[] = workflow.steps.reduce(
   (edges: Edge[], step: WorkflowStep) => {
     const newEdges: Edge[] = [];
 

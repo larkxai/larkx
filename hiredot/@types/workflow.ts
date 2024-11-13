@@ -54,11 +54,7 @@ export interface ComplexCondition {
 export type WorkflowActionConfig<T extends keyof WorkflowActionConfigs> = {
   type: T;
   config: WorkflowActionConfigs[T];
-  retry?: {
-    maxAttempts: number;
-    backoffStrategy: "linear" | "exponential";
-    initialDelay: number;
-  };
+  retry?: RetryStrategy;
   timeout?: number;
   rollback?: WorkflowAction;
 };
@@ -99,41 +95,44 @@ export interface FormQuestion {
 
 export type WorkflowStepType = "action" | "form" | "quiz" | "scheduler";
 
+export type WorkflowStepNextStep = {
+  default?: string;
+  conditions?: Array<{
+    condition: ComplexCondition;
+    then: string | string[];
+    priority?: number;
+  }>;
+};
+
+export type RetryStrategy = {
+  maxAttempts: number;
+  backoffStrategy: "linear" | "exponential";
+  initialDelay: number;
+};
+
+export type WorkflowStepErrorHandling = {
+  action: WorkflowAction;
+  nextStep?: string;
+};
+
+export type WorkflowStepMetadata = {
+  description?: string;
+  tags?: string[];
+  owner?: string;
+  expectedDuration?: number;
+};
+
 export type WorkflowStep = {
   id: string;
   name: string;
-  type: "form" | "quiz" | "scheduler" | "action";
+  type: WorkflowStepType;
   version: string;
   conditions: ComplexCondition[];
   timeout?: number;
-  retryStrategy?: {
-    maxAttempts: number;
-    backoffStrategy: "linear" | "exponential";
-  };
-  nextSteps: {
-    default?: string;
-    conditions?: Array<{
-      condition: ComplexCondition;
-      then: string | string[];
-      priority?: number;
-    }>;
-  };
-  onError?: {
-    action: WorkflowAction;
-    nextStep?: string;
-  };
-  metadata?: {
-    description?: string;
-    tags?: string[];
-    owner?: string;
-    expectedDuration?: number;
-  };
-};
-
-export type Action = {
-  type: "send_email" | "update_status" | string;
-  config: Record<string, unknown>;
-  delay?: number;
+  retryStrategy?: RetryStrategy;
+  nextSteps: WorkflowStepNextStep;
+  onError?: WorkflowStepErrorHandling;
+  metadata?: WorkflowStepMetadata;
 };
 
 export interface Workflow extends Metadata {
