@@ -48,8 +48,8 @@ const menuItems = [
         href: "/jobs/roles",
       },
       {
-        title: "Openings",
-        href: "/jobs/openings",
+        title: "Job Listings",
+        href: "/jobs/listings",
       },
       {
         title: "Workflows",

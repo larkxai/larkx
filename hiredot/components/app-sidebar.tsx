@@ -1,5 +1,12 @@
 import * as React from "react";
-import { Home, Users, Briefcase, GitBranch, BarChart } from "lucide-react";
+import {
+  Home,
+  Users,
+  FileText,
+  GitBranch,
+  BarChart,
+  Briefcase,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -14,7 +21,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-// Navigation data structure
 const navigation = [
   {
     title: "Main",
@@ -40,9 +46,9 @@ const navigation = [
     title: "Jobs",
     items: [
       {
-        title: "Roles",
-        icon: Briefcase,
-        url: "/jobs/roles",
+        title: "Requisitions",
+        icon: FileText,
+        url: "/jobs/requisitions",
       },
       {
         title: "Workflows",
@@ -50,16 +56,15 @@ const navigation = [
         url: "/jobs/workflows",
       },
       {
-        title: "Openings",
+        title: "Listings",
         icon: Briefcase,
-        url: "/jobs/openings",
+        url: "/jobs/listings",
       },
     ],
   },
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // Get current path to determine active state
   const pathname =
     typeof window !== "undefined" ? window.location.pathname : "";
 

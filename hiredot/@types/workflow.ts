@@ -65,3 +65,10 @@ export type WorkflowStage =
   | OfferStage
   | InterviewStage
   | RejectionStage;
+
+export interface Workflow {
+  id: string;
+  name: string;
+  description?: string;
+  stages: WorkflowStage[];
+}

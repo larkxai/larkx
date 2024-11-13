@@ -29,4 +29,19 @@ export const mockJobs: Job[] = [
     description: "Join our infrastructure team as a DevOps Engineer...",
     createdAt: new Date("2024-03-13"),
   },
+  {
+    id: "4",
+    title: "Senior Frontend Developer",
+    department: "Engineering",
+    location: "Remote",
+    type: "Full-time",
+    applicants: 45,
+    createdAt: new Date("2024-03-13"),
+    description: "We are looking for an experienced Frontend Developer...",
+    requirements: [
+      "5+ years of experience with React",
+      "Strong TypeScript skills",
+      "Experience with Next.js",
+    ],
+  },
 ];

@@ -1,6 +1,6 @@
-import { JobOpening } from "@/@types/openings";
+import { JobListing } from "@/@types/JobRequisition";
 
-export const publishedJobs: JobOpening[] = [
+export const publishedJobs: JobListing[] = [
   {
     id: 1,
     title: "Senior Frontend Developer",

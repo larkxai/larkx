@@ -1,4 +1,4 @@
-import { Job } from "./job";
+import { JobListing } from "./jobListings";
 import { WorkflowStage } from "./workflow";
 
 export type CandidateSource =
@@ -62,8 +62,21 @@ export interface Candidate {
   createdAt: Date;
   updatedAt: Date;
   tags: string[];
-  job: Job;
+  listing?: JobListing;
   history: HistoryEntry[];
-  resume?: string;
-  coverLetter?: string;
+  resumeFile?: string;
+  coverLetterFile?: string;
+  notes: Note[];
+}
+
+export interface Note {
+  id: string;
+  date: Date;
+  content: string;
+}
+
+export interface Attachment {
+  id: string;
+  date: Date;
+  file: string;
 }
