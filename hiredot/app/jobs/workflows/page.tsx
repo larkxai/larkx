@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { PlusCircle, GitBranch, Users, Calendar, ArrowRight, Power } from "lucide-react"
 import Link from "next/link"
-import { mockWorkflows } from "@/mocks/workflow"
-import { Workflow } from "@/@types/workflow"
+import { mockWorkflow } from "@/mocks/workflow"
+import { Workflow, WorkflowStep } from "@/@types/workflow"
 
 export default function WorkflowsPage() {
   return (
@@ -24,7 +24,7 @@ export default function WorkflowsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockWorkflows.map((workflow: Workflow) => (
+        {mockWorkflow.map((workflow: WorkflowStep) => (
           <Card key={workflow.id}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">

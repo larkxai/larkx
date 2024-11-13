@@ -1,155 +1,268 @@
-import { Workflow, WorkflowStep } from "../@types/workflow";
+import { WorkflowStep } from "../@types/workflow";
 
-const mockSteps: WorkflowStep[] = [
+export const mockWorkflow: WorkflowStep[] = [
   {
-    id: "step1",
+    id: "initial_form",
     name: "Initial Application Form",
     type: "form",
+    version: "1.0.0",
     conditions: [],
-    form: {
-      title: "Application Details",
-      description: "Please fill out your basic information",
-      questions: [
+    metadata: {
+      description: "Initial application form for candidates",
+      tags: ["application", "initial-screening"],
+      expectedDuration: 15,
+    },
+    nextSteps: {
+      conditions: [
         {
-          id: "name",
-          type: "text",
-          question: "What is your full name?",
-          required: true,
-          validation: {
-            minLength: 2,
-            maxLength: 100,
+          condition: {
+            logic: "AND",
+            conditions: [
+              {
+                field: "experience",
+                operator: "greater_than_equal",
+                value: "5-10",
+              },
+              {
+                field: "expected_salary",
+                operator: "not_equals",
+                value: "$150k+",
+              },
+            ],
           },
+          then: "interview_scheduling",
+          priority: 1,
         },
         {
-          id: "experience",
-          type: "select",
-          question: "Years of experience",
-          required: true,
-          options: ["0-2", "3-5", "5-10", "10+"],
+          condition: {
+            logic: "OR",
+            conditions: [
+              {
+                field: "experience",
+                operator: "less_than",
+                value: "5-10",
+              },
+              {
+                field: "expected_salary",
+                operator: "equals",
+                value: "$150k+",
+              },
+            ],
+          },
+          then: "rejection_thank_you",
+          priority: 2,
         },
       ],
-      submitButtonText: "Submit Application",
     },
-    nextSteps: ["step2"],
   },
   {
-    id: "step2",
-    name: "Technical Assessment", 
-    type: "quiz",
-    conditions: [
-      {
-        field: "experience",
-        operator: "equals",
-        value: "5-10",
-      },
-      {
-        field: "applicationScore",
-        operator: "greater_than", 
-        value: 80,
-      }
-    ],
-    quiz: {
-      title: "JavaScript Knowledge Test",
-      description: "Basic JavaScript concepts assessment",
-      questions: [
-        {
-          id: "q1",
-          type: "radio",
-          question: "What is closure in JavaScript?",
-          required: true,
-          options: [
-            "A function with its lexical environment",
-            "A loop structure", 
-            "A data type",
-            "A debugging tool",
-          ],
-        },
-      ],
-      passingScore: 70,
-      timeLimit: 30,
-    },
-    nextSteps: ["step3"],
-  },
-  {
-    id: "step3",
-    name: "Interview Scheduling",
+    id: "interview_scheduling",
+    name: "Interview Slot Selection",
     type: "scheduler",
+    version: "1.0.0",
     conditions: [],
-    scheduler: {
-      title: "Technical Interview",
-      description: "Choose your preferred time slot",
-      availableSlots: [
+    metadata: {
+      description: "Interview scheduling step",
+      tags: ["interview", "scheduling"],
+      expectedDuration: 30,
+    },
+    nextSteps: {
+      default: "recruiter_decision",
+    },
+  },
+  {
+    id: "recruiter_decision",
+    name: "Recruiter Decision",
+    type: "form",
+    version: "1.0.0",
+    conditions: [],
+    metadata: {
+      description: "Recruiter decision step",
+      tags: ["decision", "evaluation"],
+      expectedDuration: 30,
+    },
+    nextSteps: {
+      conditions: [
         {
-          startTime: "2024-03-20T10:00:00Z",
-          endTime: "2024-03-20T11:00:00Z",
-          interviewers: ["interviewer1", "interviewer2"],
+          condition: {
+            logic: "AND",
+            conditions: [
+              {
+                field: "decision",
+                operator: "equals",
+                value: "Send Test Assignment",
+              },
+            ],
+          },
+          then: "test_assignment",
         },
         {
-          startTime: "2024-03-21T14:00:00Z",
-          endTime: "2024-03-21T15:00:00Z",
-          interviewers: ["interviewer3"],
+          condition: {
+            logic: "AND",
+            conditions: [
+              {
+                field: "decision",
+                operator: "equals",
+                value: "Reject",
+              },
+            ],
+          },
+          then: "rejection_thank_you",
         },
       ],
-      duration: 60,
-      maxOptions: 2,
     },
   },
-];
-
-export const mockWorkflows: Workflow[] = [
   {
-    id: "workflow1",
-    name: "Developer Hiring Pipeline",
-    description: "Standard workflow for hiring software developers",
-    trigger: "candidate_applied",
-    enabled: true,
-    steps: mockSteps,
-    createdAt: "2024-03-15T08:00:00Z",
-    updatedAt: "2024-03-15T08:00:00Z",
-    isActive: true,
-    isDeleted: false,
+    id: "test_assignment",
+    name: "Test Assignment",
+    type: "action",
+    version: "1.0.0",
+    conditions: [],
     metadata: {
-      createdBy: "admin1",
-      executionCount: 150,
-      averageExecutionTime: 72, // hours
-      lastExecuted: "2024-03-19T15:30:00Z",
+      description: "Test assignment step",
+      tags: ["test", "assignment"],
+      expectedDuration: 30,
+    },
+    nextSteps: {
+      default: "await_test_completion",
     },
   },
   {
-    id: "workflow2",
-    name: "Interview Follow-up",
-    description: "Automated follow-up actions after interviews",
-    trigger: "interview_scheduled",
-    enabled: true,
-    steps: [
-      {
-        id: "followup1",
-        name: "Send Thank You Email",
-        type: "action",
-        conditions: [],
-        actions: [
-          {
-            type: "send_email",
-            config: {
-              to: "{{candidate.email}}",
-              subject: "Thank you for interviewing with us",
-              body: "Dear {{candidate.name}},\n\nThank you for taking the time to interview with us...",
-            },
-            delay: 3600, // 1 hour delay
+    id: "security_check",
+    name: "Security Background Check",
+    type: "action",
+    version: "1.0.0",
+    conditions: [],
+    metadata: {
+      description: "Security background check step",
+      tags: ["security", "background-check"],
+      expectedDuration: 7200,
+    },
+    nextSteps: {
+      default: "security_check_result",
+    },
+  },
+  {
+    id: "security_check_result",
+    name: "Security Check Result",
+    type: "form",
+    version: "1.0.0",
+    conditions: [],
+    metadata: {
+      description: "Security check result step",
+      tags: ["security", "result"],
+      expectedDuration: 30,
+    },
+    nextSteps: {
+      conditions: [
+        {
+          condition: {
+            logic: "AND",
+            conditions: [
+              {
+                field: "security_status",
+                operator: "equals",
+                value: "Approved",
+              },
+            ],
           },
-        ],
-      },
-    ],
-    createdAt: "2024-03-10T10:00:00Z",
-    updatedAt: "2024-03-10T10:00:00Z",
-    isActive: true,
-    isDeleted: false,
+          then: "prepare_offer",
+        },
+        {
+          condition: {
+            logic: "AND",
+            conditions: [
+              {
+                field: "security_status",
+                operator: "equals",
+                value: "Rejected",
+              },
+            ],
+          },
+          then: "rejection_thank_you",
+        },
+      ],
+    },
+  },
+  {
+    id: "prepare_offer",
+    name: "Prepare Offer",
+    type: "action",
+    version: "1.0.0",
+    conditions: [],
     metadata: {
-      createdBy: "admin2",
-      executionCount: 75,
-      averageExecutionTime: 2,
+      description: "Prepare offer step",
+      tags: ["offer", "preparation"],
+      expectedDuration: 30,
+    },
+    nextSteps: {
+      default: "offer_approval",
+    },
+  },
+  {
+    id: "rejection_thank_you",
+    name: "Rejection",
+    type: "action",
+    version: "1.0.0",
+    conditions: [],
+    metadata: {
+      description: "Rejection step",
+      tags: ["rejection"],
+      expectedDuration: 30,
+    },
+    nextSteps: {
+      default: "workflow_end",
+    },
+  },
+  {
+    id: "background_check",
+    name: "Background Check",
+    type: "action",
+    version: "1.0.0",
+    conditions: [],
+    metadata: {
+      description: "Background verification process",
+      tags: ["verification", "security"],
+      expectedDuration: 7200,
+    },
+    nextSteps: {
+      conditions: [
+        {
+          condition: {
+            logic: "AND",
+            conditions: [
+              {
+                field: "background_check.status",
+                operator: "equals",
+                value: "completed",
+              },
+              {
+                field: "background_check.results.overall",
+                operator: "equals",
+                value: "clear",
+              },
+            ],
+          },
+          then: "prepare_offer",
+          priority: 1,
+        },
+      ],
+      default: "manual_review",
+    },
+    onError: {
+      action: {
+        type: "send_notification",
+        config: {
+          type: "send_notification",
+          config: {
+            to: ["hr_manager"],
+            subject: "Background Check Error",
+            message:
+              "Background check failed for {{candidate.name}}. Error: {{error.message}}",
+          },
+        },
+      },
+      nextStep: "manual_review",
     },
   },
 ];
-
-export default mockWorkflows;
