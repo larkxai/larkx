@@ -1,12 +1,12 @@
-import { Node } from 'reactflow'
-import { WorkflowStep } from '@/@types/workflow'
+import { Node } from "reactflow";
+import { WorkflowStep } from "@/@types/workflow";
 
 interface StageDetailsProps {
-  node: Node
+  node: Node;
 }
 
 export function StageDetails({ node }: StageDetailsProps) {
-  const stageData = node.data as WorkflowStep
+  const stageData = node.data as WorkflowStep;
 
   return (
     <div className="p-4">
@@ -39,12 +39,12 @@ export function StageDetails({ node }: StageDetailsProps) {
             <ul className="list-disc list-inside">
               {stageData.nextSteps.conditions.map((condition, i) => (
                 <li key={i}>
-                  {condition.condition.conditions.map(c => (
-                    `${c.field} ${c.operator} ${c.value}`
-                  )).join(` ${condition.condition.logic} `)}
-                  {' → '}
-                  {Array.isArray(condition.then) 
-                    ? condition.then.join(', ')
+                  {condition.condition.conditions
+                    .map((c) => `${c.field} ${c.operator} ${c.value}`)
+                    .join(` ${condition.condition.logic} `)}
+                  {" → "}
+                  {Array.isArray(condition.then)
+                    ? condition.then.join(", ")
                     : condition.then}
                 </li>
               ))}
@@ -53,5 +53,5 @@ export function StageDetails({ node }: StageDetailsProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

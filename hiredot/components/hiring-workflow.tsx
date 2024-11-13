@@ -34,6 +34,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
 // Helper function to format conditions for display
 const formatConditions = (condition: ComplexCondition): string => {
@@ -166,16 +174,22 @@ export function EnhancedHiringWorkflowComponent() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isGraphMode, setIsGraphMode] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const onConnect = useCallback(
     (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    setSelectedNode(node);
-    setIsDialogOpen(true);
-  }, []);
+  const handleDelete = useCallback(
+    (nodeId: string) => {
+      setNodes((nds) => nds.filter((node) => node.id !== nodeId));
+      setEdges((eds) =>
+        eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
+      );
+    },
+    [setNodes, setEdges]
+  );
 
   const edgeTypes = {
     custom: CustomEdge,
@@ -184,8 +198,41 @@ export function EnhancedHiringWorkflowComponent() {
   const renderLinearView = () => (
     <div className="space-y-4 overflow-y-auto h-[calc(100vh-200px)] pr-4">
       {nodes.map((node) => (
-        <Card key={node.id} className="p-4">
-          <h3 className="text-lg font-semibold mb-2">{node.data.label}</h3>
+        <Card key={node.id} className="p-4 relative">
+          <div className="flex justify-between items-start">
+            <h3 className="text-lg font-semibold mb-2">{node.data.label}</h3>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 15 15"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                  >
+                    <path
+                      d="M3.625 7.5C3.625 8.12132 3.12132 8.625 2.5 8.625C1.87868 8.625 1.375 8.12132 1.375 7.5C1.375 6.87868 1.87868 6.375 2.5 6.375C3.12132 6.375 3.625 6.87868 3.625 7.5ZM8.625 7.5C8.625 8.12132 8.12132 8.625 7.5 8.625C6.87868 8.625 6.375 8.12132 6.375 7.5C6.375 6.87868 6.87868 6.375 7.5 6.375C8.12132 6.375 8.625 6.87868 8.625 7.5ZM13.625 7.5C13.625 8.12132 13.1213 8.625 12.5 8.625C11.8787 8.625 11.375 8.12132 11.375 7.5C11.375 6.87868 11.8787 6.375 12.5 6.375C13.1213 6.375 13.625 6.87868 13.625 7.5Z"
+                      fill="currentColor"
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-red-600"
+                  onClick={() => handleDelete(node.id)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <div className="text-sm text-gray-600">
             <p>Type: {node.data.type}</p>
             <p>Version: {node.data.version}</p>
@@ -229,6 +276,11 @@ export function EnhancedHiringWorkflowComponent() {
       ))}
     </div>
   );
+
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node);
+    setIsOpen(true);
+  }, []);
 
   return (
     <div className="flex h-[calc(100vh-1rem)] relative">
@@ -286,6 +338,22 @@ export function EnhancedHiringWorkflowComponent() {
             <StageDetails node={selectedNode} />
           </DialogContent>
         )}
+      </Dialog>
+
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedNode?.data?.label || "Node Details"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4">
+            {/* Add your node details here */}
+            <p>Node ID: {selectedNode?.id}</p>
+            <p>Node Type: {selectedNode?.type}</p>
+            {/* Add more node information as needed */}
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
   );
