@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { StageDetails } from "./stage-details";
-import { workflowMocks } from "@/mocks/workflow";
+import { mockWorkflows } from "@/mocks/workflow";
 import {
   Dialog,
   DialogContent,
@@ -35,55 +35,38 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const initialNodes: Node[] = workflowMocks.map((stage, index) => ({
-  id: stage.id,
+const initialNodes: Node[] = mockWorkflows[0].steps.map((step, index) => ({
+  id: step.id,
   position: {
-    x: index === 1 ? 250 : index * 250,
-    y: index === 4 ? 200 : 100, // Position rejection node lower
+    x: index * 250,
+    y: 100,
   },
   data: {
-    label: stage.title,
-    ...stage, // Include all stage data
+    label: step.name,
+    ...step, // Include all step data
   },
+  type: 'default',
 }));
 
-const initialEdges: Edge[] = [
-  {
-    id: "e1-2",
-    source: "1",
-    target: "2",
-    animated: true,
-    type: "custom",
-    data: {
-      action: "Submit",
-      trigger: "Form Complete",
-    },
-  },
-  {
-    id: "e2-3",
-    source: "2",
-    target: "3",
-    animated: true,
-    type: "custom",
-    data: {
-      action: "Approve",
-      trigger: "Score > 7",
-    },
-  },
-  {
-    id: "e2-5",
-    source: "2",
-    target: "5",
-    animated: true,
-    type: "custom",
-    data: {
-      action: "Reject",
-      trigger: "Score < 4",
-    },
-  },
-  { id: "e3-4", source: "3", target: "4", animated: true, label: "Pass" },
-  { id: "e3-5", source: "3", target: "5", animated: true, label: "Fail" },
-];
+const initialEdges: Edge[] = mockWorkflows[0].steps.reduce((edges: Edge[], step, index) => {
+  if (step.nextSteps && step.nextSteps.length > 0) {
+    const newEdges = step.nextSteps.map((nextStepId) => ({
+      id: `e${step.id}-${nextStepId}`,
+      source: step.id,
+      target: nextStepId,
+      animated: true,
+      type: 'custom' as const,
+      data: {
+        action: 'Next',
+        trigger: step.conditions.length > 0 
+          ? `Conditions: ${step.conditions.map(c => `${c.field} ${c.operator} ${c.value}`).join(', ')}`
+          : 'No conditions',
+      },
+    }));
+    return [...edges, ...newEdges];
+  }
+  return edges;
+}, []);
 
 // Add a custom edge type
 const CustomEdge = ({
@@ -94,6 +77,17 @@ const CustomEdge = ({
   targetY,
   data,
   style = {},
+}: {
+  id: string;
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  data?: {
+    action?: string;
+    trigger?: string;
+  };
+  style?: React.CSSProperties;
 }) => {
   const [edgePath, labelX, labelY] = getStraightPath({
     sourceX,
@@ -148,15 +142,54 @@ export function EnhancedHiringWorkflowComponent() {
     custom: CustomEdge,
   };
 
+  const renderLinearView = () => (
+    <div className="space-y-4 overflow-y-auto h-[calc(100vh-200px)] pr-4">
+      {nodes.map((node) => (
+        <Card key={node.id} className="p-4">
+          <h3 className="text-lg font-semibold mb-2">
+            {node.data.label}
+          </h3>
+          <div className="text-sm text-gray-600">
+            <p>Type: {node.data.type}</p>
+            {node.data.conditions?.length > 0 && (
+              <div className="mt-2">
+                <p className="font-medium">Conditions:</p>
+                <ul className="list-disc list-inside">
+                  {node.data.conditions.map((condition, i) => (
+                    <li key={i}>
+                      {condition.field} {condition.operator} {condition.value}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {node.data.form && (
+              <div className="mt-2">
+                <p className="font-medium">Form: {node.data.form.title}</p>
+                <p>{node.data.form.description}</p>
+              </div>
+            )}
+            {node.data.quiz && (
+              <div className="mt-2">
+                <p className="font-medium">Quiz: {node.data.quiz.title}</p>
+                <p>Passing Score: {node.data.quiz.passingScore}%</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+
   return (
     <div className="flex h-[calc(100vh-1rem)] relative">
       <div className="flex-1 p-4">
         <Card className="w-full h-full">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Hiring Workflow</CardTitle>
+              <CardTitle>{mockWorkflows[0].name}</CardTitle>
               <CardDescription>
-                Interactive visualization of the hiring process
+                {mockWorkflows[0].description}
               </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
@@ -189,16 +222,7 @@ export function EnhancedHiringWorkflowComponent() {
                 </ReactFlow>
               </div>
             ) : (
-              <div className="space-y-4 overflow-y-auto h-[calc(100vh-200px)] pr-4">
-                {nodes.map((node) => (
-                  <Card key={node.id} className="p-4">
-                    <h3 className="text-lg font-semibold mb-2">
-                      {node.data.label}
-                    </h3>
-                    <StageDetails node={node} />
-                  </Card>
-                ))}
-              </div>
+              renderLinearView()
             )}
           </CardContent>
         </Card>

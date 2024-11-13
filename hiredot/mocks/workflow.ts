@@ -34,9 +34,20 @@ const mockSteps: WorkflowStep[] = [
   },
   {
     id: "step2",
-    name: "Technical Assessment",
+    name: "Technical Assessment", 
     type: "quiz",
-    conditions: [],
+    conditions: [
+      {
+        field: "experience",
+        operator: "equals",
+        value: "5-10",
+      },
+      {
+        field: "applicationScore",
+        operator: "greater_than", 
+        value: 80,
+      }
+    ],
     quiz: {
       title: "JavaScript Knowledge Test",
       description: "Basic JavaScript concepts assessment",
@@ -48,7 +59,7 @@ const mockSteps: WorkflowStep[] = [
           required: true,
           options: [
             "A function with its lexical environment",
-            "A loop structure",
+            "A loop structure", 
             "A data type",
             "A debugging tool",
           ],
