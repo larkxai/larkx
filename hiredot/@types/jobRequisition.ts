@@ -26,6 +26,7 @@ export interface JobRequisition extends Metadata {
   reasonForHiring: string;
   budgetApproved: boolean;
   targetStartDate: ISODateString;
+  workflowId: ID;
   approvals: Approval[];
   comments?: string;
 }

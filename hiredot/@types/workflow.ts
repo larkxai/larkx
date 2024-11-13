@@ -52,11 +52,72 @@ export interface WorkflowAction {
   delay?: number;
 }
 
+export type QuestionType = 
+  | "text"
+  | "textarea"
+  | "select"
+  | "multiselect"
+  | "checkbox"
+  | "radio"
+  | "date"
+  | "time"
+  | "datetime";
+
+export interface FormQuestionValidation {
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  customValidation?: (value: string | boolean | string[]) => boolean;
+}
+
+export interface FormQuestion {
+  id: string;
+  type: QuestionType;
+  question: string;
+  required: boolean;
+  options?: string[];
+  validation?: FormQuestionValidation;
+  helpText?: string;
+}
+
+export type WorkflowStepType = 
+  | "action"
+  | "form"
+  | "quiz"
+  | "scheduler";
+
 export interface WorkflowStep {
   id: ID;
   name: string;
+  type: WorkflowStepType;
   conditions: WorkflowCondition[];
-  actions: WorkflowAction[];
+  actions?: WorkflowAction[];
+  form?: {
+    title?: string;
+    description?: string;
+    questions: FormQuestion[];
+    submitButtonText?: string;
+    cancelButtonText?: string;
+    timeLimit?: number; // in minutes
+  };
+  quiz?: {
+    title: string;
+    description?: string;
+    questions: FormQuestion[];
+    passingScore: number;
+    timeLimit: number; // in minutes
+  };
+  scheduler?: {
+    title?: string;
+    description?: string;
+    availableSlots: {
+      startTime: ISODateString;
+      endTime: ISODateString;
+      interviewers: ID[];
+    }[];
+    duration: number; // in minutes
+    maxOptions?: number;
+  };
   nextSteps?: ID[];
 }
 

@@ -1,22 +1,59 @@
-import { JobListing } from "@/@types/jobRequisition";
+import { JobListing, SalaryRange } from "@/@types/jobListings";
+import { mockJobRoles } from "./jobRole";
 
-export const publishedJobs: JobListing[] = [
+const mockSalaryRanges: SalaryRange[] = [
   {
-    id: 1,
+    min: 80000,
+    max: 120000,
+    currency: "USD"
+  },
+  {
+    min: 120000,
+    max: 180000,
+    currency: "USD"
+  }
+];
+
+export const mockJobListings: JobListing[] = [
+  {
+    id: "job-001",
     title: "Senior Frontend Developer",
-    platform: "LinkedIn",
-    views: 1234,
-    applications: 45,
-    status: "Active",
-    publishedDate: new Date("2024-03-15"),
-  },
-  {
-    id: 2,
-    title: "Product Manager",
-    platform: "Indeed",
-    views: 890,
-    applications: 23,
-    status: "Active",
-    publishedDate: new Date("2024-03-10"),
-  },
+    roleId: "role-001",
+    role: mockJobRoles[0],
+    department: "Engineering",
+    description: "We are seeking an experienced Frontend Developer to join our team...",
+    requirements: [
+      "5+ years of experience with React",
+      "Strong TypeScript skills",
+      "Experience with state management"
+    ],
+    responsibilities: [
+      "Lead frontend development initiatives",
+      "Mentor junior developers",
+      "Architect scalable solutions"
+    ],
+    qualifications: [
+      "Bachelor's degree in Computer Science",
+      "Strong problem-solving skills",
+      "Excellent communication abilities"
+    ],
+    jobType: "full_time",
+    remotePolicy: "hybrid",
+    experienceLevel: "senior",
+    location: "San Francisco, CA",
+    salary: mockSalaryRanges[1],
+    benefits: [
+      "Health insurance",
+      "401(k) matching",
+      "Remote work stipend"
+    ],
+    skills: ["React", "TypeScript", "Next.js", "GraphQL"],
+    isUrgent: true,
+    applicationDeadline: "2024-04-15T23:59:59Z",
+    numberOfOpenings: 2,
+    isActive: true,
+    isDeleted: false,
+    createdAt: "2024-03-01T00:00:00Z",
+    updatedAt: "2024-03-15T00:00:00Z"
+  }
 ];

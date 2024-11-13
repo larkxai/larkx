@@ -1,11 +1,11 @@
-import { Metadata, ISODateString } from './common';
+import { Metadata, ISODateString } from "./common";
 
-export type ReportType = 
-  | 'hiring_metrics'
-  | 'candidate_pipeline'
-  | 'time_to_hire'
-  | 'source_effectiveness'
-  | 'diversity_metrics';
+export type ReportType =
+  | "hiring_metrics"
+  | "candidate_pipeline"
+  | "time_to_hire"
+  | "source_effectiveness"
+  | "diversity_metrics";
 
 export interface ReportFilter {
   startDate?: ISODateString;
@@ -19,7 +19,7 @@ export interface ReportMetric {
   name: string;
   value: number | string;
   change?: number;
-  trend?: 'up' | 'down' | 'stable';
+  trend?: "up" | "down" | "stable";
 }
 
 export interface Report extends Metadata {
@@ -30,9 +30,9 @@ export interface Report extends Metadata {
   metrics: ReportMetric[];
   generatedAt: ISODateString;
   generatedBy: string;
-  format: 'pdf' | 'csv' | 'excel';
+  format: "pdf" | "csv" | "excel";
   scheduledReport?: {
-    frequency: 'daily' | 'weekly' | 'monthly';
+    frequency: "daily" | "weekly" | "monthly";
     recipients: string[];
     lastSent?: ISODateString;
   };

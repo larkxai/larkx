@@ -1,49 +1,165 @@
-import { PublishingData, ApplicationSourceData, TopPerformingJob } from "@/@types/reports";
+import { Report } from "@/@types/reports";
 
-export const publishingData: PublishingData[] = [
-  { month: "Jan", corporateWebsite: 15, indeed: 10, totalApplications: 300 },
-  { month: "Feb", corporateWebsite: 18, indeed: 12, totalApplications: 350 },
-  { month: "Mar", corporateWebsite: 20, indeed: 15, totalApplications: 400 },
-  { month: "Apr", corporateWebsite: 22, indeed: 18, totalApplications: 450 },
-  { month: "May", corporateWebsite: 25, indeed: 20, totalApplications: 500 },
-  { month: "Jun", corporateWebsite: 28, indeed: 22, totalApplications: 550 },
-];
-
-export const applicationSourceData: ApplicationSourceData[] = [
-  { source: "Corporate Website", applications: 2000, percentage: "60%" },
-  { source: "Indeed", applications: 1300, percentage: "39%" },
-  { source: "Other", applications: 50, percentage: "1%" },
-];
-
-export const topPerformingJobs: TopPerformingJob[] = [
+export const mockReports: Report[] = [
   {
-    title: "Software Engineer",
-    applications: 250,
-    views: 1500,
-    conversionRate: "16.7%",
+    id: "report-001",
+    type: "hiring_metrics", 
+    name: "Monthly Hiring Report",
+    description: "Key hiring metrics and trends",
+    filters: {
+      startDate: "2024-01-01",
+      endDate: "2024-06-30",
+    },
+    metrics: [
+      {
+        name: "Total Applications",
+        value: 550,
+        change: 10,
+        trend: "up",
+      },
+      {
+        name: "Time to Hire",
+        value: "25 days",
+        change: -2,
+        trend: "down",
+      },
+    ],
+    generatedAt: "2024-03-15T00:00:00Z",
+    generatedBy: "user-001",
+    format: "pdf",
+    isActive: true,
+    isDeleted: false,
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-03-15T00:00:00Z",
   },
   {
-    title: "Product Manager",
-    applications: 180,
-    views: 1200,
-    conversionRate: "15.0%",
+    id: "report-002",
+    type: "candidate_pipeline",
+    name: "Pipeline Status Report",
+    description: "Current candidate pipeline metrics",
+    filters: {
+      startDate: "2024-01-01",
+      endDate: "2024-06-30",
+      department: "Engineering"
+    },
+    metrics: [
+      {
+        name: "Candidates in Pipeline",
+        value: 125,
+        change: 15,
+        trend: "up"
+      },
+      {
+        name: "Interview Pass Rate",
+        value: "65%",
+        change: -5,
+        trend: "down"
+      }
+    ],
+    generatedAt: "2024-03-16T00:00:00Z",
+    generatedBy: "user-002",
+    format: "excel",
+    isActive: true,
+    isDeleted: false,
+    createdAt: "2024-01-02T00:00:00Z",
+    updatedAt: "2024-03-16T00:00:00Z"
   },
   {
-    title: "Data Analyst",
-    applications: 150,
-    views: 1000,
-    conversionRate: "15.0%",
+    id: "report-003", 
+    type: "time_to_hire",
+    name: "Time to Hire Analysis",
+    description: "Analysis of hiring process duration",
+    filters: {
+      startDate: "2024-01-01",
+      endDate: "2024-06-30",
+      jobRole: "Senior Frontend Developer"
+    },
+    metrics: [
+      {
+        name: "Average Time to Hire",
+        value: "45 days",
+        change: -10,
+        trend: "down"
+      },
+      {
+        name: "Time in Each Stage",
+        value: "Screening: 5d, Interview: 15d, Offer: 7d",
+      }
+    ],
+    generatedAt: "2024-03-17T00:00:00Z",
+    generatedBy: "user-001",
+    format: "csv",
+    isActive: true,
+    isDeleted: false,
+    createdAt: "2024-01-03T00:00:00Z",
+    updatedAt: "2024-03-17T00:00:00Z"
   },
   {
-    title: "UX Designer",
-    applications: 120,
-    views: 900,
-    conversionRate: "13.3%",
+    id: "report-004",
+    type: "source_effectiveness",
+    name: "Recruitment Source Report",
+    description: "Effectiveness of different recruitment channels",
+    filters: {
+      startDate: "2024-01-01",
+      endDate: "2024-06-30"
+    },
+    metrics: [
+      {
+        name: "LinkedIn Hires",
+        value: 25,
+        change: 5,
+        trend: "up"
+      },
+      {
+        name: "Referral Quality Score",
+        value: "8.5/10",
+        change: 0.5,
+        trend: "up"
+      }
+    ],
+    generatedAt: "2024-03-18T00:00:00Z",
+    generatedBy: "user-003",
+    format: "pdf",
+    isActive: true,
+    isDeleted: false,
+    createdAt: "2024-01-04T00:00:00Z",
+    updatedAt: "2024-03-18T00:00:00Z"
   },
   {
-    title: "Sales Representative",
-    applications: 100,
-    views: 800,
-    conversionRate: "12.5%",
-  },
+    id: "report-005",
+    type: "diversity_metrics",
+    name: "Diversity & Inclusion Report",
+    description: "Diversity metrics across hiring pipeline",
+    filters: {
+      startDate: "2024-01-01",
+      endDate: "2024-06-30",
+      department: "All"
+    },
+    metrics: [
+      {
+        name: "Gender Distribution",
+        value: "45% F, 52% M, 3% NB",
+        change: 2,
+        trend: "up"
+      },
+      {
+        name: "Interview Panel Diversity",
+        value: "80%",
+        change: 10,
+        trend: "up"
+      }
+    ],
+    generatedAt: "2024-03-19T00:00:00Z",
+    generatedBy: "user-002",
+    format: "pdf",
+    scheduledReport: {
+      frequency: "monthly",
+      recipients: ["hr@example.com", "dei@example.com"],
+      lastSent: "2024-03-01T00:00:00Z"
+    },
+    isActive: true,
+    isDeleted: false,
+    createdAt: "2024-01-05T00:00:00Z",
+    updatedAt: "2024-03-19T00:00:00Z"
+  }
 ];
