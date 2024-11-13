@@ -3,7 +3,7 @@ import { WorkflowStep } from "../@types/workflow";
 export const mockWorkflow: WorkflowStep[] = [
   {
     id: "initial_form",
-    name: "Initial Application Form",
+    name: "Initial Application Form", 
     type: "form",
     version: "1.0.0",
     conditions: [],
@@ -124,7 +124,77 @@ export const mockWorkflow: WorkflowStep[] = [
       expectedDuration: 30,
     },
     nextSteps: {
-      default: "await_test_completion",
+      default: "notify_recruiter",
+    },
+  },
+  {
+    id: "notify_recruiter",
+    name: "Notify Recruiter of Test Submission",
+    type: "action",
+    version: "1.0.0",
+    conditions: [],
+    metadata: {
+      description: "Notify recruiter about test assignment submission",
+      tags: ["notification", "test-review"],
+      expectedDuration: 5,
+    },
+    nextSteps: {
+      default: "test_review_decision",
+    },
+    onError: {
+      action: {
+        type: "send_notification",
+        config: {
+          type: "send_notification",
+          config: {
+            to: ["hr_manager"],
+            subject: "Failed to Notify Recruiter",
+            message: "Failed to notify recruiter about test submission for {{candidate.name}}",
+          },
+        },
+      },
+    },
+  },
+  {
+    id: "test_review_decision",
+    name: "Test Review Decision",
+    type: "form",
+    version: "1.0.0",
+    conditions: [],
+    metadata: {
+      description: "Recruiter reviews test assignment",
+      tags: ["review", "decision"],
+      expectedDuration: 60,
+    },
+    nextSteps: {
+      conditions: [
+        {
+          condition: {
+            logic: "AND",
+            conditions: [
+              {
+                field: "decision",
+                operator: "equals",
+                value: "Approved",
+              },
+            ],
+          },
+          then: "security_check",
+        },
+        {
+          condition: {
+            logic: "AND",
+            conditions: [
+              {
+                field: "decision",
+                operator: "equals",
+                value: "Rejected",
+              },
+            ],
+          },
+          then: "rejection_thank_you",
+        },
+      ],
     },
   },
   {
