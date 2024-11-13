@@ -27,7 +27,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { StageDetails } from "./stage-details";
-import { mockWorkflows } from "@/mocks/workflow";
+import { mockWorkflow } from "@/mocks/workflow";
+import { WorkflowStep, ComplexCondition } from "@/types/workflow";
 import {
   Dialog,
   DialogContent,
@@ -35,40 +36,80 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const initialNodes: Node[] = mockWorkflows[0].steps.map((step, index) => ({
-  id: step.id,
-  position: {
-    x: index * 250,
-    y: 100,
-  },
-  data: {
-    label: step.name,
-    ...step, // Include all step data
-  },
-  type: 'default',
-}));
+// Helper function to format conditions for display
+const formatConditions = (condition: ComplexCondition): string => {
+  return condition.conditions
+    .map((c) => {
+      if ("logic" in c) {
+        return formatConditions(c);
+      }
+      return `${c.field} ${c.operator} ${c.value}`;
+    })
+    .join(` ${condition.logic} `);
+};
 
-const initialEdges: Edge[] = mockWorkflows[0].steps.reduce((edges: Edge[], step, index) => {
-  if (step.nextSteps && step.nextSteps.length > 0) {
-    const newEdges = step.nextSteps.map((nextStepId) => ({
-      id: `e${step.id}-${nextStepId}`,
-      source: step.id,
-      target: nextStepId,
-      animated: true,
-      type: 'custom' as const,
-      data: {
-        action: 'Next',
-        trigger: step.conditions.length > 0 
-          ? `Conditions: ${step.conditions.map(c => `${c.field} ${c.operator} ${c.value}`).join(', ')}`
-          : 'No conditions',
-      },
-    }));
+const initialNodes: Node[] = mockWorkflow.map(
+  (step: WorkflowStep, index: number) => ({
+    id: step.id,
+    position: {
+      x: index * 250,
+      y: 100,
+    },
+    data: {
+      label: step.name,
+      ...step,
+    },
+    type: "default",
+  })
+);
+
+const initialEdges: Edge[] = mockWorkflow.reduce(
+  (edges: Edge[], step: WorkflowStep) => {
+    const newEdges: Edge[] = [];
+
+    // Handle default next step
+    if (step.nextSteps.default) {
+      newEdges.push({
+        id: `e${step.id}-${step.nextSteps.default}`,
+        source: step.id,
+        target: step.nextSteps.default,
+        animated: true,
+        type: "custom",
+        data: {
+          action: "Default",
+          trigger: "No conditions",
+        },
+      });
+    }
+
+    // Handle conditional next steps
+    if (step.nextSteps.conditions) {
+      step.nextSteps.conditions.forEach((condition) => {
+        const targets = Array.isArray(condition.then)
+          ? condition.then
+          : [condition.then];
+        targets.forEach((target) => {
+          newEdges.push({
+            id: `e${step.id}-${target}`,
+            source: step.id,
+            target: target,
+            animated: true,
+            type: "custom",
+            data: {
+              action: `Priority: ${condition.priority || "Default"}`,
+              trigger: formatConditions(condition.condition),
+            },
+          });
+        });
+      });
+    }
+
     return [...edges, ...newEdges];
-  }
-  return edges;
-}, []);
+  },
+  []
+);
 
-// Add a custom edge type
+// Custom edge component remains the same
 const CustomEdge = ({
   id,
   sourceX,
@@ -137,7 +178,6 @@ export function EnhancedHiringWorkflowComponent() {
     setIsDialogOpen(true);
   }, []);
 
-  // Add the custom edge type to the nodeTypes object
   const edgeTypes = {
     custom: CustomEdge,
   };
@@ -146,33 +186,43 @@ export function EnhancedHiringWorkflowComponent() {
     <div className="space-y-4 overflow-y-auto h-[calc(100vh-200px)] pr-4">
       {nodes.map((node) => (
         <Card key={node.id} className="p-4">
-          <h3 className="text-lg font-semibold mb-2">
-            {node.data.label}
-          </h3>
+          <h3 className="text-lg font-semibold mb-2">{node.data.label}</h3>
           <div className="text-sm text-gray-600">
             <p>Type: {node.data.type}</p>
-            {node.data.conditions?.length > 0 && (
+            <p>Version: {node.data.version}</p>
+
+            {node.data.metadata && (
+              <div className="mt-2">
+                <p className="font-medium">Metadata:</p>
+                <p>{node.data.metadata.description}</p>
+                {node.data.metadata.tags && (
+                  <div className="flex gap-1 mt-1">
+                    {node.data.metadata.tags.map((tag: string) => (
+                      <span
+                        key={tag}
+                        className="bg-gray-100 px-2 py-1 rounded text-xs"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {node.data.nextSteps.conditions && (
               <div className="mt-2">
                 <p className="font-medium">Conditions:</p>
                 <ul className="list-disc list-inside">
-                  {node.data.conditions.map((condition, i) => (
-                    <li key={i}>
-                      {condition.field} {condition.operator} {condition.value}
-                    </li>
-                  ))}
+                  {node.data.nextSteps.conditions.map(
+                    (condition: any, i: number) => (
+                      <li key={i}>
+                        {formatConditions(condition.condition)} →{" "}
+                        {condition.then}
+                      </li>
+                    )
+                  )}
                 </ul>
-              </div>
-            )}
-            {node.data.form && (
-              <div className="mt-2">
-                <p className="font-medium">Form: {node.data.form.title}</p>
-                <p>{node.data.form.description}</p>
-              </div>
-            )}
-            {node.data.quiz && (
-              <div className="mt-2">
-                <p className="font-medium">Quiz: {node.data.quiz.title}</p>
-                <p>Passing Score: {node.data.quiz.passingScore}%</p>
               </div>
             )}
           </div>
@@ -187,9 +237,9 @@ export function EnhancedHiringWorkflowComponent() {
         <Card className="w-full h-full">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>{mockWorkflows[0].name}</CardTitle>
+              <CardTitle>Hiring Workflow</CardTitle>
               <CardDescription>
-                {mockWorkflows[0].description}
+                Standard workflow for hiring process
               </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
@@ -227,7 +277,7 @@ export function EnhancedHiringWorkflowComponent() {
           </CardContent>
         </Card>
       </div>
-      
+
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         {selectedNode && (
           <DialogContent>
