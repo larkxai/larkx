@@ -1,5 +1,5 @@
 import { InterviewStage, WorkflowStage } from "@/@types/workflow";
-import { mockJobs } from "./roles";
+import { mockJobs } from "./jobRequisition";
 import { Candidate } from "@/@types/candidates";
 
 const applicationForm: WorkflowStage = {

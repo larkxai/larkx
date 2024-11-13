@@ -17,7 +17,7 @@ export interface StageData {
   };
   initialEvaluation?: {
     evaluator: string;
-    skillAssessment: Record<string, number>;
+    skillAssessment: Record<string, number & { min: 0; max: 10 }>;
     notes: string;
   };
   interview?: {
@@ -33,7 +33,7 @@ export interface StageData {
     benefits: string[];
     status: "Pending" | "Accepted" | "Declined";
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface HistoryEntry {
@@ -58,8 +58,8 @@ export interface Candidate {
   readonly createdAt: ISODateString;
   firstName: string;
   lastName: string;
-  email: string;
-  phone?: string;
+  email: string; // @format email
+  phone?: string; // @pattern ^\+?[\d\s-]+$
   source: CandidateSource;
   currentStage: WorkflowStage;
   updatedAt: Date;
