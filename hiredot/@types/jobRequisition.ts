@@ -1,16 +1,31 @@
-import { JobRole } from "./jobRole";
-import { Workflow } from "./workflow";
+import { Metadata, ID, ISODateString } from "./common";
+import { User } from "./user";
 
-export interface JobRequisition {
-  id: string;
-  title: string;
-  role: JobRole;
-  department: string;
-  location: string;
-  description: string;
-  type: "Full-time" | "Part-time" | "Contract";
-  workflow?: Workflow;
-  createdAt: Date;
-  applicants?: number;
-  requirements?: string[];
+export type RequisitionStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "rejected"
+  | "closed";
+
+export interface Approval {
+  approverId: ID;
+  approver: User;
+  status: "pending" | "approved" | "rejected";
+  comments?: string;
+  timestamp: ISODateString;
+}
+
+export interface JobRequisition extends Metadata {
+  requisitionNumber: string;
+  jobListingId: ID;
+  hiringManagerId: ID;
+  departmentId: ID;
+  status: RequisitionStatus;
+  priority: "low" | "medium" | "high";
+  reasonForHiring: string;
+  budgetApproved: boolean;
+  targetStartDate: ISODateString;
+  approvals: Approval[];
+  comments?: string;
 }

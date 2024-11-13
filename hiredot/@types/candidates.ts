@@ -1,86 +1,57 @@
-import { ISODateString } from "./common";
-import { JobListing } from "./jobListings";
-import { WorkflowStage } from "./workflow";
+import { Metadata, ISODateString } from "./common";
+import { JobRole } from "./jobRole";
 
-export type CandidateSource =
-  | "LinkedIn"
-  | "Indeed"
-  | "Referral"
-  | "Direct Application"
-  | "Other";
+export type CandidateStatus =
+  | "new"
+  | "screening"
+  | "interviewing"
+  | "offered"
+  | "hired"
+  | "rejected"
+  | "withdrawn";
 
-export interface StageData {
-  applicationForm?: {
-    submissionDate: Date;
-    completedFields: string[];
-    attachments: string[];
-  };
-  initialEvaluation?: {
-    evaluator: string;
-    skillAssessment: Record<string, number & { min: 0; max: 10 }>;
-    notes: string;
-  };
-  interview?: {
-    interviewer: string;
-    scheduledDate: Date;
-    feedback: string;
-    technicalScore?: number;
-    culturalScore?: number;
-  };
-  offer?: {
-    salary: number;
-    startDate: Date;
-    benefits: string[];
-    status: "Pending" | "Accepted" | "Declined";
-  };
-  [key: string]: unknown;
+export interface CandidateSkill {
+  name: string;
+  yearsOfExperience: number;
+  level: "beginner" | "intermediate" | "expert";
 }
 
-export interface HistoryEntry {
-  id: string;
-  date: Date;
-  type:
-    | "stage_change"
-    | "note"
-    | "interview_feedback"
-    | "document_added"
-    | "tags_updated";
+export interface CandidateEducation {
+  institution: string;
+  degree: string;
+  field: string;
+  startDate: ISODateString;
+  endDate?: ISODateString;
+  gpa?: number;
+}
+
+export interface CandidateExperience {
+  company: string;
   title: string;
+  location: string;
+  startDate: ISODateString;
+  endDate?: ISODateString;
   description: string;
-  author: string;
-  stageData?: StageData;
-  previousTags?: string[];
-  newTags?: string[];
+  highlights: string[];
 }
 
-export interface Candidate {
-  readonly id: string;
-  readonly createdAt: ISODateString;
+export interface Candidate extends Metadata {
   firstName: string;
   lastName: string;
-  email: string; // @format email
-  phone?: string; // @pattern ^\+?[\d\s-]+$
-  source: CandidateSource;
-  currentStage: WorkflowStage;
-  updatedAt: Date;
-  tags: string[];
-  listing?: JobListing;
-  history: HistoryEntry[];
-  resumeFile?: string;
-  coverLetterFile?: string;
-  notes: Note[];
-  status: "active" | "archived" | "hired" | "rejected";
-  lastActivityDate: ISODateString;
-}
-
-export interface Note {
-  id: string;
-  date: Date;
-  content: string;
-}
-
-export interface Attachment {
-  id: string;
-  date: Date;
-  file: string;
+  email: string;
+  phoneNumber?: string;
+  location?: string;
+  currentRole?: string;
+  desiredRole?: JobRole;
+  expectedSalary?: number;
+  resumeUrl?: string;
+  portfolioUrl?: string;
+  linkedInUrl?: string;
+  githubUrl?: string;
+  status: CandidateStatus;
+  skills: CandidateSkill[];
+  education: CandidateEducation[];
+  experience: CandidateExperience[];
+  notes?: string;
+  tags?: string[];
 }

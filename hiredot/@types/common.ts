@@ -8,7 +8,7 @@ export type ISODateString = string;
  */
 export enum StageType {
   Form = "form",
-  Feedback = "feedback", 
+  Feedback = "feedback",
   Offer = "offer",
   Interview = "interview",
   Rejection = "rejection",
@@ -19,7 +19,7 @@ export enum StageType {
  */
 export enum HistoryEntryType {
   StageChange = "stage_change",
-  Note = "note", 
+  Note = "note",
   InterviewFeedback = "interview_feedback",
   DocumentAdded = "document_added",
   TagsUpdated = "tags_updated",
@@ -30,7 +30,7 @@ export enum HistoryEntryType {
  */
 export enum EmploymentType {
   FullTime = "Full-time",
-  PartTime = "Part-time", 
+  PartTime = "Part-time",
   Contract = "Contract",
   Internship = "Internship",
   Temporary = "Temporary",
@@ -48,18 +48,17 @@ export interface PaginatedResponse<T> {
   totalPages?: number;
 }
 
-/**
- * Type-safe ID generator to prevent mixing different types of IDs
- */
-export type ID<T extends string> = string & { readonly __brand: T };
+// Create a type factory for type-safe IDs
+declare const brand: unique symbol;
+type Brand<K, T> = K & { readonly [brand]: T };
 
 // Common ID types used throughout the application
-export type CandidateId = ID<"candidate">;
-export type WorkflowId = ID<"workflow">;
-export type JobId = ID<"job">;
-export type CompanyId = ID<"company">;
-export type LocationId = ID<"location">;
-export type DepartmentId = ID<"department">;
+export type CandidateId = Brand<string, "CandidateId">;
+export type WorkflowId = Brand<string, "WorkflowId">;
+export type JobId = Brand<string, "JobId">;
+export type CompanyId = Brand<string, "CompanyId">;
+export type LocationId = Brand<string, "LocationId">;
+export type DepartmentId = Brand<string, "DepartmentId">;
 
 /**
  * Base interface for entities that need timestamps
@@ -75,4 +74,28 @@ export interface TimeStampedEntity {
 export interface SoftDeletableEntity {
   deletedAt?: ISODateString;
   isDeleted: boolean;
+}
+
+// Common types used across the application
+export type ID = string;
+export type UUID = string;
+
+export interface Timestamp {
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
+export interface Metadata extends Timestamp {
+  id: UUID;
+  isActive: boolean;
+  isDeleted: boolean;
+}
+
+export type Status = "active" | "inactive" | "pending" | "archived";
+
+export interface PaginationParams {
+  page: number;
+  limit: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
