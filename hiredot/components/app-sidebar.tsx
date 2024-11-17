@@ -9,7 +9,6 @@ import {
   BarChart,
   Briefcase,
   ChevronsUpDown,
-  Command,
   LifeBuoy,
   Send,
   BadgeCheck,
@@ -17,8 +16,6 @@ import {
   Bell,
   LogOut,
   Plus,
-  GalleryVerticalEnd,
-  AudioWaveform,
 } from "lucide-react";
 
 import {
@@ -48,6 +45,7 @@ import {
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { mockUsers } from "@/mocks/user";
+import { mockOrganization } from "@/mocks/organization";
 
 const navigation = [
   {
@@ -105,27 +103,12 @@ const secondaryNav = [
   },
 ];
 
-const teams = [
-  {
-    name: "Acme Inc",
-    logo: GalleryVerticalEnd,
-    plan: "Enterprise",
-  },
-  {
-    name: "Acme Corp.",
-    logo: AudioWaveform,
-    plan: "Startup",
-  },
-  {
-    name: "Evil Corp.",
-    logo: Command,
-    plan: "Free",
-  },
-];
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname =
     typeof window !== "undefined" ? window.location.pathname : "";
+
+  const organization = mockOrganization;
+  const teams = organization.teams;
 
   const [activeTeam, setActiveTeam] = React.useState(teams[0]);
   const userData = mockUsers[0];
@@ -142,13 +125,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <activeTeam.logo className="size-4" />
+                    
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
                       {activeTeam.name}
                     </span>
-                    <span className="truncate text-xs">{activeTeam.plan}</span>
+                    <span className="truncate text-xs">
+                      {organization.currentPlan.name}
+                    </span>
                   </div>
                   <ChevronsUpDown className="ml-auto" />
                 </SidebarMenuButton>
