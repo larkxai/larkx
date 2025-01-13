@@ -45,6 +45,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import dagre from 'dagre';
+import { WorkflowSpotlight } from "./workflow-spotlight";
+import { Maximize2 } from "lucide-react";
 
 // Helper function to format conditions for display
 const formatConditions = (condition: ComplexCondition): string => {
@@ -348,19 +350,36 @@ export function EnhancedHiringWorkflowComponent() {
     setEdges([...layoutedEdges]);
   }, [nodes, edges, setNodes, setEdges]);
 
+  const handleAddNode = useCallback((nodeDetails: any) => {
+    setNodes((nodes) => [...nodes, nodeDetails]);
+    handleFormat(); // Reformat the graph after adding a node
+  }, [setNodes, handleFormat]);
+
+  const toggleFullScreen = () => {
+    // Implement full screen toggle logic here
+  };
+
   return (
     <div className="flex h-[calc(100vh-1rem)] relative">
-      <div className="flex-1 p-4">
-        <Card className="w-full h-full">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Hiring Workflow</CardTitle>
-              <CardDescription>
-                Standard workflow for hiring process
-              </CardDescription>
-            </div>
-            <div className="flex items-center space-x-2">
-              {isGraphMode && (
+      <Card className="w-full h-full">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Hiring Workflow</CardTitle>
+            <CardDescription>
+              Standard workflow for hiring process
+            </CardDescription>
+          </div>
+          <div className="flex items-center space-x-2">
+            {isGraphMode && (
+              <>
+                <WorkflowSpotlight onAddNode={handleAddNode} />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={toggleFullScreen}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -368,50 +387,50 @@ export function EnhancedHiringWorkflowComponent() {
                 >
                   Format Graph
                 </Button>
-              )}
-              <Switch
-                id="mode-switch"
-                checked={isGraphMode}
-                onCheckedChange={setIsGraphMode}
-              />
-              <Label htmlFor="mode-switch">
-                {isGraphMode ? "Graph" : "Linear"} Mode
-              </Label>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isGraphMode ? (
-              <div className="h-[calc(100vh-200px)] border rounded-md">
-                <ReactFlow
-                  nodes={nodes}
-                  edges={edges}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  onConnect={onConnect}
-                  onNodeClick={onNodeClick}
-                  connectionMode={ConnectionMode.Loose}
-                  edgeTypes={edgeTypes}
-                  defaultEdgeOptions={{
-                    type: 'custom',
-                    animated: true,
-                  }}
-                  fitView
-                  fitViewOptions={{
-                    padding: 0.2,
-                    minZoom: 0.5,
-                    maxZoom: 2,
-                  }}
-                >
-                  <Background />
-                  <Controls />
-                </ReactFlow>
-              </div>
-            ) : (
-              renderLinearView()
+              </>
             )}
-          </CardContent>
-        </Card>
-      </div>
+            <Switch
+              id="mode-switch"
+              checked={isGraphMode}
+              onCheckedChange={setIsGraphMode}
+            />
+            <Label htmlFor="mode-switch">
+              {isGraphMode ? "Graph" : "Linear"} Mode
+            </Label>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isGraphMode ? (
+            <div className="h-[calc(100vh-200px)] border rounded-md">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={onNodeClick}
+                connectionMode={ConnectionMode.Loose}
+                edgeTypes={edgeTypes}
+                defaultEdgeOptions={{
+                  type: 'custom',
+                  animated: true,
+                }}
+                fitView
+                fitViewOptions={{
+                  padding: 0.2,
+                  minZoom: 0.5,
+                  maxZoom: 2,
+                }}
+              >
+                <Background />
+                <Controls />
+              </ReactFlow>
+            </div>
+          ) : (
+            renderLinearView()
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         {selectedNode && (
