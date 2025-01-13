@@ -38,7 +38,7 @@ export default function WorkflowDetailPage({
   return (
     <div className="container mx-auto p-6">
       <div className="mb-6">
-        <Link href="/workflows">
+        <Link href="/jobs/workflows">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Workflows
