@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Command } from "cmdk";
 import { Search, Loader2 } from "lucide-react";
+import { Wand2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -93,15 +94,14 @@ export function WorkflowSpotlight({ onAddNode, onUpdateEdge }: WorkflowSpotlight
     <>
       <Button
         onClick={() => setOpen(true)}
-        variant="outline"
-        size="sm"
-        className="flex items-center gap-2"
+        variant="default"
+        size="lg"
+        className="px-8 py-6 text-lg bg-black hover:bg-black/90"
       >
-        <Search className="h-4 w-4" />
-        <span className="hidden sm:inline">Modify Workflow</span>
-        <kbd className="pointer-events-none ml-auto hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
-          <span className="text-xs">⌘</span>K
-        </kbd>
+        <span className="flex items-center gap-2">
+          <span>Enter Prompt</span>
+          <span className="text-xs text-white border border-white bg-transparent px-1 rounded">⌘</span>K
+        </span>
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -407,16 +407,13 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
           </div>
           <div className="flex items-center space-x-2">
             {isGraphMode && (
-              <>
-                <WorkflowSpotlight onAddNode={handleAddNode} />
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleFormat}
-                >
-                  Format Graph
-                </Button>
-              </>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleFormat}
+              >
+                Format Graph
+              </Button>
             )}
             <Switch
               id="mode-switch"
@@ -463,6 +460,12 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
           )}
         </CardContent>
       </Card>
+
+      {isGraphMode && (
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+          <WorkflowSpotlight onAddNode={handleAddNode} />
+        </div>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         {selectedNode && (
