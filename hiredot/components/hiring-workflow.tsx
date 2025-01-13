@@ -14,6 +14,8 @@ import ReactFlow, {
   EdgeLabelRenderer,
   BaseEdge,
   getStraightPath,
+  Position,
+  Panel,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
@@ -42,6 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
+import dagre from 'dagre';
 
 // Helper function to format conditions for display
 const formatConditions = (condition: ComplexCondition): string => {
@@ -55,20 +58,28 @@ const formatConditions = (condition: ComplexCondition): string => {
     .join(` ${condition.logic} `);
 };
 
-const initialNodes: Node[] = workflow.steps.map(
-  (step: WorkflowStep, index: number) => ({
-    id: step.id,
-    position: {
-      x: index * 250,
-      y: 100,
-    },
-    data: {
-      label: step.name,
-      ...step,
-    },
-    type: "default",
-  })
-);
+// Add custom node styles
+const nodeStyles = {
+  background: '#ffffff',
+  padding: 16,
+  borderRadius: 8,
+  border: '1px solid #e2e8f0',
+  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+  width: 250,
+};
+
+const initialNodes: Node[] = workflow.steps.map((step: WorkflowStep) => ({
+  id: step.id,
+  position: { x: 0, y: 0 }, // Position will be set by dagre
+  data: {
+    label: step.name,
+    ...step,
+  },
+  style: nodeStyles,
+  type: 'default',
+  sourceHandle: Position.Right,
+  targetHandle: Position.Left,
+}));
 
 const initialEdges: Edge[] = workflow.steps.reduce(
   (edges: Edge[], step: WorkflowStep) => {
@@ -168,6 +179,50 @@ const CustomEdge = ({
   );
 };
 
+// Add layout configuration
+const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+  const nodeWidth = 250;
+  const nodeHeight = 100;
+
+  dagreGraph.setGraph({
+    rankdir: 'TB', // Always vertical (top to bottom)
+    align: 'UL',
+    nodesep: 80,
+    ranksep: 100,
+    edgesep: 50,
+    marginx: 20,
+    marginy: 20
+  });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      },
+      sourceHandle: Position.Bottom,
+      targetHandle: Position.Top,
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
+};
+
 export function EnhancedHiringWorkflowComponent() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -175,6 +230,7 @@ export function EnhancedHiringWorkflowComponent() {
   const [isGraphMode, setIsGraphMode] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [layoutDirection, setLayoutDirection] = useState<'TB' | 'LR'>('TB');
 
   const onConnect = useCallback(
     (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -282,6 +338,16 @@ export function EnhancedHiringWorkflowComponent() {
     setIsOpen(true);
   }, []);
 
+  // Simplified format handler
+  const handleFormat = useCallback(() => {
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      nodes,
+      edges
+    );
+    setNodes([...layoutedNodes]);
+    setEdges([...layoutedEdges]);
+  }, [nodes, edges, setNodes, setEdges]);
+
   return (
     <div className="flex h-[calc(100vh-1rem)] relative">
       <div className="flex-1 p-4">
@@ -295,7 +361,11 @@ export function EnhancedHiringWorkflowComponent() {
             </div>
             <div className="flex items-center space-x-2">
               {isGraphMode && (
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleFormat}
+                >
                   Format Graph
                 </Button>
               )}
@@ -321,7 +391,16 @@ export function EnhancedHiringWorkflowComponent() {
                   onNodeClick={onNodeClick}
                   connectionMode={ConnectionMode.Loose}
                   edgeTypes={edgeTypes}
+                  defaultEdgeOptions={{
+                    type: 'custom',
+                    animated: true,
+                  }}
                   fitView
+                  fitViewOptions={{
+                    padding: 0.2,
+                    minZoom: 0.5,
+                    maxZoom: 2,
+                  }}
                 >
                   <Background />
                   <Controls />
