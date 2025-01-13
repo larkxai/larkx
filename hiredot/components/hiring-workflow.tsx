@@ -294,6 +294,11 @@ export function EnhancedHiringWorkflowComponent() {
               </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
+              {isGraphMode && (
+                <Button variant="outline" size="sm">
+                  Format Graph
+                </Button>
+              )}
               <Switch
                 id="mode-switch"
                 checked={isGraphMode}
