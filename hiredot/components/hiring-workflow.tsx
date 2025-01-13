@@ -355,10 +355,6 @@ export function EnhancedHiringWorkflowComponent() {
     handleFormat(); // Reformat the graph after adding a node
   }, [setNodes, handleFormat]);
 
-  const toggleFullScreen = () => {
-    // Implement full screen toggle logic here
-  };
-
   return (
     <div className="flex h-[calc(100vh-1rem)] relative">
       <Card className="w-full h-full">
@@ -373,13 +369,6 @@ export function EnhancedHiringWorkflowComponent() {
             {isGraphMode && (
               <>
                 <WorkflowSpotlight onAddNode={handleAddNode} />
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={toggleFullScreen}
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
