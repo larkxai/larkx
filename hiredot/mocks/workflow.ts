@@ -348,4 +348,24 @@ export const workflow: Workflow = {
   isDeleted: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  visualState: {
+    zoom: 0.5,
+    position: {
+      x: 394.74635873220745,
+      y: 83.06390390866981
+    },
+    nodePositions: {
+      initial_form: { x: 20, y: 20 },
+      interview_scheduling: { x: 210, y: 220 },
+      recruiter_decision: { x: 210, y: 420 },
+      test_assignment: { x: 400, y: 620 },
+      notify_recruiter: { x: 400, y: 820 },
+      test_review_decision: { x: 400, y: 1020 },
+      security_check: { x: 590, y: 1220 },
+      security_check_result: { x: 590, y: 1420 },
+      prepare_offer: { x: 765, y: 1620 },
+      rejection_thank_you: { x: 210, y: 1620 },
+      background_check: { x: 920, y: 1420 }
+    }
+  }
 };

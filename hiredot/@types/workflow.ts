@@ -135,6 +135,14 @@ export type WorkflowStep = {
   metadata?: WorkflowStepMetadata;
 };
 
+interface WorkflowVisualState {
+  zoom: number;
+  position: { x: number; y: number };
+  nodePositions: {
+    [nodeId: string]: { x: number; y: number };
+  };
+}
+
 export interface Workflow extends Metadata {
   name: string;
   description?: string;
@@ -170,6 +178,7 @@ export interface Workflow extends Metadata {
     editors: ID[];
     admins: ID[];
   };
+  visualState?: WorkflowVisualState;
 }
 
 export interface BackgroundCheckConfig {

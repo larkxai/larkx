@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import ReactFlow, {
   Node,
   Edge,
@@ -16,6 +16,8 @@ import ReactFlow, {
   getStraightPath,
   Position,
   Panel,
+  useReactFlow,
+  ReactFlowProvider,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
@@ -29,7 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { StageDetails } from "./stage-details";
 import { workflow } from "@/mocks/workflow";
-import { WorkflowStep, ComplexCondition } from "@/@types/workflow";
+import { WorkflowStep, ComplexCondition, Workflow } from "@/@types/workflow";
 import {
   Dialog,
   DialogContent,
@@ -225,7 +227,8 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
   return { nodes: layoutedNodes, edges };
 };
 
-export function EnhancedHiringWorkflowComponent() {
+function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onSave: (workflow: Workflow) => void }) {
+  const { getZoom, getViewport, getNodes, setViewport } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -340,7 +343,6 @@ export function EnhancedHiringWorkflowComponent() {
     setIsOpen(true);
   }, []);
 
-  // Simplified format handler
   const handleFormat = useCallback(() => {
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       nodes,
@@ -352,8 +354,46 @@ export function EnhancedHiringWorkflowComponent() {
 
   const handleAddNode = useCallback((nodeDetails: any) => {
     setNodes((nodes) => [...nodes, nodeDetails]);
-    handleFormat(); // Reformat the graph after adding a node
+    handleFormat();
   }, [setNodes, handleFormat]);
+
+  const saveVisualState = useCallback(() => {
+    const zoom = getZoom();
+    const { x, y } = getViewport();
+    const nodes = getNodes();
+    
+    const nodePositions = nodes.reduce((acc, node) => ({
+      ...acc,
+      [node.id]: { x: node.position.x, y: node.position.y }
+    }), {});
+
+    const visualState = {
+      zoom,
+      position: { x, y },
+      nodePositions
+    };
+
+    onSave({ ...workflow, visualState });
+  }, [workflow, getZoom, getViewport, getNodes, onSave]);
+
+  useEffect(() => {
+    if (workflow.visualState) {
+      const { zoom, position, nodePositions } = workflow.visualState;
+      
+      setNodes((nodes) =>
+        nodes.map((node) => ({
+          ...node,
+          position: nodePositions[node.id] || node.position
+        }))
+      );
+
+      setViewport({ x: position.x, y: position.y, zoom });
+    }
+  }, [workflow.visualState, setNodes, setViewport]);
+
+  const handleNodeDragStop = useCallback(() => {
+    saveVisualState();
+  }, [saveVisualState]);
 
   return (
     <div className="flex h-[calc(100vh-1rem)] relative">
@@ -410,6 +450,9 @@ export function EnhancedHiringWorkflowComponent() {
                   minZoom: 0.5,
                   maxZoom: 2,
                 }}
+                onNodeDragStop={handleNodeDragStop}
+                onMoveEnd={saveVisualState}
+                onZoomEnd={saveVisualState}
               >
                 <Background />
                 <Controls />
@@ -440,13 +483,19 @@ export function EnhancedHiringWorkflowComponent() {
             </DialogTitle>
           </DialogHeader>
           <div className="p-4">
-            {/* Add your node details here */}
             <p>Node ID: {selectedNode?.id}</p>
             <p>Node Type: {selectedNode?.type}</p>
-            {/* Add more node information as needed */}
           </div>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export function EnhancedHiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onSave: (workflow: Workflow) => void }) {
+  return (
+    <ReactFlowProvider>
+      <HiringWorkflowComponent workflow={workflow} onSave={onSave} />
+    </ReactFlowProvider>
   );
 }

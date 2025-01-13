@@ -1,11 +1,40 @@
-"use client"
+"use client";
 
-import { EnhancedHiringWorkflowComponent } from "@/components/hiring-workflow"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { Workflow } from "@/@types/workflow";
+import { EnhancedHiringWorkflowComponent } from "@/components/hiring-workflow";
+import { Button } from "@/components/ui/button";
+import { workflow as initialWorkflow } from "@/mocks/workflow";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 
-export default function WorkflowDetailPage({ params }: { params: { id: string } }) {
+export default function WorkflowDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const [workflow, setWorkflow] = useState<Workflow>(initialWorkflow);
+
+  const handleSave = async (updatedWorkflow: Workflow) => {
+    try {
+      const response = await fetch(`/api/workflows/${workflow.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedWorkflow),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save workflow");
+      }
+
+      setWorkflow(updatedWorkflow);
+    } catch (error) {
+      console.error("Error saving workflow:", error);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6">
       <div className="mb-6">
@@ -16,7 +45,10 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
           </Button>
         </Link>
       </div>
-      <EnhancedHiringWorkflowComponent />
+      <EnhancedHiringWorkflowComponent 
+        workflow={workflow} 
+        onSave={handleSave}
+      />
     </div>
-  )
-} 
+  );
+}
