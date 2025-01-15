@@ -168,6 +168,7 @@ export const mockParentTeams: Team[] = [
     isDeleted: false,
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-03-15T00:00:00Z",
+    logoUrl: "https://placehold.co/400x400?text=Engineering",
   },
 ];
 

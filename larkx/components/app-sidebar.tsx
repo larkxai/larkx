@@ -16,6 +16,7 @@ import {
   Bell,
   LogOut,
   Plus,
+  Building2,
 } from "lucide-react";
 
 import {
@@ -154,7 +155,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     className="gap-2 p-2"
                   >
                     <div className="flex size-6 items-center justify-center rounded-sm border">
-                      <team.logo className="size-4 shrink-0" />
+                      {team.logoUrl ? (
+                        <img src={team.logoUrl} className="size-4 shrink-0" alt={`${team.name} logo`} />
+                      ) : (
+                        <Building2 className="size-4 shrink-0" />
+                      )}
                     </div>
                     {team.name}
                     <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>

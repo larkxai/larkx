@@ -318,10 +318,12 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
                 <p className="font-medium">Conditions:</p>
                 <ul className="list-disc list-inside">
                   {node.data.nextSteps.conditions.map(
-                    (condition: ComplexCondition, i: number) => (
+                    (conditionObj, i: number) => (
                       <li key={i}>
-                        {formatConditions(condition)} →{" "}
-                        {condition.then}
+                        {formatConditions(conditionObj.condition)} →{" "}
+                        {Array.isArray(conditionObj.then) 
+                          ? conditionObj.then.join(", ") 
+                          : conditionObj.then}
                       </li>
                     )
                   )}
@@ -452,7 +454,6 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
                 }}
                 onNodeDragStop={handleNodeDragStop}
                 onMoveEnd={saveVisualState}
-                onZoomEnd={saveVisualState}
               >
                 <Background />
                 <Controls />

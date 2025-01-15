@@ -1,5 +1,9 @@
 import { Node } from "reactflow";
-import { WorkflowStep } from "@/@types/workflow";
+import {
+  WorkflowCondition,
+  ComplexCondition,
+  WorkflowStep,
+} from "@/@types/workflow";
 
 interface StageDetailsProps {
   node: Node;
@@ -37,15 +41,18 @@ export function StageDetails({ node }: StageDetailsProps) {
           <div className="mt-2">
             <p className="font-medium">Conditions:</p>
             <ul className="list-disc list-inside">
-              {stageData.nextSteps.conditions.map((condition, i) => (
+              {stageData.nextSteps.conditions.map((conditionObj, i) => (
                 <li key={i}>
-                  {condition.conditions
-                    .map((c) => `${c.field} ${c.operator} ${c.value}`)
-                    .join(` ${condition.condition.logic} `)}
+                  {conditionObj.condition.conditions
+                    .map(
+                      (c: ComplexCondition | WorkflowCondition) =>
+                        'field' in c ? `${c.field} ${c.operator} ${c.value}` : ''
+                    )
+                    .join(` ${conditionObj.condition.logic} `)}
                   {" → "}
-                  {Array.isArray(condition.then)
-                    ? condition.then.join(", ")
-                    : condition.then}
+                  {Array.isArray(conditionObj.then)
+                    ? conditionObj.then.join(", ")
+                    : conditionObj.then}
                 </li>
               ))}
             </ul>
