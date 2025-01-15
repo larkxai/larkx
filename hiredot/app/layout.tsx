@@ -19,7 +19,7 @@ import {
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Hiredot",
+  title: "Larkx",
   description: "Streamline your hiring process",
 }
 

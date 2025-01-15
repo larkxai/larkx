@@ -26,7 +26,7 @@ export default function HomePage() {
       <div>
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Welcome to Hiredot</h1>
+            <h1 className="text-2xl font-bold">Welcome to Larkx</h1>
             <p className="text-muted-foreground">
               Streamline your hiring process with our comprehensive workflow management system.
             </p>
@@ -111,7 +111,7 @@ export default function HomePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Why Use Hiredot?</CardTitle>
+            <CardTitle>Why Use Larkx?</CardTitle>
             <CardDescription>Discover the benefits of our platform</CardDescription>
           </CardHeader>
           <CardContent>
