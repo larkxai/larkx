@@ -39,7 +39,7 @@ export function StageDetails({ node }: StageDetailsProps) {
             <ul className="list-disc list-inside">
               {stageData.nextSteps.conditions.map((condition, i) => (
                 <li key={i}>
-                  {condition.condition.conditions
+                  {condition.conditions
                     .map((c) => `${c.field} ${c.operator} ${c.value}`)
                     .join(` ${condition.condition.logic} `)}
                   {" → "}

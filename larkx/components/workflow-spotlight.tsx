@@ -1,21 +1,41 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Command } from "cmdk";
 import { Search, Loader2 } from "lucide-react";
-import { Wand2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  ComplexCondition,
+  WorkflowStepMetadata,
+  WorkflowStepNextStep,
+  WorkflowStepType,
+} from "@/@types/workflow";
 
-interface WorkflowSpotlightProps {
-  onAddNode?: (nodeDetails: any) => void;
-  onUpdateEdge?: (edgeDetails: any) => void;
+export interface NodeData {
+  id: string;
+  type: WorkflowStepType;
+  label: string;
+  version: string;
+  conditions: ComplexCondition[];
+  metadata?: WorkflowStepMetadata;
+  nextSteps: WorkflowStepNextStep;
 }
 
-export function WorkflowSpotlight({ onAddNode, onUpdateEdge }: WorkflowSpotlightProps) {
+interface WorkflowSpotlightProps {
+  onAddNode?: (nodeDetails: NodeData) => void;
+  onUpdateEdge?: (edgeDetails: {
+    id: string;
+    source: string;
+    target: string;
+    data?: {
+      action?: string;
+      trigger?: string;
+    };
+  }) => void;
+}
+
+export function WorkflowSpotlight({ onAddNode }: WorkflowSpotlightProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,25 +82,26 @@ export function WorkflowSpotlight({ onAddNode, onUpdateEdge }: WorkflowSpotlight
     }
   };
 
-  const handleSelect = async (action: string) => {
+  const handleSelect = async (_action: string) => {
     setLoading(true);
     try {
       // Here you would process the selected action with your AI service
       // and get back the specific node/edge modifications needed
-      
+
       // Mock implementation
-      const mockResponse = {
-        type: "add_node",
-        data: {
-          id: `node-${Date.now()}`,
-          type: "approval",
-          label: "Approval Stage",
-          // ... other node properties
+      const mockResponse: NodeData = {
+        id: `node-${Date.now()}`,
+        type: "action",
+        label: "Approval Stage",
+        version: "1.0.0",
+        conditions: [],
+        nextSteps: {
+          default: "next_step_id",
         },
       };
 
-      if (mockResponse.type === "add_node" && onAddNode) {
-        onAddNode(mockResponse.data);
+      if (onAddNode) {
+        onAddNode(mockResponse);
       }
     } catch (error) {
       console.error("Error processing action:", error);
@@ -100,7 +121,10 @@ export function WorkflowSpotlight({ onAddNode, onUpdateEdge }: WorkflowSpotlight
       >
         <span className="flex items-center gap-2">
           <span>Enter Prompt</span>
-          <span className="text-xs text-white border border-white bg-transparent px-1 rounded">⌘</span>K
+          <span className="text-xs text-white border border-white bg-transparent px-1 rounded">
+            ⌘
+          </span>
+          K
         </span>
       </Button>
 
@@ -126,25 +150,37 @@ export function WorkflowSpotlight({ onAddNode, onUpdateEdge }: WorkflowSpotlight
                 <div className="p-4 text-sm text-gray-500">
                   <p className="font-medium mb-2">Try prompts like:</p>
                   <ul className="list-disc pl-4 space-y-1">
-                    <li>"Add an approval step after the interview"</li>
-                    <li>"Create a conditional path for rejected candidates"</li>
-                    <li>"Add a feedback collection step in parallel"</li>
-                    <li>"Insert a skills assessment before technical round"</li>
+                    <li>
+                      &quot;Add an approval step after the interview&quot;
+                    </li>
+                    <li>
+                      &quot;Create a conditional path for rejected
+                      candidates&quot;
+                    </li>
+                    <li>
+                      &quot;Add a feedback collection step in parallel&quot;
+                    </li>
+                    <li>
+                      &quot;Insert a skills assessment before technical
+                      round&quot;
+                    </li>
                   </ul>
                 </div>
               )}
-              {!loading && suggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  className="flex w-full items-center rounded-sm px-4 py-2 text-sm hover:bg-gray-100 text-left"
-                  onClick={() => handleSelect(suggestion)}
-                >
-                  {suggestion}
-                </button>
-              ))}
+              {!loading &&
+                suggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    className="flex w-full items-center rounded-sm px-4 py-2 text-sm hover:bg-gray-100 text-left"
+                    onClick={() => handleSelect(suggestion)}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
               {!loading && suggestions.length === 0 && query && (
                 <p className="p-4 text-sm text-gray-500">
-                  No suggestions available for this modification. Try being more specific or use different wording.
+                  No suggestions available for this modification. Try being more
+                  specific or use different wording.
                 </p>
               )}
             </div>
@@ -153,4 +189,4 @@ export function WorkflowSpotlight({ onAddNode, onUpdateEdge }: WorkflowSpotlight
       </Dialog>
     </>
   );
-} 
+}

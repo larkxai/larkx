@@ -15,7 +15,6 @@ import ReactFlow, {
   BaseEdge,
   getStraightPath,
   Position,
-  Panel,
   useReactFlow,
   ReactFlowProvider,
 } from "reactflow";
@@ -47,8 +46,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import dagre from 'dagre';
-import { WorkflowSpotlight } from "./workflow-spotlight";
-import { Maximize2 } from "lucide-react";
+import { NodeData, WorkflowSpotlight } from "./workflow-spotlight";
 
 // Helper function to format conditions for display
 const formatConditions = (condition: ComplexCondition): string => {
@@ -133,7 +131,6 @@ const initialEdges: Edge[] = workflow.steps.reduce(
 
 // Custom edge component remains the same
 const CustomEdge = ({
-  id,
   sourceX,
   sourceY,
   targetX,
@@ -229,13 +226,12 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
 
 function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onSave: (workflow: Workflow) => void }) {
   const { getZoom, getViewport, getNodes, setViewport } = useReactFlow();
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isGraphMode, setIsGraphMode] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [layoutDirection, setLayoutDirection] = useState<'TB' | 'LR'>('TB');
 
   const onConnect = useCallback(
     (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -322,9 +318,9 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
                 <p className="font-medium">Conditions:</p>
                 <ul className="list-disc list-inside">
                   {node.data.nextSteps.conditions.map(
-                    (condition: any, i: number) => (
+                    (condition: ComplexCondition, i: number) => (
                       <li key={i}>
-                        {formatConditions(condition.condition)} →{" "}
+                        {formatConditions(condition)} →{" "}
                         {condition.then}
                       </li>
                     )
@@ -352,8 +348,15 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
     setEdges([...layoutedEdges]);
   }, [nodes, edges, setNodes, setEdges]);
 
-  const handleAddNode = useCallback((nodeDetails: any) => {
-    setNodes((nodes) => [...nodes, nodeDetails]);
+  const handleAddNode = useCallback((nodeDetails: NodeData) => {
+    const newNode: Node<NodeData> = {
+      id: nodeDetails.id,
+      position: { x: 0, y: 0 }, // Position will be set by handleFormat
+      data: nodeDetails,
+      type: 'default',
+      style: nodeStyles
+    };
+    setNodes((nodes) => [...nodes, newNode]);
     handleFormat();
   }, [setNodes, handleFormat]);
 

@@ -40,7 +40,6 @@ export default function ReportsPage() {
   // Transform mockReports data for charts
   const hiringMetricsReport = mockReports.find(r => r.type === "hiring_metrics");
   const pipelineReport = mockReports.find(r => r.type === "candidate_pipeline");
-  const timeToHireReport = mockReports.find(r => r.type === "time_to_hire");
   const sourceReport = mockReports.find(r => r.type === "source_effectiveness");
 
   const chartData = [

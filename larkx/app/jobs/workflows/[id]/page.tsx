@@ -15,6 +15,8 @@ export default function WorkflowDetailPage({
 }) {
   const [workflow, setWorkflow] = useState<Workflow>(initialWorkflow);
 
+  console.log(params);
+
   const handleSave = async (updatedWorkflow: Workflow) => {
     try {
       const response = await fetch(`/api/workflows/${workflow.id}`, {
