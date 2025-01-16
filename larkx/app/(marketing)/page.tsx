@@ -12,33 +12,14 @@ import {
   Shield,
   Users,
   Clock,
-  Check,
   ArrowRight,
   Star,
   Lock,
   Code,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 export default function HomePage() {
-  const [typingStage, setTypingStage] = useState(0);
-  const [showAIResponse, setShowAIResponse] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => {
-        if (typingStage < 4) {
-          setTypingStage((prev) => prev + 1);
-        } else if (typingStage === 4) {
-          setShowAIResponse(true);
-        }
-      },
-      typingStage === 0 ? 1000 : 2000
-    );
-
-    return () => clearTimeout(timer);
-  }, [typingStage]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
@@ -527,8 +508,8 @@ export default function HomePage() {
                 ))}
               </div>
               <p className="text-slate-600 dark:text-slate-300 mb-6">
-                "Larkx transformed our hiring process. We've reduced our
-                time-to-hire by 60% while improving candidate quality."
+                &quot;Larkx transformed our hiring process. We&apos;ve reduced our
+                time-to-hire by 60% while improving candidate quality.&quot;
               </p>
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700"></div>
