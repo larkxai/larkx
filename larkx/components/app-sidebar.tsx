@@ -45,8 +45,9 @@ import {
 } from "./ui/dropdown-menu";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { mockUsers } from "@/mocks/user";
 import { mockOrganization } from "@/mocks/organization";
+import { useAuthStore } from "@/lib/store/auth";
+import { useRouter } from "next/navigation";
 
 const navigation = [
   {
@@ -110,9 +111,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const organization = mockOrganization;
   const teams = organization.teams;
+  const router = useRouter();
 
   const [activeTeam, setActiveTeam] = React.useState(teams[0]);
-  const userData = mockUsers[0];
+  const { user, logout } = useAuthStore();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -231,19 +242,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage
-                      src={userData.profileImage}
-                      alt={userData.firstName}
+                      src={user?.profileImage}
+                      alt={user?.firstName}
                     />
                     <AvatarFallback className="rounded-lg">
-                      {userData.firstName.charAt(0)}
-                      {userData.lastName.charAt(0)}
+                      {user?.firstName?.charAt(0)}
+                      {user?.lastName?.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
-                      {userData.firstName} {userData.lastName}
+                      {user?.firstName} {user?.lastName}
                     </span>
-                    <span className="truncate text-xs">{userData.email}</span>
+                    <span className="truncate text-xs">{user?.email}</span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4" />
                 </SidebarMenuButton>
@@ -268,7 +279,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2" />
                   Log out
                 </DropdownMenuItem>
