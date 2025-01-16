@@ -2,10 +2,26 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Zap, Shield, Users, Clock } from "lucide-react"
+import { Zap, Shield, Users, Clock, Check, ArrowRight, Star, Lock, Code } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useState } from "react"
 
 export default function HomePage() {
+  const [typingStage, setTypingStage] = useState(0);
+  const [showAIResponse, setShowAIResponse] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (typingStage < 4) {
+        setTypingStage(prev => prev + 1);
+      } else if (typingStage === 4) {
+        setShowAIResponse(true);
+      }
+    }, typingStage === 0 ? 1000 : 2000);
+
+    return () => clearTimeout(timer);
+  }, [typingStage]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       {/* Hero Section */}
@@ -177,20 +193,49 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 sm:py-24 relative overflow-hidden">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="absolute inset-x-0 top-0 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
-            aria-hidden="true">
-            <div className="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-primary to-purple-500 opacity-10 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]"></div>
+      {/* Trusted By Section */}
+      <div className="container mx-auto px-4 pb-16">
+        <p className="text-sm text-center text-muted-foreground mb-8">Trusted by innovative companies</p>
+        <div className="flex flex-wrap justify-center gap-8 opacity-60">
+          {/* Add company logos here */}
+        </div>
+      </div>
+
+      {/* Problem & Solution */}
+      <section className="py-24 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-6">Transform Your Hiring Process</h2>
+            <p className="text-lg text-muted-foreground mb-8">
+              Traditional hiring is slow, manual, and prone to candidate drop-off. Our AI agent automates the entire process, 
+              making it faster, more efficient, and candidate-friendly.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-8">
+              <div className="flex flex-col items-center p-6 rounded-lg bg-white dark:bg-slate-800 shadow-sm">
+                <Clock className="w-8 h-8 text-primary mb-4" />
+                <h3 className="font-semibold mb-2">Save Time</h3>
+                <p className="text-sm text-muted-foreground">Reduce hiring time by 70%</p>
+              </div>
+              <div className="flex flex-col items-center p-6 rounded-lg bg-white dark:bg-slate-800 shadow-sm">
+                <Users className="w-8 h-8 text-primary mb-4" />
+                <h3 className="font-semibold mb-2">Better Candidates</h3>
+                <p className="text-sm text-muted-foreground">2x qualified candidate rate</p>
+              </div>
+              <div className="flex flex-col items-center p-6 rounded-lg bg-white dark:bg-slate-800 shadow-sm">
+                <Zap className="w-8 h-8 text-primary mb-4" />
+                <h3 className="font-semibold mb-2">Instant Response</h3>
+                <p className="text-sm text-muted-foreground">24/7 candidate engagement</p>
+              </div>
+            </div>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-center mb-3 sm:mb-4 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-200 bg-clip-text text-transparent">
-            Natural Language to Automation
-          </h2>
-          <p className="text-center text-muted-foreground mb-12 sm:mb-16 max-w-2xl mx-auto text-base sm:text-lg px-4">
-            Describe what you want in simple English - your AI agent converts it into powerful recruitment workflows
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 px-4">
+        </div>
+      </section>
+
+      {/* Key Benefits & Features */}
+      <section className="py-24">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-center mb-16">Why Choose Larkx</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             <Card className="border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl shadow-xl">
               <CardHeader>
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
@@ -236,11 +281,121 @@ export default function HomePage() {
               </CardHeader>
             </Card>
           </div>
+          {/* Interactive Demo */}
+          <div className="max-w-4xl mx-auto">
+            {/* ... existing command block ... */}
+          </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="relative py-16 sm:py-24 overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+      {/* Social Proof & Testimonials */}
+      <section className="py-24 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-16">What Our Customers Say</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Testimonial Cards */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                {[1,2,3,4,5].map((n) => (
+                  <Star key={n} className="w-4 h-4 fill-current text-amber-400" />
+                ))}
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 mb-6">
+                "Larkx transformed our hiring process. We've reduced our time-to-hire by 60% while improving candidate quality."
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                <div>
+                  <p className="font-medium">Sarah Johnson</p>
+                  <p className="text-sm text-muted-foreground">HR Director, TechCorp</p>
+                </div>
+              </div>
+            </div>
+            {/* Add more testimonials */}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="py-24">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-16">How It Works</h2>
+          <div className="max-w-4xl mx-auto">
+            <div className="relative">
+              <div className="absolute left-12 top-0 bottom-0 w-0.5 bg-slate-200 dark:bg-slate-700"></div>
+              <div className="space-y-12">
+                {[
+                  { title: "Describe Your Needs", desc: "Tell your AI agent what you're looking for in natural language" },
+                  { title: "AI Creates Workflow", desc: "Watch as complex hiring workflows are created instantly" },
+                  { title: "Automated Processing", desc: "Let AI handle screening, scheduling, and communication" },
+                  { title: "Focus on Best Candidates", desc: "Interview only the most qualified candidates" }
+                ].map((step, i) => (
+                  <div key={i} className="relative flex gap-8">
+                    <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center shrink-0 z-10">
+                      <span className="text-2xl font-bold text-primary">{i + 1}</span>
+                    </div>
+                    <div className="pt-6">
+                      <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+                      <p className="text-muted-foreground">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Integrations */}
+      <section className="py-24 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-6">Works With Your Stack</h2>
+          <p className="text-center text-muted-foreground mb-16 max-w-2xl mx-auto">
+            Seamlessly integrate with your existing HR tools and ATS systems
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+            {/* Integration logos */}
+          </div>
+          <div className="text-center mt-16">
+            <div className="inline-flex items-center gap-2 text-primary hover:text-primary/90">
+              <span>View all integrations</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Security & Compliance */}
+      <section className="py-24">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-6">Enterprise-Grade Security</h2>
+            <p className="text-center text-muted-foreground mb-16">
+              Your data is protected with industry-leading security measures
+            </p>
+            <div className="grid sm:grid-cols-3 gap-8">
+              <div className="flex flex-col items-center text-center">
+                <Lock className="w-8 h-8 text-primary mb-4" />
+                <h3 className="font-semibold mb-2">SOC 2 Compliant</h3>
+                <p className="text-sm text-muted-foreground">Independently audited security controls</p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <Shield className="w-8 h-8 text-primary mb-4" />
+                <h3 className="font-semibold mb-2">GDPR Ready</h3>
+                <p className="text-sm text-muted-foreground">Full data privacy compliance</p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <Code className="w-8 h-8 text-primary mb-4" />
+                <h3 className="font-semibold mb-2">API Security</h3>
+                <p className="text-sm text-muted-foreground">Enterprise-grade encryption</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="relative py-24 overflow-hidden bg-slate-50 dark:bg-slate-900/50">
         <div className="absolute inset-0 bg-grid-slate-200/20 dark:bg-grid-slate-800/20 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="container relative mx-auto px-4 sm:px-6">
           <div className="relative">
