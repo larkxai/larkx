@@ -28,56 +28,65 @@ export default function HomePage() {
               Just Type, AI Does the Rest
             </span>
           </span>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.15] bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-200 bg-clip-text text-transparent">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.4] bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-200 bg-clip-text text-transparent">
             Your AI Agent Creates<br className="hidden sm:block"/>
-            <span className="bg-gradient-to-r from-primary to-purple-600 dark:from-primary dark:to-purple-400 bg-clip-text inline-block mt-1 sm:mt-2">Hiring Workflows</span><br className="hidden sm:block"/>
-            <span className="inline-block mt-1 sm:mt-2">From Plain English</span>
+            <span className="bg-gradient-to-r from-primary to-purple-600 dark:from-primary dark:to-purple-400 bg-clip-text inline-block mt-3 sm:mt-4">Hiring Workflows</span><br className="hidden sm:block"/>
+            <span className="inline-block mt-3 sm:mt-4">From Plain English</span>
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mb-8 sm:mb-12 px-4">
             Meet your AI recruitment assistant that turns simple instructions into powerful automation. No coding needed - just chat naturally.
           </p>
           <div className="flex flex-col items-center gap-6 sm:gap-8 w-full max-w-3xl mb-8 sm:mb-12 px-4">
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-4 sm:p-8 rounded-xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl relative group">
-              {/* Decorative elements */}
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-xl"></div>
-              <div className="absolute -inset-px bg-gradient-to-r from-primary/20 via-transparent to-purple-500/20 rounded-xl opacity-0 group-hover:opacity-100 blur transition-opacity duration-700"></div>
+            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl p-6 sm:p-8 rounded-xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl relative group overflow-hidden">
+              {/* Animated gradient background */}
+              <div className="absolute inset-0">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-purple-500/10 to-primary/10 animate-wave-x"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-purple-500/5 animate-wave-y"></div>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.1),rgba(255,255,255,0))]"></div>
+              </div>
               
               {/* Command input section */}
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-3 sm:mb-4">
-                  <div className="w-3 h-3 rounded-full bg-primary/20 animate-pulse"></div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <div className="relative space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-amber-400/80 animate-pulse"></div>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300 flex items-center gap-2">
                     You type in plain English
-                    <span className="inline-block w-1.5 h-4 bg-primary/40 animate-blink"></span>
+                    <span className="inline-block w-1.5 h-4 bg-amber-400/60 animate-blink"></span>
                   </p>
                 </div>
-                <div className="relative font-mono text-sm sm:text-base leading-relaxed text-slate-800 dark:text-slate-200 mb-6 sm:mb-8 transition-all duration-300">
-                  <div className="absolute -left-4 top-0 bottom-0 w-1 bg-primary/20 rounded-full"></div>
-                  <p className="group-hover:text-primary/90 transition-colors duration-300">
-                    &ldquo;Hey Larkx, help me hire delivery drivers:&rdquo;
-                  </p>
-                  <div className="pl-4 mt-4 space-y-2">
-                    <div className="flex items-center gap-2 opacity-0 animate-slideIn" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
-                      <span className="text-primary">1.</span> Screen new applications 24/7
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 animate-slideIn" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
-                      <span className="text-primary">2.</span> Check driver&apos;s license and experience
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 animate-slideIn" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
-                      <span className="text-primary">3.</span> Send personalized welcome messages
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 animate-slideIn" style={{ animationDelay: '0.8s', animationFillMode: 'forwards' }}>
-                      <span className="text-primary">4.</span> Schedule interviews for qualified candidates
+                <div className="relative font-mono text-sm sm:text-base leading-relaxed">
+                  <div className="absolute -left-3 top-0 bottom-0 w-[3px] bg-gradient-to-b from-primary/40 via-primary/20 to-purple-500/40 rounded-full"></div>
+                  <div className="space-y-6">
+                    <p className="text-slate-900 dark:text-white font-medium pl-4">
+                      &ldquo;Hey Larkx, help me hire delivery drivers:&rdquo;
+                    </p>
+                    <div className="pl-6 space-y-3">
+                      <div className="flex items-start gap-3 opacity-0 animate-slideIn" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">1.</span>
+                        <span className="text-slate-800 dark:text-slate-100">Screen new applications 24/7</span>
+                      </div>
+                      <div className="flex items-start gap-3 opacity-0 animate-slideIn" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">2.</span>
+                        <span className="text-slate-800 dark:text-slate-100">Check driver&apos;s license and experience</span>
+                      </div>
+                      <div className="flex items-start gap-3 opacity-0 animate-slideIn" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">3.</span>
+                        <span className="text-slate-800 dark:text-slate-100">Send personalized welcome messages</span>
+                      </div>
+                      <div className="flex items-start gap-3 opacity-0 animate-slideIn" style={{ animationDelay: '0.8s', animationFillMode: 'forwards' }}>
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">4.</span>
+                        <span className="text-slate-800 dark:text-slate-100">Schedule interviews for qualified candidates</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* AI Response section */}
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-3 sm:mb-4">
+              <div className="relative mt-8">
+                <div className="flex items-center gap-3 mb-4">
                   <div className="w-3 h-3 rounded-full bg-primary animate-ping"></div>
-                  <p className="text-sm text-primary font-medium flex items-center gap-2">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200 flex items-center gap-2">
                     AI Agent creates automation
                     <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
@@ -85,31 +94,31 @@ export default function HomePage() {
                     </svg>
                   </p>
                 </div>
-                <div className="bg-gradient-to-r from-slate-50/80 via-white/80 to-slate-50/80 dark:from-slate-800/80 dark:via-slate-900/80 dark:to-slate-800/80 rounded-lg p-4 sm:p-6 font-mono text-xs sm:text-sm">
+                <div className="bg-gradient-to-r from-slate-50/90 via-white/90 to-slate-50/90 dark:from-slate-800/90 dark:via-slate-900/90 dark:to-slate-800/90 rounded-lg p-5 font-mono text-sm border border-slate-200/50 dark:border-slate-700/50">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 opacity-0 animate-fadeSlideUp" style={{ animationDelay: '1s', animationFillMode: 'forwards' }}>
-                      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-slate-700 dark:text-slate-300">Application monitoring workflow created</span>
+                      <span className="text-slate-900 dark:text-white">Application monitoring workflow created</span>
                     </div>
                     <div className="flex items-center gap-3 opacity-0 animate-fadeSlideUp" style={{ animationDelay: '1.2s', animationFillMode: 'forwards' }}>
-                      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-slate-700 dark:text-slate-300">Document verification setup</span>
+                      <span className="text-slate-900 dark:text-white">Document verification setup</span>
                     </div>
                     <div className="flex items-center gap-3 opacity-0 animate-fadeSlideUp" style={{ animationDelay: '1.4s', animationFillMode: 'forwards' }}>
-                      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-slate-700 dark:text-slate-300">Automated messaging configured</span>
+                      <span className="text-slate-900 dark:text-white">Automated messaging configured</span>
                     </div>
                     <div className="flex items-center gap-3 opacity-0 animate-fadeSlideUp" style={{ animationDelay: '1.6s', animationFillMode: 'forwards' }}>
-                      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-slate-700 dark:text-slate-300">Smart scheduling system enabled</span>
+                      <span className="text-slate-900 dark:text-white">Smart scheduling system enabled</span>
                     </div>
                   </div>
                 </div>
@@ -119,6 +128,14 @@ export default function HomePage() {
 
           {/* Add required keyframes */}
           <style jsx global>{`
+            @keyframes wave-x {
+              0%, 100% { transform: translateX(-50%) }
+              50% { transform: translateX(50%) }
+            }
+            @keyframes wave-y {
+              0%, 100% { transform: translateY(-25%) }
+              50% { transform: translateY(25%) }
+            }
             @keyframes blink {
               0%, 100% { opacity: 0; }
               50% { opacity: 1; }
@@ -130,6 +147,12 @@ export default function HomePage() {
             @keyframes fadeSlideUp {
               from { transform: translateY(10px); opacity: 0; }
               to { transform: translateY(0); opacity: 1; }
+            }
+            .animate-wave-x {
+              animation: wave-x 20s ease-in-out infinite;
+            }
+            .animate-wave-y {
+              animation: wave-y 15s ease-in-out infinite;
             }
             .animate-blink {
               animation: blink 1s step-end infinite;
