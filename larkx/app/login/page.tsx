@@ -26,6 +26,7 @@ export default function LoginPage() {
       const callbackUrl = searchParams.get('callbackUrl') || '/app/dashboard'
       window.location.href = callbackUrl;
     } catch (error) {
+      console.log(error)
       toast({
         variant: "destructive",
         title: "Login failed",
