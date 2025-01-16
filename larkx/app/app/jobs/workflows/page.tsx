@@ -76,7 +76,7 @@ export default function WorkflowsPage() {
             <Button variant="outline" size="sm">
               Edit
             </Button>
-            <Link href={`/jobs/workflows/${workflow.id}`}>
+            <Link href={`/app/jobs/workflows/${workflow.id}`}>
               <Button size="sm">
                 View Details
                 <ArrowRight className="ml-2 h-4 w-4" />

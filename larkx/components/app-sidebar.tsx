@@ -55,17 +55,17 @@ const navigation = [
       {
         title: "Home",
         icon: Home,
-        url: "/",
+        url: "/app/dashboard",
       },
       {
         title: "Reports & KPIs",
         icon: BarChart,
-        url: "/reports",
+        url: "/app/reports",
       },
       {
         title: "Candidates",
         icon: Users,
-        url: "/candidates",
+        url: "/app/candidates",
       },
     ],
   },
@@ -75,17 +75,17 @@ const navigation = [
       {
         title: "Requisitions",
         icon: FileText,
-        url: "/jobs/requisitions",
+        url: "/app/jobs/requisitions",
       },
       {
         title: "Workflows",
         icon: GitBranch,
-        url: "/jobs/workflows",
+        url: "/app/jobs/workflows",
       },
       {
         title: "Listings",
         icon: Briefcase,
-        url: "/jobs/listings",
+        url: "/app/jobs/listings",
       },
     ],
   },

@@ -120,7 +120,7 @@ export default function JobsPage() {
       <div className="grid gap-4">
         {filteredJobs.map((job) => (
           <Card key={job.id}>
-            <Link href={`/jobs/requisitions/${job.id}`}>
+            <Link href={`/app/jobs/requisitions/${job.id}`}>
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle className="flex items-center gap-4">
