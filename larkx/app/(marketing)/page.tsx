@@ -8,13 +8,6 @@ import Link from "next/link"
 export default function HomePage() {
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header className="container mx-auto px-6 py-4 flex justify-end">
-        <Link href="/app/dashboard">
-          <Button variant="ghost">Login</Button>
-        </Link>
-      </header>
-
       {/* Hero Section */}
       <section className="container mx-auto px-6 py-24 flex flex-col items-center text-center">
         <h1 className="text-5xl font-bold tracking-tight mb-6">
@@ -25,7 +18,9 @@ export default function HomePage() {
           The intelligent hiring platform that helps you find, evaluate, and hire the best talent faster than ever before.
         </p>
         <div className="flex gap-4">
-          <Button size="lg">Get Started</Button>
+          <Link href="/app/dashboard">
+            <Button size="lg">Get Started</Button>
+          </Link>
           <Button size="lg" variant="outline">Book a Demo</Button>
         </div>
       </section>

@@ -11,25 +11,27 @@ export default function MarketingLayout({
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="font-bold text-xl">
-            Larkx
-          </Link>
-          
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="/use-cases" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Use Cases
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-12">
+            <Link href="/" className="font-bold text-xl">
+              Larkx
             </Link>
-            <Link href="/product-updates" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Product Updates
-            </Link>
-            <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              About
-            </Link>
-            <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Contact Us
-            </Link>
-          </nav>
+            
+            <nav className="hidden md:flex items-center gap-8">
+              <Link href="/use-cases" className="text-sm font-medium hover:text-primary transition-colors">
+                Use Cases
+              </Link>
+              <Link href="/product-updates" className="text-sm font-medium hover:text-primary transition-colors">
+                Product Updates
+              </Link>
+              <Link href="/about" className="text-sm font-medium hover:text-primary transition-colors">
+                About
+              </Link>
+              <Link href="/contact" className="text-sm font-medium hover:text-primary transition-colors">
+                Contact Us
+              </Link>
+            </nav>
+          </div>
 
           <div className="flex items-center gap-4">
             <Link href="/app/dashboard">
