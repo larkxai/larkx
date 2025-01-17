@@ -26,27 +26,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { StageDetails } from "./stage-details";
 import { workflow } from "@/mocks/workflow";
 import { WorkflowStep, ComplexCondition, Workflow } from "@/@types/workflow";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import dagre from 'dagre';
 import { NodeData, WorkflowSpotlight } from "./workflow-spotlight";
+import { cn } from "@/lib/utils";
 
 // Helper function to format conditions for display
 const formatConditions = (condition: ComplexCondition): string => {
@@ -229,117 +216,77 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [isGraphMode, setIsGraphMode] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   const onConnect = useCallback(
     (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
-  const handleDelete = useCallback(
-    (nodeId: string) => {
-      setNodes((nds) => nds.filter((node) => node.id !== nodeId));
-      setEdges((eds) =>
-        eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
-      );
-    },
-    [setNodes, setEdges]
-  );
-
   const edgeTypes = {
     custom: CustomEdge,
   };
 
-  const renderLinearView = () => (
-    <div className="space-y-4 overflow-y-auto h-[calc(100vh-200px)] pr-4">
-      {nodes.map((node) => (
-        <Card key={node.id} className="p-4 relative">
-          <div className="flex justify-between items-start">
-            <h3 className="text-lg font-semibold mb-2">{node.data.label}</h3>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <svg
-                    width="15"
-                    height="15"
-                    viewBox="0 0 15 15"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                  >
-                    <path
-                      d="M3.625 7.5C3.625 8.12132 3.12132 8.625 2.5 8.625C1.87868 8.625 1.375 8.12132 1.375 7.5C1.375 6.87868 1.87868 6.375 2.5 6.375C3.12132 6.375 3.625 6.87868 3.625 7.5ZM8.625 7.5C8.625 8.12132 8.12132 8.625 7.5 8.625C6.87868 8.625 6.375 8.12132 6.375 7.5C6.375 6.87868 6.87868 6.375 7.5 6.375C8.12132 6.375 8.625 6.87868 8.625 7.5ZM13.625 7.5C13.625 8.12132 13.1213 8.625 12.5 8.625C11.8787 8.625 11.375 8.12132 11.375 7.5C11.375 6.87868 11.8787 6.375 12.5 6.375C13.1213 6.375 13.625 6.87868 13.625 7.5Z"
-                      fill="currentColor"
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="text-red-600"
-                  onClick={() => handleDelete(node.id)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div className="text-sm text-gray-600">
-            <p>Type: {node.data.type}</p>
-            <p>Version: {node.data.version}</p>
+  const toggleNodeExpansion = (nodeId: string) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  };
 
-            {node.data.metadata && (
-              <div className="mt-2">
-                <p className="font-medium">Metadata:</p>
-                <p>{node.data.metadata.description}</p>
-                {node.data.metadata.tags && (
-                  <div className="flex gap-1 mt-1">
-                    {node.data.metadata.tags.map((tag: string) => (
-                      <span
-                        key={tag}
-                        className="bg-gray-100 px-2 py-1 rounded text-xs"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+  const renderHierarchyNode = (node: Node, level: number = 0) => {
+    const hasChildren = edges.some(edge => edge.source === node.id);
+    const isExpanded = expandedNodes.has(node.id);
+    const childNodes = edges
+      .filter(edge => edge.source === node.id)
+      .map(edge => nodes.find(n => n.id === edge.target))
+      .filter(Boolean) as Node[];
 
-            {node.data.nextSteps.conditions && (
-              <div className="mt-2">
-                <p className="font-medium">Conditions:</p>
-                <ul className="list-disc list-inside">
-                  {node.data.nextSteps.conditions.map(
-                    (conditionObj, i: number) => (
-                      <li key={i}>
-                        {formatConditions(conditionObj.condition)} →{" "}
-                        {Array.isArray(conditionObj.then) 
-                          ? conditionObj.then.join(", ") 
-                          : conditionObj.then}
-                      </li>
-                    )
-                  )}
-                </ul>
-              </div>
-            )}
+    return (
+      <div key={node.id} className="text-sm">
+        <div
+          className={cn(
+            "flex items-center py-1 px-2 hover:bg-gray-100 rounded cursor-pointer",
+            selectedNode?.id === node.id && "bg-gray-100"
+          )}
+          style={{ paddingLeft: `${level * 16 + 8}px` }}
+          onClick={() => setSelectedNode(node)}
+        >
+          {hasChildren && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleNodeExpansion(node.id);
+              }}
+              className="mr-1 p-1 hover:bg-gray-200 rounded"
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
+          )}
+          {!hasChildren && <div className="w-6" />}
+          <span>{node.data.label}</span>
+        </div>
+        {isExpanded && hasChildren && (
+          <div>
+            {childNodes.map(childNode => renderHierarchyNode(childNode, level + 1))}
           </div>
-        </Card>
-      ))}
-    </div>
+        )}
+      </div>
+    );
+  };
+
+  const rootNodes = nodes.filter(node => 
+    !edges.some(edge => edge.target === node.id)
   );
-
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    setSelectedNode(node);
-    setIsOpen(true);
-  }, []);
 
   const handleFormat = useCallback(() => {
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
@@ -401,100 +348,87 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
   }, [saveVisualState]);
 
   return (
-    <div className="flex h-[calc(100vh-1rem)] relative">
-      <Card className="w-full h-full">
-        <CardHeader className="flex flex-row items-center justify-between">
+    <div className="flex h-[calc(100vh-1rem)] gap-4">
+      {/* Left Panel - Hierarchy */}
+      <Card className="w-64 overflow-hidden flex flex-col">
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm">Workflow Hierarchy</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 overflow-y-auto p-2">
+          {rootNodes.map(node => renderHierarchyNode(node))}
+        </CardContent>
+      </Card>
+
+      {/* Center Panel - Graph */}
+      <Card className="flex-1">
+        <CardHeader className="flex flex-row items-center justify-between py-3">
           <div>
-            <CardTitle>Hiring Workflow</CardTitle>
+            <CardTitle>Workflow Graph</CardTitle>
             <CardDescription>
               Standard workflow for hiring process
             </CardDescription>
           </div>
-          <div className="flex items-center space-x-2">
-            {isGraphMode && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleFormat}
-              >
-                Format Graph
-              </Button>
-            )}
-            <Switch
-              id="mode-switch"
-              checked={isGraphMode}
-              onCheckedChange={setIsGraphMode}
-            />
-            <Label htmlFor="mode-switch">
-              {isGraphMode ? "Graph" : "Linear"} Mode
-            </Label>
-          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleFormat}
+          >
+            Format Graph
+          </Button>
         </CardHeader>
-        <CardContent>
-          {isGraphMode ? (
-            <div className="h-[calc(100vh-200px)] border rounded-md">
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onNodeClick={onNodeClick}
-                connectionMode={ConnectionMode.Loose}
-                edgeTypes={edgeTypes}
-                defaultEdgeOptions={{
-                  type: 'custom',
-                  animated: true,
-                }}
-                fitView
-                fitViewOptions={{
-                  padding: 0.2,
-                  minZoom: 0.5,
-                  maxZoom: 2,
-                }}
-                onNodeDragStop={handleNodeDragStop}
-                onMoveEnd={saveVisualState}
-              >
-                <Background />
-                <Controls />
-              </ReactFlow>
-            </div>
+        <CardContent className="p-0">
+          <div className="h-[calc(100vh-8rem)] border rounded-md">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={(_, node) => setSelectedNode(node)}
+              connectionMode={ConnectionMode.Loose}
+              edgeTypes={edgeTypes}
+              defaultEdgeOptions={{
+                type: 'custom',
+                animated: true,
+              }}
+              fitView
+              fitViewOptions={{
+                padding: 0.2,
+                minZoom: 0.5,
+                maxZoom: 2,
+              }}
+              onNodeDragStop={handleNodeDragStop}
+              onMoveEnd={saveVisualState}
+            >
+              <Background />
+              <Controls />
+            </ReactFlow>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Right Panel - Properties */}
+      <Card className="w-80 overflow-hidden flex flex-col">
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm">Properties</CardTitle>
+          <CardDescription>
+            {selectedNode ? selectedNode.data.label : "Select a node to view details"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 overflow-y-auto">
+          {selectedNode ? (
+            <StageDetails node={selectedNode} />
           ) : (
-            renderLinearView()
+            <div className="text-sm text-gray-500 p-4">
+              Click on a node in the graph or hierarchy to view its properties
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {isGraphMode && (
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-          <WorkflowSpotlight onAddNode={handleAddNode} />
-        </div>
-      )}
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        {selectedNode && (
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{selectedNode.data.label}</DialogTitle>
-            </DialogHeader>
-            <StageDetails node={selectedNode} />
-          </DialogContent>
-        )}
-      </Dialog>
-
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {selectedNode?.data?.label || "Node Details"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="p-4">
-            <p>Node ID: {selectedNode?.id}</p>
-            <p>Node Type: {selectedNode?.type}</p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+        <WorkflowSpotlight onAddNode={handleAddNode} />
+      </div>
     </div>
   );
 }
