@@ -18,30 +18,8 @@ import {
   Code,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
 
 export default function HomePage() {
-  const [visibleMessages, setVisibleMessages] = useState(0);
-  const messagesContainerRef = useRef(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setVisibleMessages(prev => Math.min(prev + 1, 3));
-          }
-        });
-      },
-      { threshold: 0.5 }
-    );
-
-    if (messagesContainerRef.current) {
-      observer.observe(messagesContainerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   const messages = [
     {
@@ -513,8 +491,8 @@ export default function HomePage() {
                 ))}
               </div>
               <p className="text-slate-600 dark:text-slate-300 mb-6">
-                &quot;Larkx transformed our hiring process. We've reduced our
-                time-to-hire by 60% while improving candidate quality."
+                &quot;Larkx transformed our hiring process. We&apos;ve reduced our
+                time-to-hire by 60% while improving candidate quality.&quot;
               </p>
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700"></div>
