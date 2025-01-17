@@ -20,7 +20,6 @@ import {
 import Link from "next/link";
 
 export default function HomePage() {
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       {/* Hero Section */}
@@ -81,212 +80,187 @@ export default function HomePage() {
             tasks instantly—no coding, no complexity, just faster hiring
           </p>
           <div className="flex flex-col items-center gap-6 sm:gap-8 w-full max-w-3xl mb-8 sm:mb-12 px-4">
-            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl p-6 sm:p-8 rounded-xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl relative group overflow-hidden">
-              {/* Animated gradient background */}
-              <div className="absolute inset-0">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-purple-500/10 to-primary/10 animate-wave-x"></div>
-                <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-purple-500/5 animate-wave-y"></div>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.1),rgba(255,255,255,0))]"></div>
-              </div>
-
-              {/* Command input section */}
-              <div className="relative space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-amber-400/80 animate-pulse"></div>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                    You type in plain English
-                    <span className="inline-block w-1.5 h-4 bg-amber-400/60 animate-blink"></span>
-                  </p>
-                </div>
-                <div className="relative font-mono text-sm sm:text-base leading-relaxed">
-                  <div className="absolute -left-3 top-0 bottom-0 w-[3px] bg-gradient-to-b from-primary/40 via-primary/20 to-purple-500/40 rounded-full"></div>
-                  <div className="space-y-6">
-                    <p className="text-slate-900 dark:text-white font-medium pl-4">
-                      &ldquo;Hey Larkx, help me hire delivery drivers:&rdquo;
-                    </p>
-                    <div className="pl-6 space-y-3">
-                      <div
-                        className="flex items-start gap-3 opacity-0 animate-slideIn"
-                        style={{
-                          animationDelay: "0.2s",
-                          animationFillMode: "forwards",
-                        }}
-                      >
-                        <span className="text-amber-600 dark:text-amber-400 font-medium">
-                          1.
-                        </span>
-                        <span className="text-slate-800 dark:text-slate-100">
-                          Screen new applications 24/7
-                        </span>
-                      </div>
-                      <div
-                        className="flex items-start gap-3 opacity-0 animate-slideIn"
-                        style={{
-                          animationDelay: "0.4s",
-                          animationFillMode: "forwards",
-                        }}
-                      >
-                        <span className="text-amber-600 dark:text-amber-400 font-medium">
-                          2.
-                        </span>
-                        <span className="text-slate-800 dark:text-slate-100">
-                          Check driver&apos;s license and experience
-                        </span>
-                      </div>
-                      <div
-                        className="flex items-start gap-3 opacity-0 animate-slideIn"
-                        style={{
-                          animationDelay: "0.6s",
-                          animationFillMode: "forwards",
-                        }}
-                      >
-                        <span className="text-amber-600 dark:text-amber-400 font-medium">
-                          3.
-                        </span>
-                        <span className="text-slate-800 dark:text-slate-100">
-                          Send personalized welcome messages
-                        </span>
-                      </div>
-                      <div
-                        className="flex items-start gap-3 opacity-0 animate-slideIn"
-                        style={{
-                          animationDelay: "0.8s",
-                          animationFillMode: "forwards",
-                        }}
-                      >
-                        <span className="text-amber-600 dark:text-amber-400 font-medium">
-                          4.
-                        </span>
-                        <span className="text-slate-800 dark:text-slate-100">
-                          Schedule interviews for qualified candidates
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+            <div className="relative w-full">
+              <div className="absolute -inset-x-0 -top-40 -bottom-40 overflow-hidden">
+                <div className="absolute inset-x-0 inset-y-0 bg-gradient-to-br from-primary/30 via-purple-500/30 to-indigo-600/30 backdrop-blur-3xl">
+                  <div className="absolute inset-0 bg-slate-50 dark:bg-slate-900 [mask-image:radial-gradient(ellipse_at_center,transparent_50%,black)]"></div>
                 </div>
               </div>
+              <div className="relative mx-auto max-w-4xl w-full">
+                <div className="relative z-10 rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-2xl shadow-slate-200/20 dark:shadow-slate-900/20 border border-slate-200/50 dark:border-slate-700/50 px-4 sm:px-6 py-12">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.07] via-transparent to-purple-500/[0.07] rounded-3xl"></div>
 
-              {/* AI Response section */}
-              <div className="relative mt-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-3 h-3 rounded-full bg-primary animate-ping"></div>
-                  <p className="text-sm font-medium  text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                    AI Agent creates automation
-                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                  </p>
-                </div>
-                <div className="bg-gradient-to-r from-slate-50/90 via-white/90 to-slate-50/90 dark:from-slate-800/90 dark:via-slate-900/90 dark:to-slate-800/90 rounded-lg p-5 font-mono text-sm border border-slate-200/50 dark:border-slate-700/50">
-                  <div className="space-y-3">
-                    <div
-                      className="flex items-center gap-3 opacity-0 animate-fadeSlideUp"
-                      style={{
-                        animationDelay: "1s",
-                        animationFillMode: "forwards",
-                      }}
-                    >
-                      <svg
-                        className="w-5 h-5 text-emerald-500"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span className="text-slate-900 dark:text-white">
-                        Application monitoring workflow created
-                      </span>
+                  {/* Command input section */}
+                  <div className="relative space-y-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full bg-amber-400/80 animate-pulse"></div>
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                        You type in plain English
+                        <span className="inline-block w-1.5 h-4 bg-amber-400/60 animate-blink"></span>
+                      </p>
                     </div>
-                    <div
-                      className="flex items-center gap-3 opacity-0 animate-fadeSlideUp"
-                      style={{
-                        animationDelay: "1.2s",
-                        animationFillMode: "forwards",
-                      }}
-                    >
-                      <svg
-                        className="w-5 h-5 text-emerald-500"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span className="text-slate-900 dark:text-white">
-                        Document verification setup
-                      </span>
-                    </div>
-                    <div
-                      className="flex items-center gap-3 opacity-0 animate-fadeSlideUp"
-                      style={{
-                        animationDelay: "1.4s",
-                        animationFillMode: "forwards",
-                      }}
-                    >
-                      <svg
-                        className="w-5 h-5 text-emerald-500"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span className="text-slate-900 dark:text-white">
-                        Automated messaging configured
-                      </span>
-                    </div>
-                    <div
-                      className="flex items-center gap-3 opacity-0 animate-fadeSlideUp"
-                      style={{
-                        animationDelay: "1.6s",
-                        animationFillMode: "forwards",
-                      }}
-                    >
-                      <svg
-                        className="w-5 h-5 text-emerald-500"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span className="text-slate-900 dark:text-white">
-                        Smart scheduling system enabled
-                      </span>
+
+                    <div className="relative font-mono text-sm sm:text-base leading-relaxed">
+                      <p className="text-slate-900 dark:text-white font-medium pl-4 mb-6">
+                        Help me hire delivery drivers. Ask applicants for their
+                        contact information. Also, ask about their driver&apos;s
+                        license. For drivers who have a valid license and more
+                        than three years of experience, suggest interview slots.
+                        If a candidate is rejected, send a rejection message. If
+                        they pass the interview, proceed with a background
+                        check. If they pass the background check, send an offer.
+                        if they fail, move them to rejection.
+                      </p>
+
+                      {/* Workflow Graph */}
+                      <div className="relative pl-4 py-8">
+                        <div className="absolute inset-0 bg-gradient-to-b from-slate-50/30 to-white/30 dark:from-slate-900/30 dark:to-slate-800/30 rounded-lg"></div>
+
+                        {/* Initial Node */}
+                        <div
+                          className="relative flex flex-col items-center opacity-0 animate-slideIn"
+                          style={{
+                            animationDelay: "0.2s",
+                            animationFillMode: "forwards",
+                          }}
+                        >
+                          <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
+                            <div className="text-sm font-medium mb-2">
+                              Application Form
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              Contact Info • Driver&apos;s License • Experience
+                            </div>
+                          </div>
+
+                          {/* Connecting Line */}
+                          <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
+                        </div>
+
+                        {/* Initial Screening Node */}
+                        <div
+                          className="relative flex flex-col items-center opacity-0 animate-slideIn"
+                          style={{
+                            animationDelay: "0.4s",
+                            animationFillMode: "forwards",
+                          }}
+                        >
+                          <div className="w-72 p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80">
+                            <div className="text-sm text-slate-500 dark:text-slate-400 mb-1 font-medium">
+                              Conditions
+                            </div>
+                            <div className="text-sm">
+                              driver&apos;s license AND experience &gt; 3 years
+                            </div>
+                          </div>
+
+                          {/* Split Lines - Using dotted lines */}
+                          <div className="relative h-16 w-full mt-4">
+                            <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
+                            <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
+                          </div>
+                        </div>
+
+                        {/* Two Column Layout for Split */}
+                        <div className="grid grid-cols-2 gap-16 mt-4">
+                          {/* Left Branch - Qualified */}
+                          <div
+                            className="flex flex-col items-center opacity-0 animate-slideIn"
+                            style={{
+                              animationDelay: "0.6s",
+                              animationFillMode: "forwards",
+                            }}
+                          >
+                            <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
+                              Interview Slot Selection
+                            </div>
+
+                            {/* Connecting Line */}
+                            <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
+
+                            <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
+                              Interview Result
+                            </div>
+
+                            {/* Split Lines - Using dotted lines */}
+                            <div className="relative h-16 w-full mt-4">
+                              <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
+                              <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
+                            </div>
+
+                            {/* Interview Results Split */}
+                            <div className="grid grid-cols-2 gap-8 w-full">
+                              <div className="flex flex-col items-center">
+                                <div className="w-full p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
+                                  <div className="text-sm text-emerald-600 dark:text-emerald-400">
+                                    Passed
+                                  </div>
+                                  <div className="text-sm">
+                                    Send Link to Background Check
+                                  </div>
+                                </div>
+
+                                {/* Continue to Background Check */}
+                                <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
+
+                                <div className="w-full p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
+                                  Background Check
+                                </div>
+
+                                {/* Split Lines for Background */}
+                                <div className="relative h-16 w-full mt-4">
+                                  <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
+                                  <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
+                                </div>
+
+                                {/* Background Results */}
+                                <div className="grid grid-cols-2 gap-4 w-full">
+                                  <div className="p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
+                                    <div className="text-sm text-emerald-600 dark:text-emerald-400">
+                                      Passed
+                                    </div>
+                                    <div className="text-sm">Send Offer</div>
+                                  </div>
+                                  <div className="inline-block p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
+                                    <div className="text-sm text-rose-600 dark:text-rose-400">
+                                      Failed
+                                    </div>
+                                    <div className="text-sm">
+                                      Send Rejection
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Failed Interview */}
+                              <div className="flex flex-col items-center">
+                                <div className="w-full p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
+                                  <div className="text-sm text-rose-600 dark:text-rose-400">
+                                    Failed
+                                  </div>
+                                  <div className="text-sm">Send Rejection</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right Branch - Not Qualified */}
+                          <div
+                            className="flex flex-col items-center opacity-0 animate-slideIn"
+                            style={{
+                              animationDelay: "0.8s",
+                              animationFillMode: "forwards",
+                            }}
+                          >
+                            <div className="w-64 p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
+                              <div className="text-sm text-rose-600 dark:text-rose-400">
+                                Not Qualified
+                              </div>
+                              <div className="text-sm">Send Rejection</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -485,7 +459,7 @@ export default function HomePage() {
           </div>
           {/* Interactive Demo */}
           <div className="max-w-4xl mx-auto">
-            {/* ... existing command block ... */}
+            {/* Remove duplicated graph block */}
           </div>
         </div>
       </section>
@@ -508,8 +482,8 @@ export default function HomePage() {
                 ))}
               </div>
               <p className="text-slate-600 dark:text-slate-300 mb-6">
-                &quot;Larkx transformed our hiring process. We&apos;ve reduced our
-                time-to-hire by 60% while improving candidate quality.&quot;
+                &quot;Larkx transformed our hiring process. We've reduced our
+                time-to-hire by 60% while improving candidate quality."
               </p>
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700"></div>
@@ -631,7 +605,7 @@ export default function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="relative py-24 overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+      <section className="relative py-24 overflow-hidden dark:bg-slate-900/50">
         <div className="absolute inset-0 bg-grid-slate-200/20 dark:bg-grid-slate-800/20 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="container relative mx-auto px-4 sm:px-6">
           <div className="relative">
