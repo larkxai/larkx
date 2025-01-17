@@ -18,8 +18,59 @@ import {
   Code,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState, useRef } from "react";
 
 export default function HomePage() {
+  const [visibleMessages, setVisibleMessages] = useState(0);
+  const messagesContainerRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisibleMessages(prev => Math.min(prev + 1, 3));
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    if (messagesContainerRef.current) {
+      observer.observe(messagesContainerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const messages = [
+    {
+      type: "user",
+      text: "Hey Larkx, help me hire delivery drivers.",
+      delay: 0.2
+    },
+    {
+      type: "ai",
+      text: "I&apos;ll help you create a hiring workflow. What requirements should we check for candidates?",
+      delay: 0.4
+    },
+    {
+      type: "user",
+      text: "We need to check their driver's license and experience. Must have 3+ years of experience.",
+      delay: 0.6
+    },
+    {
+      type: "ai",
+      text: "I&apos;ve added license and experience checks to the workflow. What should we do with qualified candidates?",
+      delay: 0.8
+    },
+    {
+      type: "user",
+      text: "For qualified candidates, schedule interviews. If they pass, do background check. If background check passes, send offer.",
+      delay: 1.0
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       {/* Hero Section */}
@@ -79,185 +130,165 @@ export default function HomePage() {
             Simply chat with our AI assistant, and it automates recruitment
             tasks instantly—no coding, no complexity, just faster hiring
           </p>
-          <div className="flex flex-col items-center gap-6 sm:gap-8 w-full max-w-3xl mb-8 sm:mb-12 px-4">
+          <div className="flex flex-col items-center w-full mb-8 sm:mb-12">
             <div className="relative w-full">
-              <div className="absolute -inset-x-0 -top-40 -bottom-40 overflow-hidden">
-                <div className="absolute inset-x-0 inset-y-0 bg-gradient-to-br from-primary/30 via-purple-500/30 to-indigo-600/30 backdrop-blur-3xl">
-                  <div className="absolute inset-0 bg-slate-50 dark:bg-slate-900 [mask-image:radial-gradient(ellipse_at_center,transparent_50%,black)]"></div>
-                </div>
-              </div>
-              <div className="relative mx-auto max-w-4xl w-full">
-                <div className="relative z-10 rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-2xl shadow-slate-200/20 dark:shadow-slate-900/20 border border-slate-200/50 dark:border-slate-700/50 px-4 sm:px-6 py-12">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.07] via-transparent to-purple-500/[0.07] rounded-3xl"></div>
-
-                  {/* Command input section */}
-                  <div className="relative space-y-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-amber-400/80 animate-pulse"></div>
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                        You type in plain English
-                        <span className="inline-block w-1.5 h-4 bg-amber-400/60 animate-blink"></span>
+              {/* Split Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[800px] gap-4">
+                {/* Left Side - Messages */}
+                <div className="p-8 sm:p-10 border border-slate-200 dark:border-slate-700 rounded-3xl bg-white/50 dark:bg-slate-900/50">
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-3 h-3 rounded-full bg-amber-400/80"></div>
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                        Chat with Your AI Agent
                       </p>
                     </div>
 
-                    <div className="relative font-mono text-sm sm:text-base leading-relaxed">
-                      <p className="text-slate-900 dark:text-white font-medium pl-4 mb-6">
-                        Help me hire delivery drivers. Ask applicants for their
-                        contact information. Also, ask about their driver&apos;s
-                        license. For drivers who have a valid license and more
-                        than three years of experience, suggest interview slots.
-                        If a candidate is rejected, send a rejection message. If
-                        they pass the interview, proceed with a background
-                        check. If they pass the background check, send an offer.
-                        if they fail, move them to rejection.
-                      </p>
-
-                      {/* Workflow Graph */}
-                      <div className="relative pl-4 py-8">
-                        <div className="absolute inset-0 bg-gradient-to-b from-slate-50/30 to-white/30 dark:from-slate-900/30 dark:to-slate-800/30 rounded-lg"></div>
-
-                        {/* Initial Node */}
-                        <div
-                          className="relative flex flex-col items-center opacity-0 animate-slideIn"
-                          style={{
-                            animationDelay: "0.2s",
-                            animationFillMode: "forwards",
-                          }}
-                        >
-                          <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
-                            <div className="text-sm font-medium mb-2">
-                              Application Form
+                    {/* Messages Container */}
+                    <div className="flex-1 space-y-6 overflow-y-auto">
+                      {messages.map((message, index) => (
+                        <div key={index} className="relative group">
+                          {message.type === "user" ? (
+                            <>
+                              <div className="absolute -left-2 top-3 w-4 h-4 rounded-full bg-primary/10"></div>
+                              <div className="pl-4 space-y-1.5">
+                                <p className="text-sm text-slate-500 dark:text-slate-400">You</p>
+                                <div className="text-sm sm:text-base text-slate-900 dark:text-white">
+                                  {message.text}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="relative group pl-4">
+                              <div className="space-y-1.5">
+                                <p className="text-sm text-primary">AI Agent</p>
+                                <div className="text-sm sm:text-base text-slate-900 dark:text-white">
+                                  {message.text}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              Contact Info • Driver&apos;s License • Experience
-                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="mt-6">
+                      <div className="flex items-end gap-4">
+                        <div className="flex-1 min-h-[2.5rem] border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus-within:ring-2 ring-primary/50">
+                          <div className="text-slate-400 dark:text-slate-500 min-h-[1.5rem]">
+                            Type your instructions...
                           </div>
+                        </div>
+                        <Button size="icon" className="h-10 w-10 rounded-lg bg-primary hover:bg-primary/90">
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
+                {/* Right Side - Graph */}
+                <div className="p-8 sm:p-10 border border-slate-200 dark:border-slate-700 rounded-3xl bg-white/50 dark:bg-slate-900/50 overflow-hidden">
+                  <div className="relative h-full">
+                    <div className="transform-gpu">
+                      {/* Initial Node */}
+                      <div className="relative flex flex-col items-center">
+                        <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
+                          <div className="text-sm sm:text-base font-medium mb-2">Application Form</div>
+                          <div className="text-sm text-slate-500 dark:text-slate-400">
+                            Contact Info • Driver&apos;s License • Experience
+                          </div>
+                        </div>
+                        
+                        {/* Connecting Line */}
+                        <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
+                      </div>
+
+                      {/* Screening Node */}
+                      <div className="relative flex flex-col items-center">
+                        <div className="w-72 p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80">
+                          <div className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mb-1 font-medium">Conditions</div>
+                          <div className="text-sm sm:text-base">driver&apos;s license AND experience &gt; 3 years</div>
+                        </div>
+                        
+                        {/* Split Lines */}
+                        <div className="relative h-16 w-full mt-4">
+                          <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
+                          <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
+                        </div>
+                      </div>
+
+                      {/* Interview and Background Check Nodes */}
+                      <div className="grid grid-cols-2 gap-16 mt-4">
+                        {/* Left Branch - Qualified */}
+                        <div className="flex flex-col items-center">
+                          <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
+                            Interview Slot Selection
+                          </div>
+                          
                           {/* Connecting Line */}
                           <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
-                        </div>
-
-                        {/* Initial Screening Node */}
-                        <div
-                          className="relative flex flex-col items-center opacity-0 animate-slideIn"
-                          style={{
-                            animationDelay: "0.4s",
-                            animationFillMode: "forwards",
-                          }}
-                        >
-                          <div className="w-72 p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80">
-                            <div className="text-sm text-slate-500 dark:text-slate-400 mb-1 font-medium">
-                              Conditions
-                            </div>
-                            <div className="text-sm">
-                              driver&apos;s license AND experience &gt; 3 years
-                            </div>
+                          
+                          <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
+                            Interview Result
                           </div>
 
-                          {/* Split Lines - Using dotted lines */}
+                          {/* Split Lines */}
                           <div className="relative h-16 w-full mt-4">
                             <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
                             <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
                           </div>
-                        </div>
 
-                        {/* Two Column Layout for Split */}
-                        <div className="grid grid-cols-2 gap-16 mt-4">
-                          {/* Left Branch - Qualified */}
-                          <div
-                            className="flex flex-col items-center opacity-0 animate-slideIn"
-                            style={{
-                              animationDelay: "0.6s",
-                              animationFillMode: "forwards",
-                            }}
-                          >
-                            <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
-                              Interview Slot Selection
-                            </div>
-
-                            {/* Connecting Line */}
-                            <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
-
-                            <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
-                              Interview Result
-                            </div>
-
-                            {/* Split Lines - Using dotted lines */}
-                            <div className="relative h-16 w-full mt-4">
-                              <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
-                              <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
-                            </div>
-
-                            {/* Interview Results Split */}
-                            <div className="grid grid-cols-2 gap-8 w-full">
-                              <div className="flex flex-col items-center">
-                                <div className="w-full p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
-                                  <div className="text-sm text-emerald-600 dark:text-emerald-400">
-                                    Passed
-                                  </div>
-                                  <div className="text-sm">
-                                    Send Link to Background Check
-                                  </div>
-                                </div>
-
-                                {/* Continue to Background Check */}
-                                <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
-
-                                <div className="w-full p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
-                                  Background Check
-                                </div>
-
-                                {/* Split Lines for Background */}
-                                <div className="relative h-16 w-full mt-4">
-                                  <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
-                                  <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
-                                </div>
-
-                                {/* Background Results */}
-                                <div className="grid grid-cols-2 gap-4 w-full">
-                                  <div className="p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
-                                    <div className="text-sm text-emerald-600 dark:text-emerald-400">
-                                      Passed
-                                    </div>
-                                    <div className="text-sm">Send Offer</div>
-                                  </div>
-                                  <div className="inline-block p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
-                                    <div className="text-sm text-rose-600 dark:text-rose-400">
-                                      Failed
-                                    </div>
-                                    <div className="text-sm">
-                                      Send Rejection
-                                    </div>
-                                  </div>
-                                </div>
+                          {/* Interview Results Split */}
+                          <div className="grid grid-cols-2 gap-8 w-full">
+                            <div className="flex flex-col items-center">
+                              <div className="w-full p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
+                                <div className="text-sm text-emerald-600 dark:text-emerald-400">Passed</div>
+                                <div className="text-sm">Continue to Background</div>
+                              </div>
+                              
+                              {/* Continue to Background Check */}
+                              <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
+                              
+                              <div className="w-full p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
+                                Background Check
                               </div>
 
-                              {/* Failed Interview */}
-                              <div className="flex flex-col items-center">
-                                <div className="w-full p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
-                                  <div className="text-sm text-rose-600 dark:text-rose-400">
-                                    Failed
-                                  </div>
+                              {/* Split Lines for Background */}
+                              <div className="relative h-16 w-full mt-4">
+                                <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
+                                <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
+                              </div>
+
+                              {/* Background Results */}
+                              <div className="grid grid-cols-2 gap-4 w-full">
+                                <div className="p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
+                                  <div className="text-sm text-emerald-600 dark:text-emerald-400">Passed</div>
+                                  <div className="text-sm">Send Offer</div>
+                                </div>
+                                <div className="p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
+                                  <div className="text-sm text-rose-600 dark:text-rose-400">Failed</div>
                                   <div className="text-sm">Send Rejection</div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-
-                          {/* Right Branch - Not Qualified */}
-                          <div
-                            className="flex flex-col items-center opacity-0 animate-slideIn"
-                            style={{
-                              animationDelay: "0.8s",
-                              animationFillMode: "forwards",
-                            }}
-                          >
-                            <div className="w-64 p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
-                              <div className="text-sm text-rose-600 dark:text-rose-400">
-                                Not Qualified
+                            
+                            {/* Failed Interview */}
+                            <div className="flex flex-col items-center">
+                              <div className="w-full p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
+                                <div className="text-sm text-rose-600 dark:text-rose-400">Failed</div>
+                                <div className="text-sm">Send Rejection</div>
                               </div>
-                              <div className="text-sm">Send Rejection</div>
                             </div>
+                          </div>
+                        </div>
+
+                        {/* Right Branch - Not Qualified */}
+                        <div className="flex flex-col items-center">
+                          <div className="w-64 p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
+                            <div className="text-sm text-rose-600 dark:text-rose-400">Not Qualified</div>
+                            <div className="text-sm">Send Rejection</div>
                           </div>
                         </div>
                       </div>
