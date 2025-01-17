@@ -20,33 +20,32 @@ import {
 import Link from "next/link";
 
 export default function HomePage() {
-
   const messages = [
     {
       type: "user",
       text: "Hey Larkx, help me hire delivery drivers.",
-      delay: 0.2
+      delay: 0.2,
     },
     {
       type: "ai",
       text: "I&apos;ll help you create a hiring workflow. What requirements should we check for candidates?",
-      delay: 0.4
+      delay: 0.4,
     },
     {
       type: "user",
       text: "We need to check their driver's license and experience. Must have 3+ years of experience.",
-      delay: 0.6
+      delay: 0.6,
     },
     {
       type: "ai",
       text: "I&apos;ve added license and experience checks to the workflow. What should we do with qualified candidates?",
-      delay: 0.8
+      delay: 0.8,
     },
     {
       type: "user",
       text: "For qualified candidates, schedule interviews. If they pass, do background check. If background check passes, send offer.",
-      delay: 1.0
-    }
+      delay: 1.0,
+    },
   ];
 
   return (
@@ -105,8 +104,10 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="text-lg sm:text-xl lg:text-2xl text-muted-foreground/90 max-w-2xl mb-10 sm:mb-14 px-4 leading-relaxed font-medium">
-            Simply chat with our AI assistant, and it automates recruitment
-            tasks instantly—no coding, no complexity, just faster hiring
+            <span className="inline-block w-full animate-typing-text">
+              Simply chat with our AI Agent and it automates recruitment tasks
+              instantly.
+            </span>
           </p>
           <div className="flex flex-col items-center w-full mb-8 sm:mb-12">
             <div className="relative w-full">
@@ -130,7 +131,9 @@ export default function HomePage() {
                             <>
                               <div className="absolute -left-2 top-3 w-4 h-4 rounded-full bg-primary/10"></div>
                               <div className="pl-4 space-y-1.5">
-                                <p className="text-sm text-slate-500 dark:text-slate-400">You</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                  You
+                                </p>
                                 <div className="text-sm sm:text-base text-slate-900 dark:text-white">
                                   {message.text}
                                 </div>
@@ -158,7 +161,10 @@ export default function HomePage() {
                             Type your instructions...
                           </div>
                         </div>
-                        <Button size="icon" className="h-10 w-10 rounded-lg bg-primary hover:bg-primary/90">
+                        <Button
+                          size="icon"
+                          className="h-10 w-10 rounded-lg bg-primary hover:bg-primary/90"
+                        >
                           <ArrowRight className="h-4 w-4" />
                         </Button>
                       </div>
@@ -173,12 +179,14 @@ export default function HomePage() {
                       {/* Initial Node */}
                       <div className="relative flex flex-col items-center">
                         <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
-                          <div className="text-sm sm:text-base font-medium mb-2">Application Form</div>
+                          <div className="text-sm sm:text-base font-medium mb-2">
+                            Application Form
+                          </div>
                           <div className="text-sm text-slate-500 dark:text-slate-400">
                             Contact Info • Driver&apos;s License • Experience
                           </div>
                         </div>
-                        
+
                         {/* Connecting Line */}
                         <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
                       </div>
@@ -186,10 +194,14 @@ export default function HomePage() {
                       {/* Screening Node */}
                       <div className="relative flex flex-col items-center">
                         <div className="w-72 p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80">
-                          <div className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mb-1 font-medium">Conditions</div>
-                          <div className="text-sm sm:text-base">driver&apos;s license AND experience &gt; 3 years</div>
+                          <div className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mb-1 font-medium">
+                            Conditions
+                          </div>
+                          <div className="text-sm sm:text-base">
+                            driver&apos;s license AND experience &gt; 3 years
+                          </div>
                         </div>
-                        
+
                         {/* Split Lines */}
                         <div className="relative h-16 w-full mt-4">
                           <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
@@ -204,10 +216,10 @@ export default function HomePage() {
                           <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
                             Interview Slot Selection
                           </div>
-                          
+
                           {/* Connecting Line */}
                           <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
-                          
+
                           <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
                             Interview Result
                           </div>
@@ -222,13 +234,17 @@ export default function HomePage() {
                           <div className="grid grid-cols-2 gap-8 w-full">
                             <div className="flex flex-col items-center">
                               <div className="w-full p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
-                                <div className="text-sm text-emerald-600 dark:text-emerald-400">Passed</div>
-                                <div className="text-sm">Continue to Background</div>
+                                <div className="text-sm text-emerald-600 dark:text-emerald-400">
+                                  Passed
+                                </div>
+                                <div className="text-sm">
+                                  Continue to Background
+                                </div>
                               </div>
-                              
+
                               {/* Continue to Background Check */}
                               <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
-                              
+
                               <div className="w-full p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
                                 Background Check
                               </div>
@@ -242,20 +258,26 @@ export default function HomePage() {
                               {/* Background Results */}
                               <div className="grid grid-cols-2 gap-4 w-full">
                                 <div className="p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
-                                  <div className="text-sm text-emerald-600 dark:text-emerald-400">Passed</div>
+                                  <div className="text-sm text-emerald-600 dark:text-emerald-400">
+                                    Passed
+                                  </div>
                                   <div className="text-sm">Send Offer</div>
                                 </div>
                                 <div className="p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
-                                  <div className="text-sm text-rose-600 dark:text-rose-400">Failed</div>
+                                  <div className="text-sm text-rose-600 dark:text-rose-400">
+                                    Failed
+                                  </div>
                                   <div className="text-sm">Send Rejection</div>
                                 </div>
                               </div>
                             </div>
-                            
+
                             {/* Failed Interview */}
                             <div className="flex flex-col items-center">
                               <div className="w-full p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
-                                <div className="text-sm text-rose-600 dark:text-rose-400">Failed</div>
+                                <div className="text-sm text-rose-600 dark:text-rose-400">
+                                  Failed
+                                </div>
                                 <div className="text-sm">Send Rejection</div>
                               </div>
                             </div>
@@ -265,7 +287,9 @@ export default function HomePage() {
                         {/* Right Branch - Not Qualified */}
                         <div className="flex flex-col items-center">
                           <div className="w-64 p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
-                            <div className="text-sm text-rose-600 dark:text-rose-400">Not Qualified</div>
+                            <div className="text-sm text-rose-600 dark:text-rose-400">
+                              Not Qualified
+                            </div>
                             <div className="text-sm">Send Rejection</div>
                           </div>
                         </div>
@@ -326,6 +350,33 @@ export default function HomePage() {
                 opacity: 1;
               }
             }
+            @keyframes typing {
+              from {
+                clip-path: inset(0 100% 0 0);
+              }
+              to {
+                clip-path: inset(0 0 0 0);
+              }
+            }
+            @keyframes typing-text {
+              from {
+                width: 0;
+                border-right: 2px solid currentColor;
+              }
+              to {
+                width: 100%;
+                border-right: 2px solid currentColor;
+              }
+            }
+            @keyframes blink-caret {
+              from,
+              to {
+                border-color: transparent;
+              }
+              50% {
+                border-color: currentColor;
+              }
+            }
             .animate-wave-x {
               animation: wave-x 20s ease-in-out infinite;
             }
@@ -340,6 +391,18 @@ export default function HomePage() {
             }
             .animate-fadeSlideUp {
               animation: fadeSlideUp 0.5s ease-out;
+            }
+            .animate-typing {
+              animation: typing 2s steps(50, end);
+            }
+            .animate-typing-text {
+              display: inline-block;
+              overflow: hidden;
+              white-space: nowrap;
+              border-right: 2px solid currentColor;
+              width: 0;
+              animation: typing-text 2.5s steps(80) forwards,
+                blink-caret 0.75s step-end infinite;
             }
           `}</style>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 w-full max-w-md px-4">
@@ -491,8 +554,8 @@ export default function HomePage() {
                 ))}
               </div>
               <p className="text-slate-600 dark:text-slate-300 mb-6">
-                &quot;Larkx transformed our hiring process. We&apos;ve reduced our
-                time-to-hire by 60% while improving candidate quality.&quot;
+                &quot;Larkx transformed our hiring process. We&apos;ve reduced
+                our time-to-hire by 60% while improving candidate quality.&quot;
               </p>
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700"></div>
