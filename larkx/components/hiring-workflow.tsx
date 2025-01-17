@@ -30,7 +30,7 @@ import { StageDetails } from "./stage-details";
 import { workflow } from "@/mocks/workflow";
 import { WorkflowStep, ComplexCondition, Workflow } from "@/@types/workflow";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown, PanelLeftClose, PanelRightClose, PanelLeft, PanelRight } from "lucide-react";
 import dagre from 'dagre';
 import { NodeData, WorkflowSpotlight } from "./workflow-spotlight";
 import { cn } from "@/lib/utils";
@@ -217,6 +217,8 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
 
   // Node dimensions for centering
   const NODE_WIDTH = 250;
@@ -369,14 +371,44 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
   return (
     <div className="flex h-[calc(100vh-1rem)] gap-4">
       {/* Left Panel - Hierarchy */}
-      <Card className="w-64 overflow-hidden flex flex-col">
-        <CardHeader className="py-3">
-          <CardTitle className="text-sm">Workflow Hierarchy</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto p-2">
-          {rootNodes.map(node => renderHierarchyNode(node))}
-        </CardContent>
-      </Card>
+      <div className={cn(
+        "flex transition-all duration-300 relative",
+        showLeftPanel ? "w-64" : "w-8"
+      )}>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setShowLeftPanel(!showLeftPanel)}
+          className="absolute right-0 top-3 h-8 w-8 rounded-full shadow-md z-50 translate-x-1/2 bg-background"
+        >
+          {showLeftPanel ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+        </Button>
+        {!showLeftPanel && (
+          <div 
+            className="absolute inset-y-0 left-0 w-8 bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => setShowLeftPanel(true)}
+          >
+            <div className="rotate-180 [writing-mode:vertical-lr] text-xs font-medium text-muted-foreground whitespace-nowrap">
+              Workflow Hierarchy
+            </div>
+          </div>
+        )}
+        <Card className={cn(
+          "overflow-hidden flex flex-col relative",
+          showLeftPanel ? "w-64" : "w-0"
+        )}>
+          {showLeftPanel && (
+            <>
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm">Workflow Hierarchy</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-y-auto p-2">
+                {rootNodes.map(node => renderHierarchyNode(node))}
+              </CardContent>
+            </>
+          )}
+        </Card>
+      </div>
 
       {/* Center Panel - Graph */}
       <Card className="flex-1">
@@ -427,23 +459,53 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
       </Card>
 
       {/* Right Panel - Properties */}
-      <Card className="w-80 overflow-hidden flex flex-col">
-        <CardHeader className="py-3">
-          <CardTitle className="text-sm">Properties</CardTitle>
-          <CardDescription>
-            {selectedNode ? selectedNode.data.label : "Select a node to view details"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto">
-          {selectedNode ? (
-            <StageDetails node={selectedNode} />
-          ) : (
-            <div className="text-sm text-gray-500 p-4">
-              Click on a node in the graph or hierarchy to view its properties
+      <div className={cn(
+        "flex transition-all duration-300 relative",
+        showRightPanel ? "w-80" : "w-8"
+      )}>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setShowRightPanel(!showRightPanel)}
+          className="absolute left-0 top-3 h-8 w-8 rounded-full shadow-md z-50 -translate-x-1/2 bg-background"
+        >
+          {showRightPanel ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+        </Button>
+        {!showRightPanel && (
+          <div 
+            className="absolute inset-y-0 right-0 w-8 bg-muted/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => setShowRightPanel(true)}
+          >
+            <div className="[writing-mode:vertical-lr] text-xs font-medium text-muted-foreground whitespace-nowrap">
+              Properties Panel
             </div>
+          </div>
+        )}
+        <Card className={cn(
+          "overflow-hidden flex flex-col relative",
+          showRightPanel ? "w-80" : "w-0"
+        )}>
+          {showRightPanel && (
+            <>
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm">Properties</CardTitle>
+                <CardDescription>
+                  {selectedNode ? selectedNode.data.label : "Select a node to view details"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-y-auto">
+                {selectedNode ? (
+                  <StageDetails node={selectedNode} />
+                ) : (
+                  <div className="text-sm text-gray-500 p-4">
+                    Click on a node in the graph or hierarchy to view its properties
+                  </div>
+                )}
+              </CardContent>
+            </>
           )}
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
 
       <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
         <WorkflowSpotlight onAddNode={handleAddNode} />
