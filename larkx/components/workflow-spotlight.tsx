@@ -117,11 +117,11 @@ export function WorkflowSpotlight({ onAddNode }: WorkflowSpotlightProps) {
         onClick={() => setOpen(true)}
         variant="default"
         size="lg"
-        className="px-8 py-6 text-lg bg-black hover:bg-black/90"
+        className="px-8 py-6 text-lg bg-primary text-primary-foreground hover:bg-primary/90"
       >
         <span className="flex items-center gap-2">
           <span>Enter Prompt</span>
-          <span className="text-xs text-white border border-white bg-transparent px-1 rounded">
+          <span className="text-xs border border-primary-foreground bg-transparent px-1 rounded">
             ⌘
           </span>
           K

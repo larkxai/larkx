@@ -212,11 +212,27 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
 };
 
 function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onSave: (workflow: Workflow) => void }) {
-  const { getZoom, getViewport, getNodes, setViewport } = useReactFlow();
+  const { getZoom, getViewport, getNodes, setViewport, setCenter } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+
+  // Node dimensions for centering
+  const NODE_WIDTH = 250;
+  const NODE_HEIGHT = 100;
+
+  // Update center node function to use fixed zoom
+  const centerNode = useCallback((node: Node) => {
+    setCenter(
+      node.position.x + (node.width || NODE_WIDTH) / 2,
+      node.position.y + (node.height || NODE_HEIGHT) / 2,
+      { 
+        duration: 800,
+        zoom: 1.5
+      }
+    );
+  }, [setCenter]);
 
   const onConnect = useCallback(
     (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -255,7 +271,10 @@ function HiringWorkflowComponent({ workflow, onSave }: { workflow: Workflow; onS
             selectedNode?.id === node.id && "bg-gray-100"
           )}
           style={{ paddingLeft: `${level * 16 + 8}px` }}
-          onClick={() => setSelectedNode(node)}
+          onClick={() => {
+            setSelectedNode(node);
+            centerNode(node);
+          }}
         >
           {hasChildren && (
             <button
