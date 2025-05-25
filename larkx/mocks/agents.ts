@@ -1,12 +1,21 @@
-export const mockJobs: Job[] = [
+import { Agent, AgentFlow, AgentMode, Job } from '../@types/agent';
+
+export const mockAgentFlows: AgentFlow[] = [
   {
-    id: 'job1',
-    title: 'Software Engineer',
+    id: 'flow1',
+    name: 'Software Engineer Flow',
+    description: 'Standard flow for software engineering positions',
+    createdBy: 'system',
+    isTemplate: true,
+    version: 1,
+    createdAt: new Date('2024-03-15'),
     agents: [
       {
         id: 'agent1',
+        flowId: 'flow1',
         type: 'FormAgent',
         order: 1,
+        mode: AgentMode.Linear,
         config: {
           fields: [
             { name: 'fullName', label: 'Full Name', type: 'text', required: true },
@@ -14,27 +23,35 @@ export const mockJobs: Job[] = [
             { name: 'experience', label: 'Years of Experience', type: 'number', required: true },
           ],
         },
-      },
+      } as Agent,
       {
         id: 'agent2',
+        flowId: 'flow1',
         type: 'ReminderAgent',
         order: 2,
-        isPassive: true,
+        mode: AgentMode.Passive,
         config: {
           message: 'Please complete your application',
           delay: '24h',
         },
-      },
+      } as Agent,
     ],
   },
   {
-    id: 'job2',
-    title: 'Product Manager',
+    id: 'flow2',
+    name: 'Product Manager Flow',
+    description: 'Standard flow for product management positions',
+    createdBy: 'system',
+    isTemplate: true,
+    version: 1,
+    createdAt: new Date('2024-03-15'),
     agents: [
       {
         id: 'agent3',
+        flowId: 'flow2',
         type: 'FormAgent',
         order: 1,
+        mode: AgentMode.Linear,
         config: {
           fields: [
             { name: 'fullName', label: 'Full Name', type: 'text', required: true },
@@ -42,10 +59,34 @@ export const mockJobs: Job[] = [
             { name: 'portfolio', label: 'Portfolio URL', type: 'url', required: true },
           ],
         },
-      },
+      } as Agent,
     ],
   },
 ];
+
+export const mockJobs: Job[] = [
+  {
+    id: 'job1',
+    title: 'Software Engineer',
+    flowId: 'flow1',
+    flow: mockAgentFlows[0],
+  },
+  {
+    id: 'job2',
+    title: 'Product Manager',
+    flowId: 'flow2',
+    flow: mockAgentFlows[1],
+  },
+];
+
+export interface Candidate {
+  id: string;
+  jobId: string;
+  formData: Record<string, string | number>;
+  completedAgents: string[];
+  currentStage: string;
+  createdAt: Date;
+}
 
 export const mockCandidates: Candidate[] = [
   {

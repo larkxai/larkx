@@ -1,21 +1,17 @@
-export type AgentType = "FormAgent" | "ReminderAgent" | "SchedulerAgent";
+export enum AgentMode {
+  Linear = 'Linear',
+  Passive = 'Passive'
+}
 
-export interface BaseAgent {
-  id: string;
-  jobId?: string;
-  type: AgentType;
-  after?: string | null;
-  isPassive?: boolean;
-  agentName?: string;
+export interface FormField {
+  name: string;
+  label: string;
+  type: 'text' | 'email' | 'number' | 'url';
+  required: boolean;
 }
 
 export interface FormAgentConfig {
-  fields: {
-    name: string;
-    label: string;
-    type: "text" | "email" | "number" | "boolean" | "url";
-    required?: boolean;
-  }[];
+  fields: FormField[];
 }
 
 export interface ReminderAgentConfig {
@@ -23,12 +19,33 @@ export interface ReminderAgentConfig {
   delay: string;
 }
 
-export type AgentConfig =
-  | { type: "FormAgent"; config: FormAgentConfig }
-  | { type: "ReminderAgent"; config: ReminderAgentConfig };
+export interface BaseAgent {
+  id: string;
+  flowId: string;
+  type: string;
+  order: number;
+  mode: AgentMode;
+}
 
-export type Agent = BaseAgent &
-  (
-    | { type: "FormAgent"; config: FormAgentConfig }
-    | { type: "ReminderAgent"; config: ReminderAgentConfig }
-  );
+export type Agent = BaseAgent & (
+  | { type: 'FormAgent'; config: FormAgentConfig }
+  | { type: 'ReminderAgent'; config: ReminderAgentConfig }
+);
+
+export interface AgentFlow {
+  id: string;
+  name: string;
+  description?: string;
+  createdBy: string;
+  isTemplate: boolean;
+  version: number;
+  agents: Agent[];
+  createdAt: Date;
+}
+
+export interface Job {
+  id: string;
+  title: string;
+  flowId: string;
+  flow: AgentFlow;
+}

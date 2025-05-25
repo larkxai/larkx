@@ -5,17 +5,18 @@ import { mockJobs } from '@/mocks/agents';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from 'lucide-react';
+import { AgentMode } from '@/@types/agent';
 
 export default function AgentsPage() {
   return (
     <div className="container mx-auto p-6 space-y-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Agents</h1>
+        <h1 className="text-2xl font-bold">Agent Flows</h1>
         <Button asChild>
           <Link href="/app/jobs/requisitions/new">
             <div className="flex items-center gap-2">
               <PlusIcon className="w-4 h-4" />
-              Create
+              Create Flow
             </div>
           </Link>
         </Button>
@@ -31,29 +32,32 @@ export default function AgentsPage() {
               <div>
                 <h2 className="text-lg font-semibold">{job.title}</h2>
                 <p className="text-sm text-gray-500">
-                  {job.agents.length} agent{job.agents.length !== 1 ? 's' : ''}
+                  Flow: {job.flow.name}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {job.flow.agents.length} agent{job.flow.agents.length !== 1 ? 's' : ''}
                 </p>
               </div>
               <Button asChild variant="outline">
-                <Link href={`/app/jobs/agents/${job.id}`}>Manage Agents</Link>
+                <Link href={`/app/jobs/agents/${job.id}`}>Manage Flow</Link>
               </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {job.agents.map((agent) => (
+              {job.flow.agents.map((agent) => (
                 <div
                   key={agent.id}
                   className={`p-3 rounded-md border ${
-                    agent.isPassive
+                    agent.mode === AgentMode.Passive
                       ? 'border-dashed border-gray-400'
                       : 'border-solid border-blue-500'
                   } bg-gray-50`}
                 >
-                  <div className="font-medium">{agent.agentname || agent.type}</div>
+                  <div className="font-medium">{agent.type}</div>
                   <div className="text-sm text-gray-500">
-                    {agent.order !== undefined ? `Order: ${agent.order}` : ''}
+                    Order: {agent.order}
                   </div>
-                  {agent.isPassive && (
+                  {agent.mode === AgentMode.Passive && (
                     <div className="text-xs text-gray-500 mt-1">
                       Passive Agent
                     </div>

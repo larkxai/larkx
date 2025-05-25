@@ -3,25 +3,15 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-
-interface AgentConfig {
-  id: string;
-  type: string;
-  agentname?: string;
-  after?: string | null;
-  config: Record<string, unknown>;
-  isPassive?: boolean;
-}
+import { Agent, AgentMode, FormAgentConfig, ReminderAgentConfig } from '@/@types/agent';
 
 interface AgentConfigPanelProps {
-  agent: AgentConfig | null;
-  agents: AgentConfig[];
-  onSave: (config: AgentConfig) => void;
-  onSelectAgent?: (agent: AgentConfig) => void;
+  agent: Agent | null;
+  onSave: (agent: Agent) => void;
 }
 
-export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, agents, onSave, onSelectAgent }) => {
-  const [config, setConfig] = React.useState<AgentConfig | null>(agent);
+export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, onSave }) => {
+  const [config, setConfig] = React.useState<Agent | null>(agent);
 
   React.useEffect(() => {
     setConfig(agent);
@@ -35,17 +25,25 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, agent
     );
   }
 
-  const connectedAgent = config.after ? agents.find(a => a.id === config.after) : null;
-
   const handleConfigChange = (key: string, value: unknown) => {
     if (!config) return;
-    setConfig({
-      ...config,
-      config: {
-        ...config.config,
-        [key]: value,
-      },
-    });
+    if (config.type === 'FormAgent') {
+      setConfig({
+        ...config,
+        config: {
+          ...config.config,
+          [key]: value,
+        } as FormAgentConfig,
+      });
+    } else if (config.type === 'ReminderAgent') {
+      setConfig({
+        ...config,
+        config: {
+          ...config.config,
+          [key]: value,
+        } as ReminderAgentConfig,
+      });
+    }
   };
 
   const handleSave = () => {
@@ -68,73 +66,139 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, agent
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Agent Name</label>
-            <input
-              type="text"
-              value={config.agentname || ''}
-              onChange={e => setConfig({ ...config, agentname: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">After</label>
+            <label className="block text-sm font-medium text-gray-700">Mode</label>
             <Select
-              value={config.after ?? '__start__'}
-              onValueChange={(val) => setConfig({ ...config, after: val === '__start__' ? null : val })}
+              value={config.mode}
+              onValueChange={(val: AgentMode) => setConfig({ ...config, mode: val })}
             >
               <SelectTrigger className="mt-1 w-full">
-                <SelectValue placeholder="Start" />
+                <SelectValue placeholder="Select mode" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__start__">Start</SelectItem>
-                {agents.filter(a => a.id !== config.id).map(a => (
-                  <SelectItem key={a.id} value={a.id}>{a.agentname || a.type}</SelectItem>
-                ))}
+                <SelectItem value={AgentMode.Linear}>Linear</SelectItem>
+                <SelectItem value={AgentMode.Passive}>Passive</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {connectedAgent && (
-            <div className="flex items-end">
-              <span className="text-xs text-gray-500 mr-2">Connected to:</span>
-              <button
-                type="button"
-                className="text-blue-600 underline text-xs hover:text-blue-800"
-                onClick={() => onSelectAgent && onSelectAgent(connectedAgent)}
-              >
-                {connectedAgent.agentname || connectedAgent.type}
-              </button>
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Order</label>
+            <input
+              type="number"
+              value={config.order}
+              onChange={e => setConfig({ ...config, order: parseInt(e.target.value) })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
         </div>
       </div>
 
       <div className="space-y-2">
         <h4 className="text-md font-medium">Configuration</h4>
-        {Object.entries(config.config).map(([key, value]) => (
-          <div key={key} className="mb-2">
-            <label className="block text-sm font-medium text-gray-700">{key}</label>
-            {Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' ? (
-              <div className="space-y-1 ml-2">
-                {value.map((field: Record<string, unknown>, idx: number) => (
-                  <div key={idx} className="p-2 bg-gray-50 rounded border border-gray-200 mb-1 text-xs">
-                    {Object.entries(field).map(([fKey, fVal]) => (
-                      <div key={fKey} className="text-xs text-gray-700">
-                        <span className="font-semibold">{fKey}:</span> {String(fVal)}
-                      </div>
-                    ))}
+        {config.type === 'FormAgent' && (
+          <div className="space-y-2">
+            <h5 className="text-sm font-medium">Form Fields</h5>
+            {config.config.fields.map((field, index) => (
+              <div key={index} className="p-2 bg-gray-50 rounded border border-gray-200">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      value={field.name}
+                      onChange={e => {
+                        const newFields = [...config.config.fields];
+                        newFields[index] = { ...field, name: e.target.value };
+                        handleConfigChange('fields', newFields);
+                      }}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    />
                   </div>
-                ))}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">Label</label>
+                    <input
+                      type="text"
+                      value={field.label}
+                      onChange={e => {
+                        const newFields = [...config.config.fields];
+                        newFields[index] = { ...field, label: e.target.value };
+                        handleConfigChange('fields', newFields);
+                      }}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">Type</label>
+                    <Select
+                      value={field.type}
+                      onValueChange={(val: 'text' | 'email' | 'number' | 'url') => {
+                        const newFields = [...config.config.fields];
+                        newFields[index] = { ...field, type: val };
+                        handleConfigChange('fields', newFields);
+                      }}
+                    >
+                      <SelectTrigger className="mt-1 w-full text-sm">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="number">Number</SelectItem>
+                        <SelectItem value="url">URL</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={field.required}
+                        onChange={e => {
+                          const newFields = [...config.config.fields];
+                          newFields[index] = { ...field, required: e.target.checked };
+                          handleConfigChange('fields', newFields);
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-xs font-medium text-gray-700">Required</span>
+                    </label>
+                  </div>
+                </div>
               </div>
-            ) : (
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const newFields = [...config.config.fields, { name: '', label: '', type: 'text', required: false }];
+                handleConfigChange('fields', newFields);
+              }}
+            >
+              Add Field
+            </Button>
+          </div>
+        )}
+        {config.type === 'ReminderAgent' && (
+          <div className="space-y-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Message</label>
               <input
                 type="text"
-                value={String(value)}
-                onChange={(e) => handleConfigChange(key, e.target.value)}
+                value={config.config.message}
+                onChange={e => handleConfigChange('message', e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
-            )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Delay</label>
+              <input
+                type="text"
+                value={config.config.delay}
+                onChange={e => handleConfigChange('delay', e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
           </div>
-        ))}
+        )}
       </div>
 
       <div className="flex justify-end">

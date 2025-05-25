@@ -11,30 +11,24 @@ import ReactFlow, {
   useEdgesState
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-
-interface AgentNode {
-  id: string;
-  type: string;
-  order: number;
-  config: Record<string, unknown>;
-  isPassive?: boolean;
-  after?: string;
-}
+import { Agent, AgentMode } from '@/@types/agent';
 
 interface AgentGraphProps {
-  agents: AgentNode[];
-  onNodeClick?: (node: AgentNode) => void;
+  agents: Agent[];
+  onNodeClick?: (node: Agent) => void;
 }
 
-const AgentNode: React.FC<{ data: AgentNode }> = ({ data }) => {
-  const { type, isPassive } = data;
+const AgentNode: React.FC<{ data: Agent }> = ({ data }) => {
+  const { type, mode } = data;
   
   return (
     <div className={`p-4 rounded-lg border-2 ${
-      isPassive ? 'border-dashed border-gray-400' : 'border-solid border-blue-500'
+      mode === AgentMode.Passive
+        ? 'border-dashed border-gray-400'
+        : 'border-solid border-blue-500'
     } bg-white shadow-md`}>
       <div className="font-semibold">{type}</div>
-      {isPassive && (
+      {mode === AgentMode.Passive && (
         <div className="text-xs text-gray-500 mt-1">Passive Agent</div>
       )}
     </div>
@@ -58,15 +52,23 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({ agents, onNodeClick }) =
       data: agent,
     }));
 
-    // Create edges based on 'after' property
+    // Create edges based on order, only for linear agents
     const newEdges: Edge[] = agents
-      .filter(agent => agent.after)
-      .map((agent, index) => ({
-        id: `e${index}`,
-        source: agent.after as string,
-        target: agent.id,
-        type: 'smoothstep',
-      }));
+      .filter((agent, index) => index > 0 && agent.mode === AgentMode.Linear)
+      .map((agent, index) => {
+        const prevAgent = agents[index - 1];
+        // Only create edge if previous agent is also linear
+        if (prevAgent.mode === AgentMode.Linear) {
+          return {
+            id: `e${index}`,
+            source: prevAgent.id,
+            target: agent.id,
+            type: 'smoothstep' as const,
+          } satisfies Edge;
+        }
+        return null;
+      })
+      .filter((edge): edge is Edge => edge !== null);
 
     setNodes(newNodes);
     setEdges(newEdges);

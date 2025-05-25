@@ -3,8 +3,9 @@
 import React from 'react';
 import { AgentGraph } from '@/components/agent-graph';
 import { AgentConfigPanel } from '@/components/agent-config-panel';
-import { mockJobs, type Job, type Agent } from '@/mocks/agents';
+import { mockJobs } from '@/mocks/agents';
 import { Button } from '@/components/ui/button';
+import { AgentMode, Agent, Job } from '@/@types/agent';
 
 export default function AgentEditorPage({ params }: { params: { id: string } }) {
   const [selectedAgent, setSelectedAgent] = React.useState<Agent | null>(null);
@@ -16,7 +17,7 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
     if (foundJob) {
       setJob(foundJob);
       // Sort agents by order
-      foundJob.agents.sort((a, b) => a.order - b.order);
+      foundJob.flow.agents.sort((a, b) => a.order - b.order);
     }
   }, [params.id]);
 
@@ -26,12 +27,15 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
 
   const handleConfigSave = (updatedAgent: Agent) => {
     if (!job) return;
-    const updatedAgents = job.agents.map(agent =>
+    const updatedAgents = job.flow.agents.map(agent =>
       agent.id === updatedAgent.id ? updatedAgent : agent
     );
     setJob({
       ...job,
-      agents: updatedAgents,
+      flow: {
+        ...job.flow,
+        agents: updatedAgents,
+      }
     });
     setSelectedAgent(updatedAgent);
   };
@@ -48,9 +52,10 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
     <div className="flex h-screen">
       {/* Sidebar */}
       <div className="w-64 bg-gray-50 border-r border-gray-200 p-4">
-        <h2 className="text-lg font-semibold mb-4">{job.title}</h2>
+        <h2 className="text-lg font-semibold mb-2">{job.title}</h2>
+        <p className="text-sm text-gray-500 mb-4">{job.flow.name}</p>
         <div className="space-y-2">
-          {job.agents.map(agent => (
+          {job.flow.agents.map((agent: Agent) => (
             <div
               key={agent.id}
               onClick={() => handleAgentClick(agent)}
@@ -60,6 +65,9 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
             >
               <div className="font-medium">{agent.type}</div>
               <div className="text-sm text-gray-500">Order: {agent.order}</div>
+              {agent.mode === AgentMode.Passive && (
+                <div className="text-xs text-gray-500">Passive</div>
+              )}
             </div>
           ))}
         </div>
@@ -67,15 +75,25 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
           className="mt-4 w-full"
           onClick={() => {
             if (!job) return;
-            const lastAgent = job.agents[job.agents.length - 1];
+            const lastAgent = job.flow.agents[job.flow.agents.length - 1];
             const newAgent = {
               id: `agent_${Date.now()}`,
+              flowId: job.flow.id,
               type: 'FormAgent',
-              after: lastAgent ? lastAgent.id : null,
-              config: {},
-            };
-            const updatedAgents = [...job.agents, newAgent];
-            setJob({ ...job, agents: updatedAgents });
+              order: lastAgent ? lastAgent.order + 1 : 1,
+              mode: AgentMode.Linear,
+              config: {
+                fields: []
+              }
+            } as Agent;
+            const updatedAgents = [...job.flow.agents, newAgent];
+            setJob({
+              ...job,
+              flow: {
+                ...job.flow,
+                agents: updatedAgents
+              }
+            });
           }}
         >
           Add Agent
@@ -87,14 +105,13 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
         {/* Graph View */}
         <div className="flex-1 p-4 border-r border-gray-200 overflow-auto h-full flex flex-col">
           <div className="flex-1 min-h-0">
-            <AgentGraph agents={job.agents} onNodeClick={handleAgentClick} />
+            <AgentGraph agents={job.flow.agents} onNodeClick={handleAgentClick} />
           </div>
         </div>
         {/* Config Panel (Right) */}
         <div className="w-[400px] h-full border-l border-gray-200 bg-white">
           <AgentConfigPanel
             agent={selectedAgent}
-            agents={job.agents}
             onSave={handleConfigSave}
           />
         </div>
