@@ -64,7 +64,6 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
               }`}
             >
               <div className="font-medium">{agent.type}</div>
-              <div className="text-sm text-gray-500">Order: {agent.order}</div>
               {agent.mode === AgentMode.Passive && (
                 <div className="text-xs text-gray-500">Passive</div>
               )}
@@ -75,13 +74,16 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
           className="mt-4 w-full"
           onClick={() => {
             if (!job) return;
-            const lastAgent = job.flow.agents[job.flow.agents.length - 1];
+            // Find the latest linear agent
+            const linearAgents = job.flow.agents.filter(a => a.mode === AgentMode.Linear);
+            const lastLinear = linearAgents[linearAgents.length - 1];
             const newAgent = {
               id: `agent_${Date.now()}`,
               flowId: job.flow.id,
               type: 'FormAgent',
-              order: lastAgent ? lastAgent.order + 1 : 1,
               mode: AgentMode.Linear,
+              after: lastLinear ? lastLinear.id : null,
+              order: 0, // deprecated, but kept for compatibility
               config: {
                 fields: []
               }
@@ -113,6 +115,7 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
           <AgentConfigPanel
             agent={selectedAgent}
             onSave={handleConfigSave}
+            agents={job.flow.agents}
           />
         </div>
       </div>

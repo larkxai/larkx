@@ -23,8 +23,8 @@ export interface BaseAgent {
   id: string;
   flowId: string;
   type: string;
-  order: number;
   mode: AgentMode;
+  after?: string | null;
 }
 
 export type Agent = BaseAgent & (

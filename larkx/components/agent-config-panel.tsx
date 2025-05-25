@@ -8,9 +8,10 @@ import { Agent, AgentMode, FormAgentConfig, ReminderAgentConfig } from '@/@types
 interface AgentConfigPanelProps {
   agent: Agent | null;
   onSave: (agent: Agent) => void;
+  agents?: Agent[]; // Pass all agents for the dropdown
 }
 
-export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, onSave }) => {
+export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, onSave, agents = [] }) => {
   const [config, setConfig] = React.useState<Agent | null>(agent);
 
   React.useEffect(() => {
@@ -27,6 +28,10 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, onSav
 
   const handleConfigChange = (key: string, value: unknown) => {
     if (!config) return;
+    if (key === 'after') {
+      setConfig({ ...config, after: value as string | null });
+      return;
+    }
     if (config.type === 'FormAgent') {
       setConfig({
         ...config,
@@ -80,14 +85,22 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, onSav
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Order</label>
-            <input
-              type="number"
-              value={config.order}
-              onChange={e => setConfig({ ...config, order: parseInt(e.target.value) })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700">After</label>
+            <Select
+              value={config.after ?? '__none__'}
+              onValueChange={val => handleConfigChange('after', val === '__none__' ? null : val)}
+            >
+              <SelectTrigger className="mt-1 w-full">
+                <SelectValue placeholder="None (start of flow)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None (start of flow)</SelectItem>
+                {agents.filter(a => a.id !== config.id).map(a => (
+                  <SelectItem key={a.id} value={a.id}>{a.type} ({a.id.slice(-4)})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
