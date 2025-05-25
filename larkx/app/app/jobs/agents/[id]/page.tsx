@@ -16,8 +16,7 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
     const foundJob = mockJobs.find(j => j.id === params.id);
     if (foundJob) {
       setJob(foundJob);
-      // Sort agents by order
-      foundJob.flow.agents.sort((a, b) => a.order - b.order);
+      // Remove sorting by order, as 'order' no longer exists
     }
   }, [params.id]);
 
@@ -39,6 +38,11 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
     });
     setSelectedAgent(updatedAgent);
   };
+
+  // Helper to generate a unique agent id
+  function generateAgentId() {
+    return 'agent_' + Math.random().toString(36).slice(2, 10) + Date.now();
+  }
 
   if (!job) {
     return (
@@ -63,7 +67,7 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
                 selectedAgent?.id === agent.id ? 'bg-blue-100' : 'hover:bg-gray-100'
               }`}
             >
-              <div className="font-medium">{agent.type}</div>
+              <div className="font-medium">{agent.name}</div>
               {agent.mode === AgentMode.Passive && (
                 <div className="text-xs text-gray-500">Passive</div>
               )}
@@ -77,13 +81,19 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
             // Find the latest linear agent
             const linearAgents = job.flow.agents.filter(a => a.mode === AgentMode.Linear);
             const lastLinear = linearAgents[linearAgents.length - 1];
+            // Find next agent number
+            const agentNumbers = job.flow.agents.map(a => {
+              const match = a.name.match(/Agent (\d+)/);
+              return match ? parseInt(match[1], 10) : 0;
+            });
+            const nextNumber = Math.max(0, ...agentNumbers) + 1;
             const newAgent = {
-              id: `agent_${Date.now()}`,
+              id: generateAgentId(),
               flowId: job.flow.id,
               type: 'FormAgent',
+              name: `Agent ${nextNumber}`,
               mode: AgentMode.Linear,
               after: lastLinear ? lastLinear.id : null,
-              order: 0, // deprecated, but kept for compatibility
               config: {
                 fields: []
               }
@@ -96,6 +106,7 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
                 agents: updatedAgents
               }
             });
+            console.log('NODES:', updatedAgents);
           }}
         >
           Add Agent

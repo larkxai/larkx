@@ -8,7 +8,9 @@ import ReactFlow, {
   Controls,
   NodeTypes,
   useNodesState,
-  useEdgesState
+  useEdgesState,
+  Handle,
+  Position
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Agent, AgentMode } from '@/@types/agent';
@@ -19,18 +21,28 @@ interface AgentGraphProps {
 }
 
 const AgentNode: React.FC<{ data: Agent }> = ({ data }) => {
-  const { type, mode } = data;
+  const { name, mode } = data;
   
   return (
     <div className={`p-4 rounded-lg border-2 ${
       mode === AgentMode.Passive
         ? 'border-dashed border-gray-400'
         : 'border-solid border-blue-500'
-    } bg-white shadow-md`}>
-      <div className="font-semibold">{type}</div>
+    } bg-white shadow-md relative`}>
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="w-3 h-3 bg-gray-400"
+      />
+      <div className="font-semibold">{name}</div>
       {mode === AgentMode.Passive && (
         <div className="text-xs text-gray-500 mt-1">Passive Agent</div>
       )}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-3 h-3 bg-gray-400"
+      />
     </div>
   );
 };
@@ -60,7 +72,13 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({ agents, onNodeClick }) =
         source: agent.after!,
         target: agent.id,
         type: 'smoothstep',
+        sourceHandle: 'source',
+        targetHandle: 'target',
       }));
+
+    // Debug log
+    console.log('AGENTS:', agents);
+    console.log('EDGES:', newEdges);
 
     setNodes(newNodes);
     setEdges(newEdges);

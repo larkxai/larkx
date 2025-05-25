@@ -23,6 +23,7 @@ export interface BaseAgent {
   id: string;
   flowId: string;
   type: string;
+  name: string;
   mode: AgentMode;
   after?: string | null;
 }

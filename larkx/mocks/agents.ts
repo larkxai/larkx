@@ -14,6 +14,7 @@ export const mockAgentFlows: AgentFlow[] = [
         id: 'agent1',
         flowId: 'flow1',
         type: 'FormAgent',
+        name: 'Agent 1',
         mode: AgentMode.Linear,
         after: null,
         config: {
@@ -28,6 +29,7 @@ export const mockAgentFlows: AgentFlow[] = [
         id: 'agent2',
         flowId: 'flow1',
         type: 'ReminderAgent',
+        name: 'Agent 2',
         mode: AgentMode.Passive,
         config: {
           message: 'Please complete your application',
@@ -49,6 +51,7 @@ export const mockAgentFlows: AgentFlow[] = [
         id: 'agent3',
         flowId: 'flow2',
         type: 'FormAgent',
+        name: 'Agent 1',
         mode: AgentMode.Linear,
         after: null,
         config: {
