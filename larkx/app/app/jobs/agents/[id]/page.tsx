@@ -6,6 +6,12 @@ import { AgentConfigPanel } from '@/components/agent-config-panel';
 import { mockJobs } from '@/mocks/agents';
 import { Button } from '@/components/ui/button';
 import { AgentMode, Agent, Job } from '@/@types/agent';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
 
 export default function AgentEditorPage({ params }: { params: { id: string } }) {
   const [selectedAgent, setSelectedAgent] = React.useState<Agent | null>(null);
@@ -68,49 +74,65 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
               }`}
             >
               <div className="font-medium">{agent.name}</div>
-              {agent.mode === AgentMode.Passive && (
-                <div className="text-xs text-gray-500">Passive</div>
-              )}
             </div>
           ))}
         </div>
-        <Button
-          className="mt-4 w-full"
-          onClick={() => {
-            if (!job) return;
-            // Find the latest linear agent
-            const linearAgents = job.flow.agents.filter(a => a.mode === AgentMode.Linear);
-            const lastLinear = linearAgents[linearAgents.length - 1];
-            // Find next agent number
-            const agentNumbers = job.flow.agents.map(a => {
-              const match = a.name.match(/Agent (\d+)/);
-              return match ? parseInt(match[1], 10) : 0;
-            });
-            const nextNumber = Math.max(0, ...agentNumbers) + 1;
-            const newAgent = {
-              id: generateAgentId(),
-              flowId: job.flow.id,
-              type: 'FormAgent',
-              name: `Agent ${nextNumber}`,
-              mode: AgentMode.Linear,
-              after: lastLinear ? lastLinear.id : null,
-              config: {
-                fields: []
-              }
-            } as Agent;
-            const updatedAgents = [...job.flow.agents, newAgent];
-            setJob({
-              ...job,
-              flow: {
-                ...job.flow,
-                agents: updatedAgents
-              }
-            });
-            console.log('NODES:', updatedAgents);
-          }}
-        >
-          Add Agent
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="mt-4 w-full">Add Agent</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              onClick={() => {
+                if (!job) return;
+                const linearAgents = job.flow.agents.filter(a => a.mode === AgentMode.Linear);
+                const lastLinear = linearAgents[linearAgents.length - 1];
+                const agentNumbers = job.flow.agents.map(a => {
+                  const match = a.name.match(/Agent (\d+)/);
+                  return match ? parseInt(match[1], 10) : 0;
+                });
+                const nextNumber = Math.max(0, ...agentNumbers) + 1;
+                const newAgent = {
+                  id: generateAgentId(),
+                  flowId: job.flow.id,
+                  type: 'FormAgent',
+                  name: `Agent ${nextNumber}`,
+                  mode: AgentMode.Linear,
+                  after: lastLinear ? lastLinear.id : null,
+                  config: { fields: [] }
+                } as Agent;
+                const updatedAgents = [...job.flow.agents, newAgent];
+                setJob({
+                  ...job,
+                  flow: { ...job.flow, agents: updatedAgents }
+                });
+              }}
+            >Form Agent</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                if (!job) return;
+                const agentNumbers = job.flow.agents.map(a => {
+                  const match = a.name.match(/Agent (\d+)/);
+                  return match ? parseInt(match[1], 10) : 0;
+                });
+                const nextNumber = Math.max(0, ...agentNumbers) + 1;
+                const newAgent = {
+                  id: generateAgentId(),
+                  flowId: job.flow.id,
+                  type: 'ReminderAgent',
+                  name: `Agent ${nextNumber}`,
+                  mode: AgentMode.Passive,
+                  config: { message: '', delay: '' }
+                } as Agent;
+                const updatedAgents = [...job.flow.agents, newAgent];
+                setJob({
+                  ...job,
+                  flow: { ...job.flow, agents: updatedAgents }
+                });
+              }}
+            >Reminder Agent</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Main Content: Graph + Config Panel */}
@@ -118,7 +140,7 @@ export default function AgentEditorPage({ params }: { params: { id: string } }) 
         {/* Graph View */}
         <div className="flex-1 p-4 border-r border-gray-200 overflow-auto h-full flex flex-col">
           <div className="flex-1 min-h-0">
-            <AgentGraph agents={job.flow.agents} onNodeClick={handleAgentClick} />
+            <AgentGraph agents={job.flow.agents} onNodeClick={handleAgentClick} selectedAgentId={selectedAgent?.id} />
           </div>
         </div>
         {/* Config Panel (Right) */}
