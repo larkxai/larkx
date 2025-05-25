@@ -45,9 +45,10 @@ import {
 } from "./ui/dropdown-menu";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { mockOrganization } from "@/mocks/organization";
+import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import { useRouter } from "next/navigation";
+import { Organization } from "@/@types/organization";
 
 const navigation = [
   {
@@ -96,15 +97,33 @@ const secondaryNav = [
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const pathname =
-    typeof window !== "undefined" ? window.location.pathname : "";
-
-  const organization = mockOrganization;
-  const teams = organization.teams;
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  const [organization, setOrganization] = React.useState<Organization | null>(null);
+  const [loading, setLoading] = React.useState(true);
   const router = useRouter();
-
-  const [activeTeam, setActiveTeam] = React.useState(teams[0]);
   const { user, logout } = useAuthStore();
+
+  React.useEffect(() => {
+    const fetchOrganization = async () => {
+      try {
+        const data = await api.organizations.getCurrent();
+        setOrganization(data);
+      } catch (error) {
+        console.error('Error fetching organization:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrganization();
+  }, []);
+
+  const [activeTeam, setActiveTeam] = React.useState(organization?.teams[0]);
+
+  React.useEffect(() => {
+    if (organization?.teams[0]) {
+      setActiveTeam(organization.teams[0]);
+    }
+  }, [organization]);
 
   const handleLogout = async () => {
     try {
@@ -114,6 +133,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       console.error('Logout failed:', error);
     }
   };
+
+  if (loading || !organization) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -131,11 +154,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
-                      {activeTeam.name}
+                      {activeTeam?.name}
                     </span>
-                    {/* <span className="truncate text-xs">
-                      {organization.currentPlan.name}
-                    </span> */}
                   </div>
                   <ChevronsUpDown className="ml-auto" />
                 </SidebarMenuButton>
@@ -149,7 +169,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <DropdownMenuLabel className="text-xs text-muted-foreground">
                   Teams
                 </DropdownMenuLabel>
-                {teams.map((team, index) => (
+                {organization.teams.map((team, index) => (
                   <DropdownMenuItem
                     key={team.name}
                     onClick={() => setActiveTeam(team)}

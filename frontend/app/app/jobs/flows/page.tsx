@@ -5,9 +5,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import { AgentMode } from "@/@types/agent";
-import { mockAgentFlows } from "@/mocks/agents";
+import { api } from "@/lib/api";
 
-export default function FlowsPage() {
+export default async function FlowsPage() {
+  const flows = await api.agents.getAllFlows();
+  
   return (
     <div className="container mx-auto p-6 space-y-8">
       <div className="flex items-center justify-between mb-6">
@@ -23,7 +25,7 @@ export default function FlowsPage() {
       </div>
 
       <div className="grid gap-6">
-        {mockAgentFlows.map((flow) => (
+        {flows.map((flow) => (
           <div
             key={flow.id}
             className="bg-white border rounded-xl shadow-sm p-6 hover:border-blue-500 transition-colors"

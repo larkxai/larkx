@@ -1,16 +1,36 @@
 "use client"
 
+import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { PlusCircle, GitBranch, Users, Clock, Bell, Eye, FileText, Zap, Briefcase, UserPlus } from "lucide-react"
-import { mockJobListings } from "@/mocks/jobListings"
-import { mockCandidates } from "@/mocks/candidates"
+import { api } from "@/lib/api"
 import { formatDistanceToNow } from "date-fns"
+import { JobListing } from "@/@types/jobListings"
+import { Candidate } from "@/@types/candidates"
 
 export default function HomePage() {
-  // Get recent job listings and candidates
-  const recentJobs = mockJobListings.slice(0, 3);
-  const recentCandidates = mockCandidates.slice(0, 3);
+  const [recentJobs, setRecentJobs] = React.useState<JobListing[]>([]);
+  const [recentCandidates, setRecentCandidates] = React.useState<Candidate[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [jobs, candidates] = await Promise.all([
+          api.jobs.getListings(),
+          api.candidates.getAll()
+        ]);
+        setRecentJobs(jobs.slice(0, 3));
+        setRecentCandidates(candidates.slice(0, 3));
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   // Mock notifications data
   const notifications = [
@@ -27,6 +47,10 @@ export default function HomePage() {
       time: "5 hours ago"
     }
   ];
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -198,28 +222,28 @@ export default function HomePage() {
               <div>
                 <h3 className="font-medium mb-2 flex items-center gap-2">
                   <Zap className="h-4 w-4" />
-                  Streamlined Process
+                  Automated Workflows
                 </h3>
-                <p className="text-muted-foreground text-sm">
-                  Automate and organize your entire hiring workflow in one place
+                <p className="text-sm text-muted-foreground">
+                  Streamline your hiring process with customizable workflows and automated tasks.
                 </p>
               </div>
               <div>
                 <h3 className="font-medium mb-2 flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Better Collaboration
+                  Candidate Management
                 </h3>
-                <p className="text-muted-foreground text-sm">
-                  Keep your team aligned with shared workflows and real-time updates
+                <p className="text-sm text-muted-foreground">
+                  Keep track of candidates throughout the hiring process with our intuitive interface.
                 </p>
               </div>
               <div>
                 <h3 className="font-medium mb-2 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Time Saving
+                  Time-Saving Features
                 </h3>
-                <p className="text-muted-foreground text-sm">
-                  Reduce manual tasks and focus on finding the best candidates
+                <p className="text-sm text-muted-foreground">
+                  Reduce manual work and focus on what matters most - finding the right talent.
                 </p>
               </div>
             </div>

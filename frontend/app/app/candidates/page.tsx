@@ -1,40 +1,81 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockCandidates } from "@/mocks/candidates";
 import { formatDistanceToNow } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PlusIcon, X, Search } from "lucide-react";
+import { PlusIcon, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Candidate } from "@/@types/candidates";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { api } from "@/lib/api";
 
 export default function CandidatesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [stageFilter, setStageFilter] = useState<"new" | "screening" | "interviewing" | "offered" | "hired" | "rejected" | "withdrawn" | "all">("all");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredCandidates = mockCandidates.filter((candidate) => {
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      try {
+        setLoading(true);
+        const data = await api.candidates.getAll();
+        setCandidates(data);
+        setError(null);
+      } catch (err) {
+        setError("Failed to fetch candidates. Please try again later.");
+        console.error("Error fetching candidates:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCandidates();
+  }, []);
+
+  const filteredCandidates = candidates.filter((candidate) => {
     const matchesSearch =
       `${candidate.firstName} ${candidate.lastName}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.currentRole.toLowerCase().includes(searchTerm.toLowerCase());
+      (candidate.currentRole?.toLowerCase() || "").includes(searchTerm.toLowerCase());
 
     const matchesStage =
       stageFilter === "all" || candidate.status === stageFilter;
 
     return matchesSearch && matchesStage;
   });
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <p>Loading candidates...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-destructive">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -96,7 +137,7 @@ export default function CandidatesPage() {
                 <Badge
                   variant={
                     candidate.status === "hired"
-                      ? "success"
+                      ? "default"
                       : candidate.status === "rejected"
                       ? "destructive"
                       : candidate.status === "offered"
@@ -171,7 +212,7 @@ export default function CandidatesPage() {
                   <Badge
                     variant={
                       selectedCandidate.status === "hired"
-                        ? "success"
+                        ? "default"
                         : selectedCandidate.status === "rejected"
                         ? "destructive"
                         : selectedCandidate.status === "offered"

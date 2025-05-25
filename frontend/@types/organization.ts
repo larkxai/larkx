@@ -1,12 +1,17 @@
 import { Metadata } from "./common";
 
-export interface Organization extends Metadata {
+export interface Team {
+  id: string;
   name: string;
-  description?: string;
-  industry: string;
-  website: string;
-  teams: {
+  logoUrl?: string;
+}
+
+export interface Organization extends Metadata {
+  id: string;
+  name: string;
+  teams: Team[];
+  currentPlan: {
     name: string;
-    members: string[];
-  }[];
+    features: string[];
+  };
 }
