@@ -79,9 +79,9 @@ const navigation = [
         url: "/app/jobs/requisitions",
       },
       {
-        title: "Workflows",
+        title: "Agents",
         icon: GitBranch,
-        url: "/app/jobs/workflows",
+        url: "/app/jobs/agents",
       },
       {
         title: "Listings",
@@ -93,11 +93,11 @@ const navigation = [
 ];
 
 const secondaryNav = [
-  {
-    title: "Support",
-    icon: LifeBuoy,
-    url: "#",
-  },
+  // {
+  //   title: "Support",
+  //   icon: LifeBuoy,
+  //   url: "#",
+  // },
   {
     title: "Feedback",
     icon: Send,

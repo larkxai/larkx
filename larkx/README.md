@@ -2,22 +2,23 @@
 
 Build a modular, extensible platform where developers and HR teams can create **AI-driven agents** to automate hiring processes. This MVP is built with **Next.js + TypeScript + Prisma**, and focuses on:
 
-- ✅ FormAgent (collecting application data)
-- ✅ ReminderAgent (automated follow-ups)
+- ✅ `FormAgent` (collecting application data)
+- ✅ `ReminderAgent` (automated follow-ups)
 - ✅ Candidate-facing smart link
 - 🧱 Extensible agent system
 - 🧠 Registry + orchestrator logic
+- 📊 Stage tracking (updated by agents)
 
 ---
 
 ## 📦 File Structure (Initial Plan)
 
 /ams-core
-├── /agents # All available agent implementations
+├── /agents
 │ ├── AgentBase.ts # Abstract agent class with lifecycle methods
 │ ├── FormAgent.ts
 │ ├── ReminderAgent.ts
-│ └── SchedulerAgent.ts
+│ └── SchedulerAgent.ts # Optional (future)
 │
 ├── /core
 │ ├── AgentRegistry.ts # Central registry of agent types
@@ -25,6 +26,7 @@ Build a modular, extensible platform where developers and HR teams can create **
 │
 ├── /lib
 │ ├── formRenderer.ts # Utility to render dynamic fields
+│ ├── stage.ts # Stage helper (update + history)
 │ ├── prisma.ts # Prisma client
 │ └── messaging.ts # SendGrid/Twilio integrations
 │
@@ -40,7 +42,6 @@ Build a modular, extensible platform where developers and HR teams can create **
 ├── /types
 │ ├── agent.ts # AgentConfig, AgentContext types
 │ └── job.ts # FormField, Job config
-
 
 
 ---
@@ -81,7 +82,6 @@ export function createAgentInstance(type: string, context: AgentContext): Agent 
   return new AgentClass(context);
 }
 
-🧬 Orchestrator Logic
 // core/AgentOrchestrator.ts
 export class AgentOrchestrator {
   async runNextAgent(candidateId: string) {
@@ -100,10 +100,28 @@ export class AgentOrchestrator {
 
     const agent = createAgentInstance(nextAgent.type, context);
     await agent.onTrigger();
+
     await markAgentComplete(candidateId, nextAgent.id);
+    await updateCandidateStage(candidateId, getNextStageForAgent(nextAgent.type));
   }
 }
 
+// lib/stage.ts
+const STAGE_MAP = {
+  FormAgent: "form_submitted",
+  ReminderAgent: "reminder_sent",
+  SchedulerAgent: "interview_scheduled"
+};
+
+export function getNextStageForAgent(agentType: string): string {
+  return STAGE_MAP[agentType] || "unknown";
+}
+
+export async function updateCandidateStage(candidateId: string, stage: string) {
+  // DB update logic here
+}
+
+🧾 Prisma Schema
 model Job {
   id     String  @id @default(cuid())
   title  String
@@ -120,10 +138,12 @@ model Agent {
 }
 
 model Candidate {
-  id        String @id @default(cuid())
-  jobId     String
-  formData  Json
-  completedAgents String[]
+  id                String   @id @default(cuid())
+  jobId             String
+  formData          Json
+  completedAgents   String[]
+  currentStage      String?
+  createdAt         DateTime @default(now())
 }
 
 📄 Dynamic Form Config (FormAgent)
@@ -182,17 +202,137 @@ export async function POST(req: NextApiRequest, res: NextApiResponse) {
 
  Implement AgentOrchestrator
 
- Add agent config and run logic per job
+ Add getNextStageForAgent() and updateCandidateStage() logic
 
+ API to trigger orchestrator
 
 
 🧠 Post-MVP Ideas
-Visual agent canvas (Figma → production UI)
+Visual agent canvas (Figma → drag-and-drop agent setup)
 
-Agent types: ScreeningAgent, OfferAgent, DocumentAgent
+Conditional logic between agents (score-based routing)
 
-Conditions per agent (score > 80 → continue)
+Agent SDK for external developers
 
-Custom agent SDK for devs
+Agent templates and bundles
 
-Agent marketplace / bundles
+Calendar-aware SchedulerAgent
+
+Real-time agent logs and audit trail
+
+In your architecture, the order of agents for each job is explicitly defined in the Agent model using the order field.
+
+🧭 How the system knows what’s next:
+🔢 Step 1: Agent ordering is defined per job
+In your Agent model:
+
+prisma
+Copy
+Edit
+model Agent {
+  id     String  @id @default(cuid())
+  jobId  String
+  type   String
+  config Json
+  order  Int      // <--- Defines sequence
+}
+When you define agents for a job, you set:
+
+ts
+Copy
+Edit
+[
+  { type: "FormAgent", order: 1 },
+  { type: "ScreeningAgent", order: 2 },
+  { type: "SchedulerAgent", order: 3 }
+]
+🔄 Step 2: The AgentOrchestrator finds the next uncompleted agent with the lowest order
+ts
+Copy
+Edit
+const nextAgent = job.agents
+  .filter(agent => !candidate.completedAgents.includes(agent.id))
+  .sort((a, b) => a.order - b.order)[0];
+That gives you the first agent that hasn’t run yet, in order.
+
+📥 Step 3: When candidate opens their link
+At route: /apply/[candidateId]
+
+Backend loads:
+
+Candidate
+
+Job
+
+Ordered list of agents
+
+Orchestrator determines the next agent to run
+
+That agent renders the form, reminder, etc.
+
+After completion, the agent:
+
+Marks itself as done (candidate.completedAgents.push(agent.id))
+
+Updates candidate stage
+
+The orchestrator is called again to move to the next one
+
+✅ What this means for you:
+You can fully control the pipeline per job just by:
+
+Defining agent types
+
+Setting their order field
+
+Letting the orchestrator do the rest
+
+No hardcoding. No workflow diagrams. Just plug-and-play logic.
+
+## 🖥️ UI Architecture: Agent-Oriented Flow Editor
+
+The AMS UI is designed to support both **linear workflows** (e.g. Form → Screening → Schedule) and **passive agents** (e.g. ReminderAgent, DropoffTrackerAgent).
+
+### 📐 Layout Overview
+
+```
+| Sidebar (Hierarchy) | Canvas (Agent Graph)        | Properties Panel     |
+|---------------------|-----------------------------|----------------------|
+| Job > Agent list    | Drag-and-drop visual flow   | Agent config + logs  |
+```
+
+### 🔹 Left Panel: Hierarchy
+- Lists jobs and their assigned agents
+- Drag to reorder agents (affects execution order)
+- Clicking an agent:
+  - Focuses it on the canvas
+  - Loads its config in Properties
+
+### 🔹 Center Panel: Canvas
+- Displays connected agents by `order` (1 → 2 → 3)
+- Passive agents (e.g. ReminderAgent) appear **detached** with unique markers
+- Clicking an agent opens its config
+- Arrows connect sequential agents
+- Icons or badges indicate:
+  - 🔄 Passive agent
+  - ⚠️ Incomplete config
+  - ✅ Configured
+
+### 🔹 Right Panel: Properties
+- Shows selected agent's metadata:
+  - Type (FormAgent, ReminderAgent, etc.)
+  - Created at, updated at
+  - Trigger type
+  - Version / author (optional)
+- Includes inline config editor:
+  - FormAgent → dynamic field builder
+  - ReminderAgent → delay config
+  - SchedulerAgent → calendar sync
+
+### 💡 Optional Enhancements
+- Stage preview: shows what `stage` each agent sets
+- Simulation: dry-run the flow with dummy data
+- Version control for agent configs
+- Agent run logs: number of triggers, completion %, last run
+
+---

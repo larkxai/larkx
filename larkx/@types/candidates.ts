@@ -54,4 +54,8 @@ export interface Candidate extends Metadata {
   experience: CandidateExperience[];
   notes?: string;
   tags?: string[];
+  jobId?: string;
+  completedAgents?: string[];
+  currentStage?: string;
+  formData?: Record<string, string | boolean | number | null>;
 }
