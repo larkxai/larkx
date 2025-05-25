@@ -53,22 +53,19 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({ agents, onNodeClick }) =
     }));
 
     // Create edges based on order, only for linear agents
-    const newEdges: Edge[] = agents
-      .filter((agent, index) => index > 0 && agent.mode === AgentMode.Linear)
-      .map((agent, index) => {
-        const prevAgent = agents[index - 1];
-        // Only create edge if previous agent is also linear
-        if (prevAgent.mode === AgentMode.Linear) {
-          return {
-            id: `e${index}`,
-            source: prevAgent.id,
-            target: agent.id,
-            type: 'smoothstep' as const,
-          } satisfies Edge;
-        }
-        return null;
-      })
-      .filter((edge): edge is Edge => edge !== null);
+    const newEdges: Edge[] = [];
+    for (let i = 1; i < agents.length; i++) {
+      const currentAgent = agents[i];
+      const prevAgent = agents[i - 1];
+      if (currentAgent.mode === AgentMode.Linear && prevAgent.mode === AgentMode.Linear) {
+        newEdges.push({
+          id: `e${i}`,
+          source: prevAgent.id,
+          target: currentAgent.id,
+          type: 'smoothstep',
+        });
+      }
+    }
 
     setNodes(newNodes);
     setEdges(newEdges);
