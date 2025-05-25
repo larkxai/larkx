@@ -58,11 +58,6 @@ const navigation = [
         icon: Home,
         url: "/app/dashboard",
       },
-      // {
-      //   title: "Reports & KPIs",
-      //   icon: BarChart,
-      //   url: "/app/reports",
-      // },
       {
         title: "Candidates",
         icon: Users,
@@ -73,11 +68,6 @@ const navigation = [
   {
     title: "Jobs",
     items: [
-      // {
-      //   title: "Requisitions",
-      //   icon: FileText,
-      //   url: "/app/jobs/requisitions",
-      // },
       {
         title: "Agent Flows",
         icon: GitBranch,
@@ -143,9 +133,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <span className="truncate font-semibold">
                       {activeTeam.name}
                     </span>
-                    <span className="truncate text-xs">
+                    {/* <span className="truncate text-xs">
                       {organization.currentPlan.name}
-                    </span>
+                    </span> */}
                   </div>
                   <ChevronsUpDown className="ml-auto" />
                 </SidebarMenuButton>

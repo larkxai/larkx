@@ -2,9 +2,16 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, GitBranch, Users, Clock, Bell, Eye, FileText, Zap } from "lucide-react"
+import { PlusCircle, GitBranch, Users, Clock, Bell, Eye, FileText, Zap, Briefcase, UserPlus } from "lucide-react"
+import { mockJobListings } from "@/mocks/jobListings"
+import { mockCandidates } from "@/mocks/candidates"
+import { formatDistanceToNow } from "date-fns"
 
 export default function HomePage() {
+  // Get recent job listings and candidates
+  const recentJobs = mockJobListings.slice(0, 3);
+  const recentCandidates = mockCandidates.slice(0, 3);
+
   // Mock notifications data
   const notifications = [
     {
@@ -78,6 +85,78 @@ export default function HomePage() {
                   <Eye className="mr-2 h-4 w-4" />
                   View Posts
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                Recent Job Listings
+              </CardTitle>
+              <CardDescription>Latest job openings in your organization</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentJobs.map((job) => (
+                  <div key={job.id} className="flex items-start gap-4 p-3 rounded-lg hover:bg-accent">
+                    <div className="flex-1">
+                      <h3 className="font-medium">{job.title}</h3>
+                      <p className="text-muted-foreground text-sm">{job.department}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          {job.views} views
+                        </span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground">
+                          {job.applications} applications
+                        </span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Recent Candidates
+              </CardTitle>
+              <CardDescription>Latest candidates in your pipeline</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentCandidates.map((candidate) => (
+                  <div key={candidate.id} className="flex items-start gap-4 p-3 rounded-lg hover:bg-accent">
+                    <div className="flex-1">
+                      <h3 className="font-medium">
+                        {candidate.firstName} {candidate.lastName}
+                      </h3>
+                      <p className="text-muted-foreground text-sm">{candidate.currentRole}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          {candidate.status}
+                        </span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground">
+                          Updated {formatDistanceToNow(new Date(candidate.updatedAt))} ago
+                        </span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
