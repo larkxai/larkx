@@ -75,7 +75,7 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({ agents, onNodeClick, sel
   }, [agents, selectedAgentId]);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -84,6 +84,7 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({ agents, onNodeClick, sel
         nodeTypes={nodeTypes}
         onNodeClick={(_, node) => onNodeClick?.(node.data)}
         fitView
+        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
       >
         <Background />
         <Controls />

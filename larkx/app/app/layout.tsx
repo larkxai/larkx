@@ -13,6 +13,8 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
+import { Save, Play } from "lucide-react"
 
 export default function AppLayout({
   children,
@@ -33,6 +35,14 @@ export default function AppLayout({
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" size="icon" aria-label="Save">
+              <Save />
+            </Button>
+            <Button variant="outline" size="icon" aria-label="Run">
+              <Play className="text-green-600" />
+            </Button>
+          </div>
         </header>
         <main className="flex-1">{children}</main>
       </SidebarInset>
