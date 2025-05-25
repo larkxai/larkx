@@ -75,7 +75,7 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({ agents, onNodeClick, sel
   }, [agents, selectedAgentId]);
 
   return (
-    <div className="w-full h-[600px]">
+    <div className="w-full h-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
