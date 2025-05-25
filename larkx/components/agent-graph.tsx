@@ -23,7 +23,7 @@ interface AgentGraphProps {
 }
 
 const AgentNode: React.FC<NodeProps<Agent>> = ({ data, selected }) => {
-  const { name } = data;
+  const { name, type } = data;
   return (
     <div className={`p-4 rounded-lg border-2 transition-colors duration-150 ${
       selected ? 'border-blue-600 bg-blue-50' : 'border-gray-300 bg-white'
@@ -34,6 +34,7 @@ const AgentNode: React.FC<NodeProps<Agent>> = ({ data, selected }) => {
         className="w-3 h-3 bg-gray-400"
       />
       <div className="font-semibold">{name}</div>
+      <div className="text-gray-500 text-sm">{type}</div>
       <Handle
         type="source"
         position={Position.Right}
