@@ -3,7 +3,6 @@
 import { Card } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { useState, useEffect } from "react";
-import { mockJobListings } from "@/mocks/jobListings";
 import { JobListing } from "@/@types/jobListings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,15 +22,24 @@ export default function PublishingPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
-    setIsLoading(true);
-    try {
-      setJobs(mockJobListings);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load job listings");
-    } finally {
-      setIsLoading(false);
-    }
+    const fetchJobs = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('http://localhost:3000/jobs/listings');
+        if (!response.ok) {
+          throw new Error('Failed to fetch job listings');
+        }
+        const data = await response.json();
+        setJobs(data);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load job listings");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchJobs();
   }, []);
 
   const filteredJobs = jobs
@@ -191,10 +199,10 @@ export default function PublishingPage() {
                       <Badge
                         variant={
                           job.status === "active"
-                            ? "success"
+                            ? "default"
                             : job.status === "paused"
-                            ? "warning"
-                            : "secondary"
+                            ? "secondary"
+                            : "outline"
                         }
                       >
                         {job.status}

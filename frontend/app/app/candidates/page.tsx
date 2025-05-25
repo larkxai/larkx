@@ -84,10 +84,10 @@ export default function CandidatesPage() {
           <h1 className="text-2xl font-bold">Candidates</h1>
           <p className="text-muted-foreground">Track and manage your candidates</p>
         </div>
-        <Button className="flex items-center gap-2">
+        {/* <Button className="flex items-center gap-2">
           <PlusIcon className="w-4 h-4" />
           New Candidate
-        </Button>
+        </Button> */}
       </div>
 
       <div className="flex gap-4 mb-6">
