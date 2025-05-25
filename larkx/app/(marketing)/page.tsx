@@ -17,36 +17,54 @@ import {
   Lock,
   Code,
 } from "lucide-react";
-import Link from "next/link";
+import { useAuthStore } from "@/lib/store/auth";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
   const messages = [
     {
       type: "user",
-      text: "Hey Larkx, help me hire delivery drivers.",
+      text: "I need to hire a senior frontend developer. Can you help set up the hiring process?",
       delay: 0.2,
     },
     {
       type: "ai",
-      text: "I&apos;ll help you create a hiring workflow. What requirements should we check for candidates?",
+      text: "I'll help you set up the FormAgent to collect applications. What information should we gather from candidates?",
       delay: 0.4,
     },
     {
       type: "user",
-      text: "We need to check their driver's license and experience. Must have 3+ years of experience.",
+      text: "We need their experience, React skills, and portfolio. Also, they should have 5+ years of experience.",
       delay: 0.6,
     },
     {
       type: "ai",
-      text: "I&apos;ve added license and experience checks to the workflow. What should we do with qualified candidates?",
+      text: "I've configured the FormAgent with those requirements. The ReminderAgent will automatically follow up with candidates who haven't completed their application within 48 hours.",
       delay: 0.8,
     },
     {
       type: "user",
-      text: "For qualified candidates, schedule interviews. If they pass, do background check. If background check passes, send offer.",
+      text: "Great! Can you also set up automated screening?",
       delay: 1.0,
     },
+    {
+      type: "ai",
+      text: "I'll add a ScreeningAgent that evaluates candidates based on your criteria. It will automatically rank applications and notify you of the best matches.",
+      delay: 1.2,
+    },
   ];
+
+  const user = useAuthStore((state) => state.user);
+  const router = useRouter();
+
+  const handleCTAClick = (e) => {
+    e.preventDefault();
+    if (user) {
+      router.push("/app/dashboard");
+    } else {
+      router.push("/login");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
@@ -97,16 +115,15 @@ export default function HomePage() {
           </span>
           <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 sm:mb-8 leading-[1.2] bg-gradient-to-br from-gray-900 via-gray-700 to-gray-800 dark:from-white dark:via-gray-200 dark:to-gray-300 bg-clip-text text-transparent">
             <span className="bg-gradient-to-r from-primary via-purple-500 to-purple-600 dark:from-primary dark:via-purple-400 dark:to-purple-500 bg-clip-text inline-block mt-3 sm:mt-4 animate-gradient">
-              AI Agent for Hiring Automation
+              AI Agents for Smart Hiring
             </span>
             <span className="inline-block mt-4 sm:mt-5 text-3xl sm:text-4xl lg:text-5xl bg-gradient-to-br from-gray-800 to-gray-900 dark:from-gray-100 dark:to-gray-200 bg-clip-text">
-              No Technical Skills Required
+              Modular & Extensible Platform
             </span>
           </h1>
           <p className="text-lg sm:text-xl lg:text-2xl text-muted-foreground/90 max-w-2xl mb-10 sm:mb-14 px-4 leading-relaxed font-medium">
             <span className="inline-block w-full animate-typing-text">
-              Simply chat with our AI Agent and it automates recruitment tasks
-              instantly.
+              Create intelligent hiring agents that work proactively, adapt to your needs, and learn from every interaction.
             </span>
           </p>
           <div className="flex flex-col items-center w-full mb-8 sm:mb-12">
@@ -172,18 +189,18 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Right Side - Graph */}
+                {/* Right Side - Agent System Visualization */}
                 <div className="p-8 sm:p-10 border border-slate-200 dark:border-slate-700 rounded-3xl bg-white/50 dark:bg-slate-900/50 overflow-hidden">
                   <div className="relative h-full">
                     <div className="transform-gpu">
-                      {/* Initial Node */}
+                      {/* FormAgent Node */}
                       <div className="relative flex flex-col items-center">
                         <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
                           <div className="text-sm sm:text-base font-medium mb-2">
-                            Application Form
+                            FormAgent
                           </div>
                           <div className="text-sm text-slate-500 dark:text-slate-400">
-                            Contact Info • Driver&apos;s License • Experience
+                            Collects & Validates Applications
                           </div>
                         </div>
 
@@ -191,14 +208,14 @@ export default function HomePage() {
                         <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
                       </div>
 
-                      {/* Screening Node */}
+                      {/* ReminderAgent Node */}
                       <div className="relative flex flex-col items-center">
                         <div className="w-72 p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80">
                           <div className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mb-1 font-medium">
-                            Conditions
+                            ReminderAgent
                           </div>
                           <div className="text-sm sm:text-base">
-                            driver&apos;s license AND experience &gt; 3 years
+                            Proactive Follow-ups & Engagement
                           </div>
                         </div>
 
@@ -209,19 +226,19 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Interview and Background Check Nodes */}
+                      {/* Screening and Evaluation Nodes */}
                       <div className="grid grid-cols-2 gap-16 mt-4">
-                        {/* Left Branch - Qualified */}
+                        {/* Left Branch - Active Screening */}
                         <div className="flex flex-col items-center">
                           <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
-                            Interview Slot Selection
+                            ScreeningAgent
                           </div>
 
                           {/* Connecting Line */}
                           <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
 
                           <div className="w-64 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
-                            Interview Result
+                            Smart Evaluation
                           </div>
 
                           {/* Split Lines */}
@@ -230,67 +247,67 @@ export default function HomePage() {
                             <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
                           </div>
 
-                          {/* Interview Results Split */}
+                          {/* Evaluation Results */}
                           <div className="grid grid-cols-2 gap-8 w-full">
                             <div className="flex flex-col items-center">
                               <div className="w-full p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
                                 <div className="text-sm text-emerald-600 dark:text-emerald-400">
-                                  Passed
+                                  Qualified
                                 </div>
                                 <div className="text-sm">
-                                  Continue to Background
+                                  Auto-schedule Interview
                                 </div>
                               </div>
 
-                              {/* Continue to Background Check */}
+                              {/* Continue to Interview */}
                               <div className="h-12 w-px bg-slate-200/70 dark:bg-slate-700/70 my-4"></div>
 
                               <div className="w-full p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm ring-1 ring-slate-100/80 dark:ring-slate-800/80 text-center">
-                                Background Check
+                                InterviewAgent
                               </div>
 
-                              {/* Split Lines for Background */}
+                              {/* Split Lines for Interview */}
                               <div className="relative h-16 w-full mt-4">
                                 <div className="absolute left-1/2 h-full w-px border-l border-slate-200/70 dark:border-slate-700/70 border-dashed transform -translate-x-1/2"></div>
                                 <div className="absolute top-1/2 left-1/4 right-1/4 h-px border-t border-slate-200/70 dark:border-slate-700/70 border-dashed"></div>
                               </div>
 
-                              {/* Background Results */}
+                              {/* Interview Results */}
                               <div className="grid grid-cols-2 gap-4 w-full">
-                                <div className="p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center">
-                                  <div className="text-sm text-emerald-600 dark:text-emerald-400">
-                                    Passed
+                                <div className="flex flex-col items-center">
+                                  <div className="w-full p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-800/50 text-center flex flex-col items-center">
+                                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-1">Passed</span>
+                                    <span className="text-sm font-medium">OfferAgent Activated</span>
                                   </div>
-                                  <div className="text-sm">Send Offer</div>
                                 </div>
-                                <div className="p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
-                                  <div className="text-sm text-rose-600 dark:text-rose-400">
-                                    Failed
+                                <div className="flex flex-col items-center">
+                                  <div className="w-full p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center flex flex-col items-center">
+                                    <span className="text-sm font-semibold text-rose-600 dark:text-rose-400 mb-1">Not a Fit</span>
+                                    <span className="text-sm font-medium">Auto-rejection</span>
                                   </div>
-                                  <div className="text-sm">Send Rejection</div>
                                 </div>
                               </div>
                             </div>
 
-                            {/* Failed Interview */}
+                            {/* Not Qualified */}
                             <div className="flex flex-col items-center">
                               <div className="w-full p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
                                 <div className="text-sm text-rose-600 dark:text-rose-400">
-                                  Failed
+                                  Not Qualified
                                 </div>
-                                <div className="text-sm">Send Rejection</div>
+                                <div className="text-sm">Auto-rejection</div>
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Right Branch - Not Qualified */}
+                        {/* Right Branch - Continuous Learning */}
                         <div className="flex flex-col items-center">
-                          <div className="w-64 p-4 bg-rose-50/50 dark:bg-rose-900/20 rounded-xl shadow-sm ring-1 ring-rose-100 dark:ring-rose-800/50 text-center">
-                            <div className="text-sm text-rose-600 dark:text-rose-400">
-                              Not Qualified
+                          <div className="w-64 p-4 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl shadow-sm ring-1 ring-blue-100 dark:ring-blue-800/50 text-center">
+                            <div className="text-sm text-blue-600 dark:text-blue-400">
+                              LearningAgent
                             </div>
-                            <div className="text-sm">Send Rejection</div>
+                            <div className="text-sm">Improves with Every Interaction</div>
                           </div>
                         </div>
                       </div>
@@ -406,20 +423,12 @@ export default function HomePage() {
             }
           `}</style>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 w-full max-w-md px-4">
-            <Link href="/app/dashboard" className="w-full">
-              <Button
-                size="lg"
-                className="w-full bg-primary hover:bg-primary/90 text-white px-6 sm:px-8 h-12 text-base shadow-lg shadow-primary/25"
-              >
-                Talk to Your AI Agent
-              </Button>
-            </Link>
             <Button
               size="lg"
-              variant="outline"
-              className="w-full border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 h-12 px-6 sm:px-8 text-base"
+              className="w-full font-semibold"
+              onClick={handleCTAClick}
             >
-              Watch Demo
+              Talk to Your AI Agent
             </Button>
           </div>
         </div>
@@ -443,30 +452,28 @@ export default function HomePage() {
               Transform Your Hiring Process
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Traditional hiring is slow, manual, and prone to candidate
-              drop-off. Our AI agent automates the entire process, making it
-              faster, more efficient, and candidate-friendly.
+              Traditional hiring is slow and manual. Our intelligent agents work proactively to find, screen, and engage the best candidates.
             </p>
             <div className="grid sm:grid-cols-3 gap-8">
               <div className="flex flex-col items-center p-6 rounded-lg bg-white dark:bg-slate-800 shadow-sm">
                 <Clock className="w-8 h-8 text-primary mb-4" />
-                <h3 className="font-semibold mb-2">Save Time</h3>
+                <h3 className="font-semibold mb-2">Proactive Agents</h3>
                 <p className="text-sm text-muted-foreground">
-                  Reduce hiring time by 70%
+                  Agents work independently to find and engage candidates
                 </p>
               </div>
               <div className="flex flex-col items-center p-6 rounded-lg bg-white dark:bg-slate-800 shadow-sm">
                 <Users className="w-8 h-8 text-primary mb-4" />
-                <h3 className="font-semibold mb-2">Better Candidates</h3>
+                <h3 className="font-semibold mb-2">Smart Screening</h3>
                 <p className="text-sm text-muted-foreground">
-                  2x qualified candidate rate
+                  AI-powered evaluation of candidates
                 </p>
               </div>
               <div className="flex flex-col items-center p-6 rounded-lg bg-white dark:bg-slate-800 shadow-sm">
                 <Zap className="w-8 h-8 text-primary mb-4" />
-                <h3 className="font-semibold mb-2">Instant Response</h3>
+                <h3 className="font-semibold mb-2">Adaptive Learning</h3>
                 <p className="text-sm text-muted-foreground">
-                  24/7 candidate engagement
+                  Agents improve with every interaction
                 </p>
               </div>
             </div>
@@ -478,42 +485,17 @@ export default function HomePage() {
       <section className="py-24">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl sm:text-4xl font-bold text-center mb-16">
-            Why Choose Larkx
+            Powerful Agent System
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             <Card className="border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl shadow-xl">
               <CardHeader>
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Zap className="w-6 h-6 text-primary" />
+                  <Code className="w-6 h-6 text-primary" />
                 </div>
-                <CardTitle className="text-xl mb-2">Always Available</CardTitle>
+                <CardTitle className="text-xl mb-2">FormAgent</CardTitle>
                 <CardDescription className="text-base">
-                  Your AI agent works round the clock, responding to candidates
-                  instantly
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card className="border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl shadow-xl">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Shield className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle className="text-xl mb-2">Smart Decisions</CardTitle>
-                <CardDescription className="text-base">
-                  Intelligently screens and ranks candidates based on your
-                  requirements
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card className="border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl shadow-xl">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle className="text-xl mb-2">Personal Touch</CardTitle>
-                <CardDescription className="text-base">
-                  Sends personalized communications and handles candidate
-                  queries
+                  Collect and validate candidate information with dynamic forms
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -522,9 +504,20 @@ export default function HomePage() {
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Clock className="w-6 h-6 text-primary" />
                 </div>
-                <CardTitle className="text-xl mb-2">Lightning Fast</CardTitle>
+                <CardTitle className="text-xl mb-2">ReminderAgent</CardTitle>
                 <CardDescription className="text-base">
-                  Completes hiring workflows in hours instead of weeks
+                  Automated follow-ups and engagement with candidates
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card className="border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl shadow-xl">
+              <CardHeader>
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Shield className="w-6 h-6 text-primary" />
+                </div>
+                <CardTitle className="text-xl mb-2">AgentOrchestrator</CardTitle>
+                <CardDescription className="text-base">
+                  Smart coordination between agents for seamless hiring
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -582,20 +575,20 @@ export default function HomePage() {
               <div className="space-y-12">
                 {[
                   {
-                    title: "Describe Your Needs",
-                    desc: "Tell your AI agent what you're looking for in natural language",
+                    title: "Configure Agents",
+                    desc: "Set up FormAgent, ReminderAgent, and other specialized agents",
                   },
                   {
-                    title: "AI Creates Workflow",
-                    desc: "Watch as complex hiring workflows are created instantly",
+                    title: "Agent Registry",
+                    desc: "Register and manage your custom agents in the central registry",
                   },
                   {
-                    title: "Automated Processing",
-                    desc: "Let AI handle screening, scheduling, and communication",
+                    title: "Smart Orchestration",
+                    desc: "Let the AgentOrchestrator manage the flow between agents",
                   },
                   {
-                    title: "Focus on Best Candidates",
-                    desc: "Interview only the most qualified candidates",
+                    title: "Extensible Platform",
+                    desc: "Build and integrate your own custom agents as needed",
                   },
                 ].map((step, i) => (
                   <div key={i} className="relative flex gap-8">
@@ -676,6 +669,115 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Why Choose Agent-Based Hiring? */}
+      <section className="py-24 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-16">
+            Why Choose Agent-Based Hiring?
+          </h2>
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-primary mb-4">Agent Management System</h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Proactive Agents</p>
+                    <p className="text-sm text-muted-foreground">Agents act independently and make smart decisions</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Modular & Flexible</p>
+                    <p className="text-sm text-muted-foreground">Add or swap agents without rebuilding workflows</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Smart Interactions</p>
+                    <p className="text-sm text-muted-foreground">AI-powered chat, voice, and natural language processing</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Self-Optimizing</p>
+                    <p className="text-sm text-muted-foreground">Agents learn and adapt from every interaction</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-slate-400 mb-4">Traditional Workflows</h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Passive Steps</p>
+                    <p className="text-sm text-muted-foreground">Steps wait for manual input or triggers</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Rigid Structure</p>
+                    <p className="text-sm text-muted-foreground">Flows must be rebuilt for any change</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Limited Interaction</p>
+                    <p className="text-sm text-muted-foreground">Forms and scripted flows only</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Static Logic</p>
+                    <p className="text-sm text-muted-foreground">No learning or adaptation over time</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="relative py-24 overflow-hidden dark:bg-slate-900/50">
         <div className="absolute inset-0 bg-grid-slate-200/20 dark:bg-grid-slate-800/20 [mask-image:linear-gradient(0deg,transparent,black)]" />
@@ -721,16 +823,10 @@ export default function HomePage() {
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 w-full max-w-md px-4">
                     <Button
                       size="lg"
-                      className="w-full bg-primary hover:bg-primary/90 text-white px-6 sm:px-8 h-12 text-base font-medium shadow-lg shadow-primary/25 rounded-full"
+                      className="w-full font-semibold"
+                      onClick={handleCTAClick}
                     >
                       Start Free Trial
-                    </Button>
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="w-full border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 h-12 px-6 sm:px-8 text-base rounded-full"
-                    >
-                      Schedule Demo
                     </Button>
                   </div>
                 </div>

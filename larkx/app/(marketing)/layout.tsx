@@ -38,7 +38,7 @@ export default function MarketingLayout({
               <Button variant="ghost">Login</Button>
             </Link>
             <Link href="/app/dashboard">
-              <Button>Get Started</Button>
+              <Button className="font-semibold">Get Started</Button>
             </Link>
           </div>
         </div>
