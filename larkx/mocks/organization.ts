@@ -21,16 +21,13 @@ const frontendTeamPermissions: Permission[] = [
     resource: "candidate",
     action: "read",
     conditions: {
-      workflowSteps: ["technical_assessment", "team_interview"],
       departmentId: ["dept-001"],
     },
   },
   {
     resource: "interview",
     action: "schedule",
-    conditions: {
-      workflowSteps: ["technical_interview", "pair_programming"],
-    },
+    conditions: {},
   },
 ];
 
@@ -39,16 +36,13 @@ const backendTeamPermissions: Permission[] = [
     resource: "candidate",
     action: "read",
     conditions: {
-      workflowSteps: ["system_design", "coding_challenge"],
       departmentId: ["dept-001"],
     },
   },
   {
     resource: "interview",
     action: "schedule",
-    conditions: {
-      workflowSteps: ["technical_interview", "architecture_review"],
-    },
+    conditions: {},
   },
 ];
 
@@ -57,16 +51,13 @@ const productTeamPermissions: Permission[] = [
     resource: "candidate",
     action: "read",
     conditions: {
-      workflowSteps: ["product_exercise", "stakeholder_interview"],
       departmentId: ["dept-002"],
     },
   },
   {
     resource: "interview",
     action: "schedule",
-    conditions: {
-      workflowSteps: ["product_presentation", "case_study"],
-    },
+    conditions: {},
   },
 ];
 
@@ -147,7 +138,6 @@ export const mockTeamPermissions: TeamPermission[] = [
         resource: "candidate",
         action: "read",
         conditions: {
-          workflowSteps: ["qa_assessment", "automation_test"],
           departmentId: ["dept-001"],
         },
       },

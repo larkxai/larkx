@@ -265,15 +265,5 @@ export const mockCandidates: Candidate[] = [
     isDeleted: false,
     createdAt: "2024-02-15T00:00:00Z",
     updatedAt: "2024-03-14T00:00:00Z",
-  },
-  {
-    id: "c1",
-    jobId: "job-1",
-    completedAgents: ["a1"],
-    currentStage: "form_submitted",
-    formData: {
-      fullName: "Jane Doe",
-      hasLicense: true
-    }
   }
 ];

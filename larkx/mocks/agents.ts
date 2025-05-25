@@ -1,26 +1,3 @@
-export interface Job {
-  id: string;
-  title: string;
-  agents: Agent[];
-}
-
-export interface Agent {
-  id: string;
-  type: string;
-  order: number;
-  config: Record<string, unknown>;
-  isPassive?: boolean;
-}
-
-export interface Candidate {
-  id: string;
-  jobId: string;
-  formData: Record<string, unknown>;
-  completedAgents: string[];
-  currentStage: string;
-  createdAt: Date;
-}
-
 export const mockJobs: Job[] = [
   {
     id: 'job1',

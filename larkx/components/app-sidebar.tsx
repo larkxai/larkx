@@ -58,11 +58,11 @@ const navigation = [
         icon: Home,
         url: "/app/dashboard",
       },
-      {
-        title: "Reports & KPIs",
-        icon: BarChart,
-        url: "/app/reports",
-      },
+      // {
+      //   title: "Reports & KPIs",
+      //   icon: BarChart,
+      //   url: "/app/reports",
+      // },
       {
         title: "Candidates",
         icon: Users,
@@ -73,11 +73,11 @@ const navigation = [
   {
     title: "Jobs",
     items: [
-      {
-        title: "Requisitions",
-        icon: FileText,
-        url: "/app/jobs/requisitions",
-      },
+      // {
+      //   title: "Requisitions",
+      //   icon: FileText,
+      //   url: "/app/jobs/requisitions",
+      // },
       {
         title: "Agents",
         icon: GitBranch,
@@ -265,18 +265,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 sideOffset={4}
               >
                 <DropdownMenuGroup>
-                  <DropdownMenuItem>
+                  {/* <DropdownMenuItem>
                     <BadgeCheck className="mr-2" />
                     Account
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  </DropdownMenuItem> */}
+                  {/* <DropdownMenuItem>
                     <CreditCard className="mr-2" />
                     Billing
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Bell className="mr-2" />
                     Notifications
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>

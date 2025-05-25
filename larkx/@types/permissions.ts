@@ -1,5 +1,3 @@
-import { WorkflowActionType, WorkflowTrigger } from "./workflow";
-
 export type ResourceType =
   | "job"
   | "candidate"
@@ -24,8 +22,5 @@ export interface Permission {
     departmentId?: string[];
     jobId?: string[];
     ownOnly?: boolean;
-    workflowSteps?: string[]; // Reference to WorkflowStep ids
-    workflowActions?: WorkflowActionType[]; // Specific actions they can execute
-    workflowTriggers?: WorkflowTrigger[]; // Specific triggers they can handle
   };
 }

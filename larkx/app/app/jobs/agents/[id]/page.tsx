@@ -3,7 +3,7 @@
 import React from 'react';
 import { AgentGraph } from '@/components/agent-graph';
 import { AgentConfigPanel } from '@/components/agent-config-panel';
-import { mockJobs, type Job, type Agent } from '@/lib/mock-data';
+import { mockJobs, type Job, type Agent } from '@/mocks/agents';
 import { Button } from '@/components/ui/button';
 
 export default function AgentEditorPage({ params }: { params: { id: string } }) {

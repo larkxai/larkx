@@ -1,18 +1,22 @@
 "use client";
 
 import React from 'react';
-import { mockJobs } from '@/lib/mock-data';
+import { mockJobs } from '@/mocks/agents';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { PlusIcon } from 'lucide-react';
 
 export default function AgentsPage() {
   return (
     <div className="container mx-auto p-6 space-y-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Agent Management</h1>
+        <h1 className="text-2xl font-bold">Agents</h1>
         <Button asChild>
           <Link href="/app/jobs/requisitions/new">
-            Create New Job
+            <div className="flex items-center gap-2">
+              <PlusIcon className="w-4 h-4" />
+              Create
+            </div>
           </Link>
         </Button>
       </div>
