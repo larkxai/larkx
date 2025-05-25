@@ -79,9 +79,9 @@ const navigation = [
       //   url: "/app/jobs/requisitions",
       // },
       {
-        title: "Agents",
+        title: "Agent Flows",
         icon: GitBranch,
-        url: "/app/jobs/agents",
+        url: "/app/jobs/flows",
       },
       {
         title: "Listings",

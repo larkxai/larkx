@@ -1,4 +1,4 @@
-import { Agent, AgentFlow, AgentMode, Job } from '../@types/agent';
+import { Agent, AgentFlow, AgentMode } from '../@types/agent';
 
 export const mockAgentFlows: AgentFlow[] = [
   {
@@ -63,21 +63,6 @@ export const mockAgentFlows: AgentFlow[] = [
         },
       } as Agent,
     ],
-  },
-];
-
-export const mockJobs: Job[] = [
-  {
-    id: 'job1',
-    title: 'Software Engineer',
-    flowId: 'flow1',
-    flow: mockAgentFlows[0],
-  },
-  {
-    id: 'job2',
-    title: 'Product Manager',
-    flowId: 'flow2',
-    flow: mockAgentFlows[1],
   },
 ];
 
