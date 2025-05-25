@@ -1,3 +1,4 @@
+import { AgentFlow } from "./agent";
 import { Metadata, ID, ISODateString } from "./common";
 import { JobRole } from "./jobRole";
 
@@ -47,6 +48,8 @@ export interface JobListing extends Metadata {
   views: number;
   applications: number;
   publishedDate?: ISODateString;
+  agentFlowId: ID;
+  agentFlow: AgentFlow;
   isActive: boolean;
   isDeleted: boolean;
 }

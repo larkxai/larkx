@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus } from "lucide-react";
+import { api } from '@/lib/api';
 
 export default function PublishingPage() {
   const [jobs, setJobs] = useState<JobListing[]>([]);
@@ -25,11 +26,7 @@ export default function PublishingPage() {
     const fetchJobs = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('http://localhost:3000/jobs/listings');
-        if (!response.ok) {
-          throw new Error('Failed to fetch job listings');
-        }
-        const data = await response.json();
+        const data = await api.jobs.getListings();
         setJobs(data);
       } catch (err) {
         console.error(err);

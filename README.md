@@ -16,6 +16,7 @@ This MVP is built with **Next.js + TypeScript + Prisma**, and supports:
 ## 🧱 File Structure
 
 ```
+---backend
 /ams-core
 ├── /sdk                     # 🟢 Public Agent SDK for external developers
 │   ├── AgentBase.ts         # Agent lifecycle: onInit, onTrigger, onComplete

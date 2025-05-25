@@ -1,3 +1,5 @@
+import { api } from '@/lib/api';
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -42,17 +44,7 @@ export const authApi = {
       throw new Error('Invalid credentials');
     }
 
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials),
-    });
-
-    if (!response.ok) {
-      throw new Error('Invalid credentials');
-    }
-
-    return response.json();
+    return api.auth.login(credentials);
   },
 
   logout: async (): Promise<void> => {
@@ -62,15 +54,14 @@ export const authApi = {
     }
 
     const token = getAuthToken();
-    const response = await fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to logout');
+    if (!token) {
+      throw new Error('No auth token found');
     }
+    
+    await api.auth.logout(token);
   },
+};
+
+export const login = async (credentials: { email: string; password: string }) => {
+  return api.auth.login(credentials);
 }; 
