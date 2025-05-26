@@ -79,13 +79,14 @@ export const api = {
   agent: {
     trigger: async (params: { 
       candidateId: string; 
-      jobId: string; 
+      flowId: string; 
       message?: string;
       agentId: string;
       agentType: string;
       formData?: Record<string, string>;
+      history?: any[];
     }) => {
-      const response = await fetch(`${API_BASE_URL}/api/agent/trigger`, {
+      const response = await fetch(`${API_BASE_URL}/api/agents/trigger`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

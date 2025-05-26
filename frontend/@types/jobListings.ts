@@ -49,7 +49,6 @@ export interface JobListing extends Metadata {
   applications: number;
   publishedDate?: ISODateString;
   agentFlowId: ID;
-  agentFlow: AgentFlow;
   isActive: boolean;
   isDeleted: boolean;
 }

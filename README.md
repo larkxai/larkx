@@ -43,7 +43,7 @@ This MVP is built with **Next.js + TypeScript + Prisma**, and supports:
 │   └── /apply/[candidateId].tsx  # Candidate-facing dynamic page
 
 ├── /api
-│   └── /agent/trigger.ts    # Trigger agent run manually or externally
+│   └── /agents/trigger.ts    # Trigger agent run manually or externally
 
 ├── /prisma
 │   └── schema.prisma        # Data models

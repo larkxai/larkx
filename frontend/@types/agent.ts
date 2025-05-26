@@ -36,7 +36,7 @@ export type Agent = BaseAgent & (
 export interface AgentFlow {
   id: string;
   name: string;
-  description?: string;
+  description: string;
   createdBy: string;
   isTemplate: boolean;
   version: number;
