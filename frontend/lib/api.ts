@@ -77,6 +77,15 @@ export const api = {
       }
       return response.json();
     },
+    createListing: async (data: Partial<JobListing>): Promise<JobListing> => {
+      const response = await fetch(`${API_BASE_URL}/api/jobs/listings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to create job listing');
+      return response.json();
+    },
   },
   candidates: {
     getAll: async (): Promise<Candidate[]> => {

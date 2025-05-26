@@ -118,7 +118,7 @@ export default function CandidatesPage() {
       </div>
 
       <div className="grid gap-4">
-        {filteredCandidates.map((candidate) => (
+        {filteredCandidates.map((candidate, index) => (
           <Card
             key={candidate.id}
             className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -128,7 +128,9 @@ export default function CandidatesPage() {
               <CardTitle className="flex justify-between items-center">
                 <div>
                   <span className="font-medium">
-                    {candidate.firstName} {candidate.lastName}
+                    {candidate.firstName && candidate.lastName 
+                      ? `${candidate.firstName} ${candidate.lastName}`
+                      : `Candidate #${index + 1}`}
                   </span>
                   <span className="text-sm text-muted-foreground ml-4">
                     {candidate.currentRole}
@@ -186,7 +188,9 @@ export default function CandidatesPage() {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
                   <h3 className="font-semibold text-lg">
-                    {selectedCandidate.firstName} {selectedCandidate.lastName}
+                    {selectedCandidate.firstName && selectedCandidate.lastName 
+                      ? `${selectedCandidate.firstName} ${selectedCandidate.lastName}`
+                      : `Candidate #${candidates.findIndex(c => c.id === selectedCandidate.id) + 1}`}
                   </h3>
                   <p className="text-muted-foreground">
                     {selectedCandidate.email}

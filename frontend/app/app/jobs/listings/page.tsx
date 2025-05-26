@@ -8,19 +8,32 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Copy } from "lucide-react";
 import { api } from '@/lib/api';
+import { AgentFlow } from "@/@types/agent";
 
 export default function PublishingPage() {
   const [jobs, setJobs] = useState<JobListing[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortColumn, setSortColumn] = useState<keyof JobListing | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  // Modal state for new job
+  const [showModal, setShowModal] = useState(false);
+  const [agentFlows, setAgentFlows] = useState<AgentFlow[]>([]);
+  const [newJob, setNewJob] = useState({
+    title: "",
+    department: "",
+    location: "",
+    agentFlowId: "",
+    platform: { id: "website", name: "Website" },
+  });
+  const [creating, setCreating] = useState(false);
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -35,29 +48,31 @@ export default function PublishingPage() {
         setIsLoading(false);
       }
     };
-
     fetchJobs();
   }, []);
+
+  useEffect(() => {
+    if (showModal) {
+      api.agents.getAllFlows().then(setAgentFlows);
+    }
+  }, [showModal]);
 
   const filteredJobs = jobs
     .filter((job) => 
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.department.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .filter((job) => platformFilter === "all" || job.platform.id === platformFilter)
+    .filter((job) => platformFilter === "all" || (job.platform && typeof job.platform === 'object' ? job.platform.id : job.platform) === platformFilter)
     .filter((job) => statusFilter === "all" || job.status === statusFilter)
     .sort((a, b) => {
       if (!sortColumn) return 0;
-
       const aValue = a[sortColumn];
       const bValue = b[sortColumn];
-
       if (typeof aValue === "string" && typeof bValue === "string") {
         return sortDirection === "asc"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-
       return sortDirection === "asc"
         ? Number(aValue) - Number(bValue)
         : Number(bValue) - Number(aValue);
@@ -72,7 +87,16 @@ export default function PublishingPage() {
     }
   };
 
-  const platforms = Array.from(new Set(jobs.map((job) => job.platform)));
+  const platforms = Array.from(
+    new Map(
+      jobs.map((job) => {
+        const p = job.platform && typeof job.platform === 'object'
+          ? job.platform
+          : { id: job.platform as string, name: (job.platform as string)?.charAt(0).toUpperCase() + (job.platform as string)?.slice(1) };
+        return [p.id, p];
+      })
+    ).values()
+  );
   const statuses = Array.from(new Set(jobs.map((job) => job.status)));
 
   if (isLoading) {
@@ -102,11 +126,72 @@ export default function PublishingPage() {
           <h1 className="text-2xl font-bold">Job Openings</h1>
           <p className="text-muted-foreground">Manage and track your job listings</p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2" onClick={() => setShowModal(true)}>
           <Plus className="w-4 h-4" />
           New Job
         </Button>
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+            <h2 className="text-lg font-bold mb-4">Create New Job</h2>
+            <div className="space-y-3">
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Job Title"
+                value={newJob.title}
+                onChange={e => setNewJob({ ...newJob, title: e.target.value })}
+              />
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Department"
+                value={newJob.department}
+                onChange={e => setNewJob({ ...newJob, department: e.target.value })}
+              />
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Location"
+                value={newJob.location}
+                onChange={e => setNewJob({ ...newJob, location: e.target.value })}
+              />
+              <select
+                className="w-full border p-2 rounded"
+                value={newJob.agentFlowId}
+                onChange={e => setNewJob({ ...newJob, agentFlowId: e.target.value })}
+              >
+                <option value="">Select Agent Flow</option>
+                {agentFlows.map(flow => (
+                  <option key={flow.id} value={flow.id}>{flow.name}</option>
+                ))}
+              </select>
+              <input
+                className="w-full border p-2 rounded"
+                value={newJob.platform.name}
+                disabled
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+              <Button
+                disabled={creating || !newJob.title || !newJob.department || !newJob.location || !newJob.agentFlowId}
+                onClick={async () => {
+                  setCreating(true);
+                  await api.jobs.createListing({
+                    ...newJob,
+                    platform: newJob.platform,
+                  });
+                  setShowModal(false);
+                  setCreating(false);
+                  window.location.reload();
+                }}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex gap-4">
@@ -158,27 +243,14 @@ export default function PublishingPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("title")}>
-                    Job Title {sortColumn === "title" && (sortDirection === "asc" ? "↑" : "↓")}
-                  </th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("department")}>
-                    Department {sortColumn === "department" && (sortDirection === "asc" ? "↑" : "↓")}
-                  </th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("platform")}>
-                    Platform {sortColumn === "platform" && (sortDirection === "asc" ? "↑" : "↓")}
-                  </th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("views")}>
-                    Views {sortColumn === "views" && (sortDirection === "asc" ? "↑" : "↓")}
-                  </th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("applications")}>
-                    Applications {sortColumn === "applications" && (sortDirection === "asc" ? "↑" : "↓")}
-                  </th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("status")}>
-                    Status {sortColumn === "status" && (sortDirection === "asc" ? "↑" : "↓")}
-                  </th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("publishedDate")}>
-                    Published {sortColumn === "publishedDate" && (sortDirection === "asc" ? "↑" : "↓")}
-                  </th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("title")}>Job Title {sortColumn === "title" && (sortDirection === "asc" ? "↑" : "↓")}</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("department")}>Department {sortColumn === "department" && (sortDirection === "asc" ? "↑" : "↓")}</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("platform")}>Platform {sortColumn === "platform" && (sortDirection === "asc" ? "↑" : "↓")}</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("views")}>Views {sortColumn === "views" && (sortDirection === "asc" ? "↑" : "↓")}</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("applications")}>Applications {sortColumn === "applications" && (sortDirection === "asc" ? "↑" : "↓")}</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("status")}>Status {sortColumn === "status" && (sortDirection === "asc" ? "↑" : "↓")}</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground cursor-pointer hover:bg-gray-50" onClick={() => handleSort("publishedDate")}>Published {sortColumn === "publishedDate" && (sortDirection === "asc" ? "↑" : "↓")}</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Copy Link</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,7 +261,7 @@ export default function PublishingPage() {
                       <div className="text-sm text-muted-foreground">{job.location}</div>
                     </td>
                     <td className="p-4">{job.department}</td>
-                    <td className="p-4">{job.platform.name}</td>
+                    <td className="p-4">{job.platform && typeof job.platform === 'object' ? job.platform.name : job.platform}</td>
                     <td className="p-4">{job.views ?? 0}</td>
                     <td className="p-4">{job.applications ?? 0}</td>
                     <td className="p-4">
@@ -209,6 +281,21 @@ export default function PublishingPage() {
                       {job.publishedDate
                         ? `${formatDistanceToNow(new Date(job.publishedDate))} ago`
                         : "Not published"}
+                    </td>
+                    <td className="p-4 flex items-center gap-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/apply/${job.id}`);
+                          setCopySuccess(job.id);
+                          setTimeout(() => setCopySuccess(null), 1500);
+                        }}
+                        title="Copy application link"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      {copySuccess === job.id && <span className="text-green-600 text-xs">Copied!</span>}
                     </td>
                   </tr>
                 ))}
