@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
@@ -13,10 +13,14 @@ interface ApplyPageProps {
 export default function ApplyPage({ params }: ApplyPageProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const hasStartedRef = useRef(false);
 
   useEffect(() => {
     const startApplication = async () => {
+      if (hasStartedRef.current) return;
+      
       try {
+        hasStartedRef.current = true;
         // Create a new candidate with empty initial data
         const data = await api.candidates.create({
           name: '',
@@ -29,6 +33,7 @@ export default function ApplyPage({ params }: ApplyPageProps) {
       } catch (error) {
         console.error('Error creating candidate:', error);
         alert('Failed to start application. Please try again.');
+        hasStartedRef.current = false;
       } finally {
         setIsLoading(false);
       }
@@ -48,4 +53,4 @@ export default function ApplyPage({ params }: ApplyPageProps) {
   }
 
   return null;
-} 
+}
