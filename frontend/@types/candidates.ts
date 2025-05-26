@@ -25,7 +25,8 @@ export interface Candidate extends Metadata {
   formData: {
     [agentId: string]: {
       timestamp: ISODateString;
-      value: string;
+      values: { [fieldName: string]: string[] };
+      chatHistory: Array<{ role: string; content: string }>;
     };
   };
   isActive: boolean;

@@ -237,7 +237,30 @@ export default function CandidatesPage() {
                       <p className="text-sm text-muted-foreground">
                         Submitted {formatDistanceToNow(new Date(data.timestamp))} ago
                       </p>
-                      <p className="mt-1">{data.value}</p>
+                      <div className="mt-2 space-y-2">
+                        {Object.entries(data.values).map(([fieldName, values]) => (
+                          <div key={fieldName} className="border-l-2 pl-2">
+                            <p className="text-sm font-medium">{fieldName}</p>
+                            <div className="space-y-1">
+                              {values.map((value, index) => (
+                                <p key={index} className="text-sm">{value}</p>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {data.chatHistory && data.chatHistory.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium">Chat History</p>
+                          <div className="space-y-1 mt-1">
+                            {data.chatHistory.map((message, index) => (
+                              <p key={index} className="text-sm">
+                                <span className="font-medium">{message.role}:</span> {message.content}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
