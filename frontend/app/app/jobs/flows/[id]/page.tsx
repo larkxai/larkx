@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
+import { Save } from "lucide-react";
 
 export default function AgentEditorPage({
   params,
@@ -22,6 +23,8 @@ export default function AgentEditorPage({
   const [flow, setFlow] = React.useState<AgentFlow | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
 
   // Load flow data
   React.useEffect(() => {
@@ -43,14 +46,11 @@ export default function AgentEditorPage({
     setSelectedAgent(agent);
   };
 
-  const handleConfigSave = (updatedAgent: Agent) => {
+  const handleConfigSave = (updatedAgent: Agent, allAgents: Agent[]) => {
     if (!flow) return;
-    const updatedAgents = flow.agents.map((agent) =>
-      agent.id === updatedAgent.id ? updatedAgent : agent
-    );
     setFlow({
       ...flow,
-      agents: updatedAgents,
+      agents: allAgents,
     });
     setSelectedAgent(updatedAgent);
   };
@@ -59,6 +59,23 @@ export default function AgentEditorPage({
   function generateAgentId() {
     return "agent_" + Math.random().toString(36).slice(2, 10) + Date.now();
   }
+
+  // Save handler for the Run icon
+  const handleSaveFlow = async () => {
+    if (!flow) return;
+    setSaving(true);
+    setSaveSuccess(false);
+    try {
+      // You may need to adjust the API endpoint/method for saving/updating a flow
+      await api.agents.updateFlow(flow.id, flow);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (e) {
+      setError('Failed to save flow');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -85,109 +102,126 @@ export default function AgentEditorPage({
   }
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <div className="w-64 bg-gray-50 border-r border-gray-200 p-4">
-        <h2 className="text-lg font-semibold mb-2">{flow.name}</h2>
-        <p className="text-sm text-gray-500 mb-4">{flow.description}</p>
-        <div className="space-y-2">
-          {flow.agents.map((agent: Agent) => (
-            <div
-              key={agent.id}
-              onClick={() => handleAgentClick(agent)}
-              className={`p-2 rounded cursor-pointer ${
-                selectedAgent?.id === agent.id
-                  ? "bg-blue-100"
-                  : "hover:bg-gray-100"
-              }`}
-            >
-              <div className="font-medium">{agent.name}</div>
-            </div>
-          ))}
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="mt-4 w-full">Add Agent</Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem
-              onClick={() => {
-                if (!flow) return;
-                const linearAgents = flow.agents.filter(
-                  (a) => a.mode === AgentMode.Linear
-                );
-                const lastLinear = linearAgents[linearAgents.length - 1];
-                const agentNumbers = flow.agents.map((a) => {
-                  const match = a.name.match(/Agent (\d+)/);
-                  return match ? parseInt(match[1], 10) : 0;
-                });
-                const nextNumber = Math.max(0, ...agentNumbers) + 1;
-                const newAgent = {
-                  id: generateAgentId(),
-                  flowId: flow.id,
-                  type: "FormAgent",
-                  name: `Agent ${nextNumber}`,
-                  mode: AgentMode.Linear,
-                  after: lastLinear ? lastLinear.id : null,
-                  config: { fields: [] },
-                } as Agent;
-                const updatedAgents = [...flow.agents, newAgent];
-                setFlow({
-                  ...flow,
-                  agents: updatedAgents,
-                });
-              }}
-            >
-              Form Agent
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                if (!flow) return;
-                const agentNumbers = flow.agents.map((a) => {
-                  const match = a.name.match(/Agent (\d+)/);
-                  return match ? parseInt(match[1], 10) : 0;
-                });
-                const nextNumber = Math.max(0, ...agentNumbers) + 1;
-                const newAgent = {
-                  id: generateAgentId(),
-                  flowId: flow.id,
-                  type: "ReminderAgent",
-                  name: `Agent ${nextNumber}`,
-                  mode: AgentMode.Passive,
-                  config: { message: "", delay: "" },
-                } as Agent;
-                const updatedAgents = [...flow.agents, newAgent];
-                setFlow({
-                  ...flow,
-                  agents: updatedAgents,
-                });
-              }}
-            >
-              Reminder Agent
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <div className="flex flex-col h-screen">
+      {/* Top right Save icon */}
+      <div className="flex justify-end items-center p-4 border-b bg-white">
+        <button
+          className="rounded-full p-2 border border-gray-300 hover:bg-blue-50 transition-colors disabled:opacity-50"
+          onClick={handleSaveFlow}
+          disabled={saving}
+          title="Save Workflow"
+        >
+          <Save className="w-6 h-6 text-blue-600" />
+        </button>
+        {saveSuccess && (
+          <span className="ml-2 text-green-600 text-sm">Saved!</span>
+        )}
       </div>
+      {/* Main content */}
+      <div className="flex flex-1 h-full">
+        {/* Sidebar */}
+        <div className="w-64 bg-gray-50 border-r border-gray-200 p-4">
+          <h2 className="text-lg font-semibold mb-2">{flow.name}</h2>
+          <p className="text-sm text-gray-500 mb-4">{flow.description}</p>
+          <div className="space-y-2">
+            {flow.agents.map((agent: Agent) => (
+              <div
+                key={agent.id}
+                onClick={() => handleAgentClick(agent)}
+                className={`p-2 rounded cursor-pointer ${
+                  selectedAgent?.id === agent.id
+                    ? "bg-blue-100"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                <div className="font-medium">{agent.name}</div>
+              </div>
+            ))}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="mt-4 w-full">Add Agent</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!flow) return;
+                  const linearAgents = flow.agents.filter(
+                    (a) => a.mode === AgentMode.Linear
+                  );
+                  const lastLinear = linearAgents[linearAgents.length - 1];
+                  const agentNumbers = flow.agents.map((a) => {
+                    const match = a.name.match(/Agent (\d+)/);
+                    return match ? parseInt(match[1], 10) : 0;
+                  });
+                  const nextNumber = Math.max(0, ...agentNumbers) + 1;
+                  const newAgent = {
+                    id: generateAgentId(),
+                    flowId: flow.id,
+                    type: "FormAgent",
+                    name: `Agent ${nextNumber}`,
+                    mode: AgentMode.Linear,
+                    after: lastLinear ? lastLinear.id : null,
+                    config: { fields: [] },
+                  } as Agent;
+                  const updatedAgents = [...flow.agents, newAgent];
+                  setFlow({
+                    ...flow,
+                    agents: updatedAgents,
+                  });
+                }}
+              >
+                Form Agent
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!flow) return;
+                  const agentNumbers = flow.agents.map((a) => {
+                    const match = a.name.match(/Agent (\d+)/);
+                    return match ? parseInt(match[1], 10) : 0;
+                  });
+                  const nextNumber = Math.max(0, ...agentNumbers) + 1;
+                  const newAgent = {
+                    id: generateAgentId(),
+                    flowId: flow.id,
+                    type: "ReminderAgent",
+                    name: `Agent ${nextNumber}`,
+                    mode: AgentMode.Passive,
+                    config: { message: "", delay: "" },
+                  } as Agent;
+                  const updatedAgents = [...flow.agents, newAgent];
+                  setFlow({
+                    ...flow,
+                    agents: updatedAgents,
+                  });
+                }}
+              >
+                Reminder Agent
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
-      {/* Main Content: Graph + Config Panel */}
-      <div className="flex-1 flex flex-row h-full">
-        {/* Graph View */}
-        <div className="flex-1 p-4 border-r border-gray-200 overflow-auto h-full flex flex-col">
-          <div className="flex-1 min-h-0">
-            <AgentGraph
+        {/* Main Content: Graph + Config Panel */}
+        <div className="flex-1 flex flex-row h-full">
+          {/* Graph View */}
+          <div className="flex-1 p-4 border-r border-gray-200 overflow-auto h-full flex flex-col">
+            <div className="flex-1 min-h-0">
+              <AgentGraph
+                agents={flow.agents}
+                onNodeClick={handleAgentClick}
+                selectedAgentId={selectedAgent?.id}
+              />
+            </div>
+          </div>
+          {/* Config Panel (Right) */}
+          <div className="w-[400px] h-full border-l border-gray-200 bg-white">
+            <AgentConfigPanel
+              agent={selectedAgent}
+              onSave={handleConfigSave}
               agents={flow.agents}
-              onNodeClick={handleAgentClick}
-              selectedAgentId={selectedAgent?.id}
             />
           </div>
-        </div>
-        {/* Config Panel (Right) */}
-        <div className="w-[400px] h-full border-l border-gray-200 bg-white">
-          <AgentConfigPanel
-            agent={selectedAgent}
-            onSave={handleConfigSave}
-            agents={flow.agents}
-          />
         </div>
       </div>
     </div>

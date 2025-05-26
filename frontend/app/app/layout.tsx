@@ -13,8 +13,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
-import { Save, Play } from "lucide-react"
 
 export default function AppLayout({
   children,
@@ -36,12 +34,7 @@ export default function AppLayout({
             </BreadcrumbList>
           </Breadcrumb>
           <div className="ml-auto flex gap-2">
-            <Button variant="outline" size="icon" aria-label="Save">
-              <Save />
-            </Button>
-            <Button variant="outline" size="icon" aria-label="Run">
-              <Play className="text-green-600" />
-            </Button>
+            {/* Save and Run icons removed; will be conditionally rendered in workflow edit screen */}
           </div>
         </header>
         <main className="flex-1">{children}</main>

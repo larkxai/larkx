@@ -7,7 +7,7 @@ import { Agent, AgentMode, FormAgentConfig, ReminderAgentConfig } from '@/@types
 
 interface AgentConfigPanelProps {
   agent: Agent | null;
-  onSave: (agent: Agent) => void;
+  onSave: (updatedAgent: Agent, allAgents: Agent[]) => void;
   agents?: Agent[]; // Pass all agents for the dropdown
 }
 
@@ -53,7 +53,11 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, onSav
 
   const handleSave = () => {
     if (!config) return;
-    onSave(config);
+    // Update the agent in the global flow state
+    const updatedAgents = agents.map((a) =>
+      a.id === config.id ? config : a
+    );
+    onSave(config, updatedAgents);
   };
 
   return (

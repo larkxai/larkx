@@ -42,6 +42,19 @@ export const api = {
       });
       return response.json();
     },
+    updateFlow: async (id: string, data: AgentFlow): Promise<AgentFlow> => {
+      const response = await fetch(`${API_BASE_URL}/api/agents/flows/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update flow');
+      }
+      return response.json();
+    },
   },
   organizations: {
     getCurrent: async (): Promise<Organization> => {

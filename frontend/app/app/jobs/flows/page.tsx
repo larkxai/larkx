@@ -1,14 +1,18 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
-import { AgentMode } from "@/@types/agent";
+import { AgentFlow, AgentMode } from "@/@types/agent";
 import { api } from "@/lib/api";
 
-export default async function FlowsPage() {
-  const flows = await api.agents.getAllFlows();
+export default function FlowsPage() {
+  const [flows, setFlows] = useState<AgentFlow[]>([]);
+
+  useEffect(() => {
+    api.agents.getAllFlows().then(setFlows);
+  }, []);
   
   return (
     <div className="container mx-auto p-6 space-y-8">
