@@ -32,6 +32,16 @@ export const api = {
       );
       return response.json();
     },
+    createFlow: async (data: { name: string; description: string; isTemplate: boolean }): Promise<AgentFlow> => {
+      const response = await fetch(`${API_BASE_URL}/api/agents/flows`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      return response.json();
+    },
   },
   organizations: {
     getCurrent: async (): Promise<Organization> => {

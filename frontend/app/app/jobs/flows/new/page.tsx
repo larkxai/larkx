@@ -39,6 +39,33 @@ export default function NewFlowPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Start from Scratch</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
+               onClick={async () => {
+                 try {
+                   const newFlow = await api.agents.createFlow({
+                     name: `New Flow (${new Date().toLocaleString()})`,
+                     description: "Flow created from scratch",
+                     isTemplate: false
+                   });
+                   router.push(`/app/jobs/flows/${newFlow.id}`);
+                 } catch (error) {
+                   console.error('Error creating new flow:', error);
+                 }
+               }}>
+            <div>
+              <h3 className="font-medium">Empty Flow</h3>
+              <p className="text-sm text-gray-500">Create a new flow from scratch</p>
+            </div>
+            <Button variant="ghost">Create Empty</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Start from Template</CardTitle>
         </CardHeader>
         <CardContent>
