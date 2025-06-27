@@ -206,7 +206,7 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, onSav
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Delay</label>
+              <label className="block text-sm font-medium text-gray-700">Delay (in hours)</label>
               <input
                 type="text"
                 value={config.config.delay}
@@ -214,15 +214,32 @@ export const AgentConfigPanel: React.FC<AgentConfigPanelProps> = ({ agent, onSav
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Trigger Type</label>
+              <Select
+                value={config.config.triggerType || 'no_response'}
+                onValueChange={val => handleConfigChange('triggerType', val)}
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue placeholder="Select trigger type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no_response">No response from candidate</SelectItem>
+                  <SelectItem value="delay">After delay</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="flex justify-end">
+      {/* <div className="flex justify-end">
         <Button onClick={handleSave}>
           Save Changes
         </Button>
-      </div>
+      </div> */}
     </div>
   );
 }; 

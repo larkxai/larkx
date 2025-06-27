@@ -17,6 +17,7 @@ export interface FormAgentConfig {
 export interface ReminderAgentConfig {
   message: string;
   delay: string;
+  triggerType: 'no_response' | 'delay' | 'manual' | 'custom';
 }
 
 export interface BaseAgent {

@@ -28,6 +28,7 @@ interface FormAgentConfig {
 interface ReminderAgentConfig {
   message: string;
   delay: string;
+  triggerType: 'no_response' | 'delay' | 'manual' | 'custom';
 }
 
 interface Agent {
