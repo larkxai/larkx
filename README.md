@@ -1,255 +1,194 @@
-# 🤖 Agent Management System (AMS) — Platform MVP
+# 🚀 Shiply — AI Agent for Last-Mile App Deployment
 
-The **Agent Management System (AMS)** is a modular, extensible platform that allows internal teams and external developers to build and orchestrate AI-driven agents to automate hiring processes.
-
-This MVP is built with **Next.js + TypeScript + Prisma**, and supports:
-
-- ✅ Core agent lifecycle system
-- ✅ Public SDK for developer-built agents
-- ✅ Orchestrated agent flows (via AgentFlow)
-- ✅ Candidate-facing experience
-- ✅ Built-in agents (FormAgent, ReminderAgent)
-- 📊 Stage tracking per candidate
+Shiply is an AI-powered platform that helps no-code and low-code mobile app creators (e.g., FlutterFlow, Vibecoding) submit their exported `.aab` / `.ipa` files directly to the App Store and Google Play — with automatic metadata generation, screenshot validation, and full submission + rejection handling.
 
 ---
 
-## 🧱 File Structure
+## 🧭 Vision
 
-```
----backend
-/ams-core
-├── /sdk                     # 🟢 Public Agent SDK for external developers
-│   ├── AgentBase.ts         # Agent lifecycle: onInit, onTrigger, onComplete
-│   ├── types.ts             # AgentContext, AgentConfig, etc.
-│   ├── registry.ts          # registerAgent(type, class) — plugin-style
-│   └── decorators.ts        # Optional behaviors: @Scheduled, @Retryable
-
-├── /internal-agents         # 🔒 Your default agent implementations
-│   ├── FormAgent.ts
-│   ├── ReminderAgent.ts
-│   └── SchedulerAgent.ts
-
-├── /core
-│   ├── AgentOrchestrator.ts # Core engine: runs next agent in a flow
-│   └── FlowExecutor.ts      # Flow management logic
-
-├── /lib
-│   ├── formRenderer.ts      # Render form fields from JSON schema
-│   ├── messaging.ts         # Email/SMS integration
-│   ├── stage.ts             # Track & update candidate stage
-│   └── prisma.ts            # Prisma client
-
-├── /pages
-│   └── /apply/[candidateId].tsx  # Candidate-facing dynamic page
-
-├── /api
-│   └── /agents/trigger.ts    # Trigger agent run manually or externally
-
-├── /prisma
-│   └── schema.prisma        # Data models
-
-├── /types
-│   ├── job.ts               # Job config, FormField[]
-│   └── candidate.ts         # Candidate context types
-```
+We’re building an agentic system that takes builder-made apps from “exported” to “live” — and beyond.
 
 ---
 
-## 🧠 Public Agent SDK (for developers)
+## 📦 Phase 1 — MVP: Upload, Submit, Resubmit
 
-### AgentBase.ts
+> 🎯 Goal: Help no-code users submit their `.aab` or `.ipa` files to app stores with zero technical knowledge.
 
-```ts
-export type AgentContext = {
-  candidateId: string;
-  jobId: string;
-  config: any;
-  trigger: "system" | "time" | "user";
-};
+### ✅ Core Features
 
-export abstract class Agent {
-  constructor(public context: AgentContext) {}
-  async onInit(): Promise<void> {}
-  abstract onTrigger(): Promise<void>;
-  async onMessage(_msg: any): Promise<void> {}
-  async onComplete(): Promise<void> {}
-}
-```
+- **Upload Build**
+- **Store Connection**
+- **AI Metadata Generation**
+- **Screenshot Upload + Validation**
+- **Submission Engine**
+- **Rejection Handling**
+- **Preflight Validation**
+- **Versioned Metadata Model**
 
 ---
 
-### registry.ts
+## 📈 Phase 2 — A/B Testing & Analytics Loop
 
-```ts
-const agentMap: Record<string, new (ctx: AgentContext) => Agent> = {};
+> 🎯 Goal: Optimize store performance using data and AI — not just submit, but grow.
 
-export function registerAgent(type: string, clazz: new (ctx: AgentContext) => Agent) {
-  agentMap[type] = clazz;
-}
+### ✅ Core Features
 
-export function createAgentInstance(type: string, context: AgentContext): Agent {
-  const AgentClass = agentMap[type];
-  if (!AgentClass) throw new Error(`Unknown agent: ${type}`);
-  return new AgentClass(context);
-}
+- **Store Analytics Pull**
+- **A/B Testing Engine**
+- **Performance Dashboard**
+- **AI Optimization Suggestions**
+- **Growth Automation**
+
+---
+
+## ⚙️ Phase 3 — Full CI/CD Integration (Optional)
+
+> 🎯 Goal: Automate everything from code push → build → store submission.
+
+### ✅ Planned Features
+
+- **CI Build Pipelines**
+- **Signing Automation**
+- **GitHub/GitLab Integration**
+- **One-Click Deployment from Source**
+
+---
+
+## 🧱 Technical Architecture (Phase 1)
+
+```
+User
+ └── Web UI
+       ├── Upload .aab/.ipa
+       ├── Connect Store Accounts
+       ├── Fill/Generate Metadata
+       ├── Upload Screenshots
+       └── Submit
+
+API Server (NestJS)
+ ├── Binary Parser (.aab/.ipa)
+ ├── Metadata Generator (OpenAI)
+ ├── Submission Orchestrator
+ ├── Preflight Validator
+ └── Store API Integrations
+       ├── Google Play Developer API
+       └── App Store Connect API
+
+Storage
+ ├── S3 (uploads: binaries, screenshots, icons)
+ └── RDS/Postgres (apps, binaries, content versions, submission history)
+
+Secrets
+ └── AWS KMS or Vault (p8 files, Google service JSONs)
+
+Queue/Workers (optional scale)
+ └── Submission queue
 ```
 
 ---
 
-## 🔧 Internal Example: ReminderAgent
+## 📡 API Overview (Phase 1)
 
-```ts
-export class ReminderAgent extends Agent {
-  async onTrigger() {
-    const { candidateId } = this.context;
-    const candidate = await getCandidate(candidateId);
-    if (!candidate.formCompletedAt) {
-      await sendReminderEmail(candidate.email, "Don't forget to apply!");
-    }
-    await this.onComplete();
-  }
-}
-```
+### 🔐 Auth
+- JWT-based or Clerk/Auth0 tokens
+- Scopes: user-level apps only
 
 ---
 
-## 🔁 Orchestrator
+### 🧱 App Management
 
-```ts
-export class AgentOrchestrator {
-  async runNextAgent(candidateId: string) {
-    const candidate = await getCandidate(candidateId);
-    const job = await getJob(candidate.jobId);
-    const flow = await getAgentFlow(job.flowId);
+#### `POST /apps`
+Create new app record
 
-    const nextAgent = flow.agents.find(a => !candidate.completedAgents.includes(a.id));
-    if (!nextAgent) return;
-
-    const context = {
-      candidateId,
-      jobId: job.id,
-      config: nextAgent.config,
-      trigger: "system"
-    };
-
-    const agent = createAgentInstance(nextAgent.type, context);
-    await agent.onTrigger();
-
-    await markAgentComplete(candidateId, nextAgent.id);
-    await updateCandidateStage(candidateId, getNextStageForAgent(nextAgent.type));
-  }
-}
-```
+#### `GET /apps/:id`
+Get app metadata
 
 ---
 
-## 📊 Stage Management
+### 🔑 Store Credentials
 
-```ts
-const STAGE_MAP = {
-  FormAgent: "form_submitted",
-  ReminderAgent: "reminder_sent",
-  SchedulerAgent: "interview_scheduled"
-};
-
-export function getNextStageForAgent(agentType: string): string {
-  return STAGE_MAP[agentType] || "unknown";
-}
-
-export async function updateCandidateStage(candidateId: string, stage: string) {
-  // update DB
-}
-```
+#### `POST /apps/:id/credentials`
+Upsert store credentials (Play + iOS)
 
 ---
 
-## 🔄 AgentFlow: Structured Flows per Job
+### 📦 Build Upload
 
-```prisma
-model AgentFlow {
-  id          String     @id @default(cuid())
-  name        String
-  description String?
-  createdBy   String
-  isTemplate  Boolean    @default(false)
-  version     Int        @default(1)
-  agents      Agent[]
-  createdAt   DateTime   @default(now())
-}
-
-model Agent {
-  id         String    @id @default(cuid())
-  flowId     String
-  flow       AgentFlow @relation(fields: [flowId], references: [id])
-  type       String
-  config     Json
-  order      Int
-  mode       AgentMode @default(Linear)
-}
-
-model Job {
-  id         String   @id @default(cuid())
-  title      String
-  flowId     String
-  flow       AgentFlow @relation(fields: [flowId], references: [id])
-}
-
-enum AgentMode {
-  Linear
-  Passive
-}
-```
+#### `POST /apps/:id/binaries`
+Upload `.aab` or `.ipa` (presigned URL flow)
 
 ---
 
-## 🖥️ UI Flow Editor
+### 📝 Content Versions
 
-| Panel      | Function                                  |
-|------------|-------------------------------------------|
-| Left       | Job + agents hierarchy (reorder, group)   |
-| Center     | Graph/canvas showing flow between agents  |
-| Right      | Agent configuration + metadata            |
-
-Features:
-- Add agents from a sidebar
-- Drag to connect/order
-- Passive agents float unconnected (e.g. ReminderAgent)
-- Inline config editor for each agent type
+#### `POST /apps/:id/content`
+Create a metadata + asset snapshot
 
 ---
 
-## 🧪 API Trigger Example
+### 🚀 Submit
 
-```ts
-export async function POST(req: NextApiRequest, res: NextApiResponse) {
-  const { candidateId } = req.body;
-  await new AgentOrchestrator().runNextAgent(candidateId);
-  res.status(200).json({ ok: true });
-}
-```
+#### `POST /apps/:id/submissions`
+Submit build + metadata to store
 
 ---
 
-## 📌 MVP Deliverables
+### 📊 Submission Status
 
-- [x] Agent SDK with lifecycle + registration
-- [x] Internal FormAgent + ReminderAgent
-- [x] AgentOrchestrator that handles flow
-- [x] AgentFlow + Job linking
-- [x] Form rendering and resume link
-- [x] Candidate stage tracking
-- [x] API trigger endpoint
+#### `GET /apps/:id/submissions/:sid`
+Status: `processing`, `in_review`, `approved`, `rejected`
 
 ---
 
-## 🧠 Future Ideas
+### 🔁 Resubmit
 
-- Agent versioning + rollback
-- Agent marketplace
-- Public template flows
-- AI-generated agent sequences
-- Integration SDKs: calendar, CRMs, ATSs
+#### `POST /apps/:id/submissions/:sid/resubmit`
+Auto-bumps version if needed and re-pushes with new content
 
 ---
 
-# ✅ Ready to Build!
+### 📜 History
+
+#### `GET /apps/:id/history`
+Timeline of binaries, content versions, and submissions
+
+---
+
+## 🛡 Security & Storage
+
+- 🔒 Credentials: Encrypted using KMS or Vault
+- 📁 Files: Stored on S3 with short-lived presigned URLs
+- ✅ Preflight: Validates all assets/metadata before submission
+- 📜 Audit logs: Every submission/edit is tracked by user
+
+---
+
+## 🛠️ Stack
+
+| Layer       | Tech                                      |
+|-------------|-------------------------------------------|
+| Frontend    | Next.js + Tailwind + ShadCN               |
+| Backend     | NestJS (Node.js)                          |
+| File Storage| AWS S3                                    |
+| Secrets     | AWS KMS or Vault                          |
+| Store API   | Google Play Developer API, ASC API        |
+| AI          | OpenAI (gpt-4o)                           |
+| DB          | PostgreSQL (Prisma or TypeORM)            |
+
+---
+
+## 🔮 Roadmap Summary
+
+| Phase | Focus                                        |
+|-------|----------------------------------------------|
+| 1️⃣   | Upload .aab/.ipa → Submit → Resubmit         |
+| 2️⃣   | A/B test metadata/screenshots → Promote best |
+| 3️⃣   | GitHub + CI Build + Auto Deploy              |
+
+---
+
+## 📫 Contact
+
+Questions, collabs, or early access?  
+Email: **artem.dudynskiy@gmail.com**  
+Twitter/X: [@yourhandle](https://twitter.com/larkx)
