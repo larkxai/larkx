@@ -1,24 +1,20 @@
-"use client"
+"use client";
 
-import { AppSidebar } from "@/components/app-sidebar"
+import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -33,12 +29,10 @@ export default function AppLayout({
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ml-auto flex gap-2">
-            {/* Save and Run icons removed; will be conditionally rendered in workflow edit screen */}
-          </div>
+          <div className="ml-auto flex gap-2"></div>
         </header>
         <main className="flex-1">{children}</main>
       </SidebarInset>
     </SidebarProvider>
-  )
-} 
+  );
+}

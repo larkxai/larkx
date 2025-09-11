@@ -1,10 +1,4 @@
-export type ResourceType =
-  | "job"
-  | "candidate"
-  | "interview"
-  | "report"
-  | "user"
-  | "department";
+export type ResourceType = "report" | "user" | "department";
 
 export type PermissionAction =
   | "create"
@@ -20,7 +14,6 @@ export interface Permission {
   action: PermissionAction;
   conditions?: {
     departmentId?: string[];
-    jobId?: string[];
     ownOnly?: boolean;
   };
 }

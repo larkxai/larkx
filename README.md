@@ -1,6 +1,6 @@
-# 🚀 Shiply — AI Agent for Last-Mile App Deployment
+# 🚀 Larkx — AI Agent for Last-Mile App Deployment
 
-Shiply is an AI-powered platform that helps no-code and low-code mobile app creators (e.g., FlutterFlow, Vibecoding) submit their exported `.aab` / `.ipa` files directly to the App Store and Google Play — with automatic metadata generation, screenshot validation, and full submission + rejection handling.
+Larkx is an AI-powered platform that helps no-code and low-code mobile app creators (e.g., FlutterFlow, Vibecoding) submit their exported `.aab` / `.ipa` files directly to the App Store and Google Play — with automatic metadata generation, screenshot validation, and full submission + rejection handling.
 
 ---
 

@@ -59,25 +59,15 @@ const navigation = [
         icon: Home,
         url: "/app/dashboard",
       },
-      {
-        title: "Candidates",
-        icon: Users,
-        url: "/app/candidates",
-      },
     ],
   },
   {
-    title: "Jobs",
+    title: "bla",
     items: [
       {
-        title: "Agent Flows",
+        title: "bla",
         icon: GitBranch,
-        url: "/app/jobs/flows",
-      },
-      {
-        title: "Listings",
-        icon: Briefcase,
-        url: "/app/jobs/listings",
+        url: "/app/bla-bla",
       },
     ],
   },

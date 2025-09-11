@@ -4,39 +4,6 @@
 export type ISODateString = string;
 
 /**
- * Types of stages in a recruitment workflow
- */
-export enum StageType {
-  Form = "form",
-  Feedback = "feedback",
-  Offer = "offer",
-  Interview = "interview",
-  Rejection = "rejection",
-}
-
-/**
- * Types of history entries that can be logged
- */
-export enum HistoryEntryType {
-  StageChange = "stage_change",
-  Note = "note",
-  InterviewFeedback = "interview_feedback",
-  DocumentAdded = "document_added",
-  TagsUpdated = "tags_updated",
-}
-
-/**
- * Types of employment arrangements
- */
-export enum EmploymentType {
-  FullTime = "Full-time",
-  PartTime = "Part-time",
-  Contract = "Contract",
-  Internship = "Internship",
-  Temporary = "Temporary",
-}
-
-/**
  * Generic interface for paginated API responses
  */
 export interface PaginatedResponse<T> {
@@ -53,11 +20,7 @@ declare const brand: unique symbol;
 type Brand<K, T> = K & { readonly [brand]: T };
 
 // Common ID types used throughout the application
-export type CandidateId = Brand<string, "CandidateId">;
-export type WorkflowId = Brand<string, "WorkflowId">;
-export type JobId = Brand<string, "JobId">;
 export type CompanyId = Brand<string, "CompanyId">;
-export type LocationId = Brand<string, "LocationId">;
 export type DepartmentId = Brand<string, "DepartmentId">;
 
 /**
@@ -90,8 +53,6 @@ export interface Metadata extends Timestamp {
   isActive: boolean;
   isDeleted: boolean;
 }
-
-export type Status = "active" | "inactive" | "pending" | "archived";
 
 export interface PaginationParams {
   page: number;
