@@ -21,16 +21,20 @@ import {
 
 export default function HomePage() {
   const { user } = useAuthStore();
+  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const [isClient, setIsClient] = React.useState(false);
   
   // Check for session cookie to determine if user is authenticated
   // This matches the logic in middleware.ts
-  const getSessionCookie = () => {
-    if (typeof document === 'undefined') return null;
-    const cookie = document.cookie.split('; ').find(row => row.startsWith('session='));
-    return cookie ? cookie.split('=')[1] : null;
-  };
-  
-  const isAuthenticated = !!getSessionCookie();
+  React.useEffect(() => {
+    setIsClient(true);
+    const getSessionCookie = () => {
+      const cookie = document.cookie.split('; ').find(row => row.startsWith('session='));
+      return cookie ? cookie.split('=')[1] : null;
+    };
+    
+    setIsAuthenticated(!!getSessionCookie());
+  }, []);
   
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-930 to-slate-900 text-slate-100">
@@ -65,7 +69,7 @@ export default function HomePage() {
                 size="sm"
                 className="bg-indigo-500 hover:bg-indigo-600 rounded-xl"
               >
-                {isAuthenticated ? "Go to console" : "Get started"}
+{isClient ? (isAuthenticated ? "Go to console" : "Get started") : "Get started"}
               </Button>
             </Link>
           </div>
@@ -77,41 +81,32 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
           <div>
             <Badge className="bg-white/10 text-slate-100 border-white/20 mb-4">
-              Last‑mile mobile publishing
+              Single control center for app releases
             </Badge>
             <h1 className="text-4xl md:text-6xl font-bold leading-tight tracking-tight">
-              Ship no‑code apps to{" "}
+              The one window that manages{" "}
               <span className="text-indigo-400">App Store</span> &{" "}
-              <span className="text-blue-400">Google Play</span> — in minutes.
+              <span className="text-blue-400">Google Play</span> releases
             </h1>
             <p className="mt-5 text-slate-300 text-lg max-w-xl">
-              Larkx is an AI agent that finishes the last 10%: upload your{" "}
-              <code>.aab</code>/<code>.ipa</code>, auto‑generate metadata &
-              screenshots, submit, track, and fix rejections.
+              Built for non-technical founders. Upload your build, AI handles everything else.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <Link href="/app/dashboard">
                 <Button className="rounded-2xl px-6 py-6 text-base bg-indigo-500 hover:bg-indigo-600">
-                  <Rocket className="h-5 w-5 mr-2" /> {isAuthenticated ? "Go to console" : "Get started"}
-                </Button>
-              </Link>
-              <Link href="#features">
-                <Button
-                  variant="outline"
-                  className="rounded-2xl px-6 py-6 text-base border-white/20 text-slate-100 hover:bg-white/5"
-                >
-                  See features
+                  <Rocket className="h-5 w-5 mr-2" /> {isClient ? (isAuthenticated ? "Go to console" : "Get started") : "Get started"}
                 </Button>
               </Link>
             </div>
             <div className="mt-6 flex items-center gap-4 text-sm text-slate-400">
               <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-emerald-400" /> No Xcode or Play
-                Console needed
+                <Check className="h-4 w-4 text-emerald-400" /> No technical skills required
               </div>
               <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-emerald-400" /> AI metadata &
-                screenshots
+                <Check className="h-4 w-4 text-emerald-400" /> AI handles everything
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-emerald-400" /> One window for both stores
               </div>
             </div>
           </div>
@@ -135,23 +130,22 @@ export default function HomePage() {
                   </div>
                   <div className="p-3 rounded-xl bg-slate-800/60 border border-white/10">
                     <div className="text-slate-300 flex items-center gap-2">
-                      <Images className="h-4 w-4 text-pink-300" /> Screenshots
+                      <Sparkles className="h-4 w-4 text-purple-300" /> AI Magic
                     </div>
-                    <p className="mt-1 text-slate-400">Auto sizes & checks</p>
+                    <p className="mt-1 text-slate-400">Generates everything</p>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-800/60 border border-white/10">
                     <div className="text-slate-300 flex items-center gap-2">
-                      <RefreshCw className="h-4 w-4 text-emerald-300" /> Submit
+                      <Store className="h-4 w-4 text-emerald-300" /> Go Live
                     </div>
-                    <p className="mt-1 text-slate-400">Track & resubmit</p>
+                    <p className="mt-1 text-slate-400">Both stores ready</p>
                   </div>
                 </div>
                 <div className="rounded-xl border border-white/10 p-4 bg-slate-800/50">
                   <p className="text-sm text-slate-300">
-                    Larkx submitted our FlutterFlow export to both stores in
-                    under 15 minutes. The rejection fix flow saved us days.”
+                    "As a non-technical founder, I was dreading the app store process. Larkx made it effortless — one upload, and everything was handled automatically. No more juggling multiple consoles."
                   </p>
-                  <p className="text-xs text-slate-500 mt-2">— Early user</p>
+                  <p className="text-xs text-slate-500 mt-2">— No-code founder</p>
                 </div>
               </CardContent>
             </Card>
@@ -159,135 +153,188 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Logos / social proof placeholder */}
+      {/* Comparison Table */}
       <section className="container mx-auto px-4 pb-16">
-        <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-6 md:p-8 text-center">
-          <p className="text-slate-400 text-sm">
-            Built for creators using FlutterFlow, Vibecoding, React Native, and
-            more.
-          </p>
+        <div className="text-center max-w-3xl mx-auto mb-8">
+          <Badge className="bg-white/20 border-white/30 text-slate-100 mb-4">The Difference</Badge>
+          <h2 className="text-3xl md:text-4xl font-semibold">
+            Before vs With Larkx
+          </h2>
+        </div>
+        <div className="max-w-5xl mx-auto">
+          <div className="overflow-hidden rounded-3xl border-2 border-white/20 bg-slate-900/80 backdrop-blur shadow-2xl">
+            {/* Header Row */}
+            <div className="grid grid-cols-3 border-b-2 border-white/20">
+              <div className="p-8 bg-slate-800/60">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-slate-400"></div>
+                  <h3 className="text-xl font-bold text-slate-100">Task</h3>
+                </div>
+              </div>
+              <div className="p-8 bg-red-900/30 relative">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500/50 to-red-600/50"></div>
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                  <h3 className="text-xl font-bold text-red-300">Without Larkx</h3>
+                </div>
+              </div>
+              <div className="p-8 bg-emerald-900/30 relative">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/50 to-emerald-600/50"></div>
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
+                  <h3 className="text-xl font-bold text-emerald-300">With Larkx</h3>
+                </div>
+              </div>
+            </div>
+            
+            {/* Data Rows */}
+            <div className="grid grid-cols-3 border-b border-white/10">
+              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                <span className="text-base font-medium text-slate-200">Screenshots</span>
+              </div>
+              <div className="p-6 bg-red-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                </div>
+                <span className="text-base text-red-200">Hire designer, wait weeks</span>
+              </div>
+              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                </div>
+                <span className="text-base text-emerald-200">AI generates in minutes</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 border-b border-white/10">
+              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                <span className="text-base font-medium text-slate-200">Store Descriptions</span>
+              </div>
+              <div className="p-6 bg-red-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                </div>
+                <span className="text-base text-red-200">Write from scratch, guess keywords</span>
+              </div>
+              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                </div>
+                <span className="text-base text-emerald-200">AI writes optimized content</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 border-b border-white/10">
+              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                <span className="text-base font-medium text-slate-200">Privacy Policy</span>
+              </div>
+              <div className="p-6 bg-red-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                </div>
+                <span className="text-base text-red-200">Guess template or hire lawyer</span>
+              </div>
+              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                </div>
+                <span className="text-base text-emerald-200">AI creates automatically</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 border-b border-white/10">
+              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                <span className="text-base font-medium text-slate-200">Rejection Handling</span>
+              </div>
+              <div className="p-6 bg-red-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                </div>
+                <span className="text-base text-red-200">Decode cryptic emails, panic</span>
+              </div>
+              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                </div>
+                <span className="text-base text-emerald-200">Plain English + auto-fix</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3">
+              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                <span className="text-base font-medium text-slate-200">Multi-Store Sync</span>
+              </div>
+              <div className="p-6 bg-red-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                </div>
+                <span className="text-base text-red-200">Manual sync, version chaos</span>
+              </div>
+              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                </div>
+                <span className="text-base text-emerald-200">Perfect sync automatically</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Features */}
       <section id="features" className="container mx-auto px-4 pb-20">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <Badge className="bg-white/10 border-white/20">Features</Badge>
-          <h2 className="text-3xl md:text-4xl font-semibold mt-3">
-            Everything you need to go live
+          <Badge className="bg-white/20 border-white/30 text-slate-100">How It Works</Badge>
+          <h2 className="text-3xl md:text-4xl font-semibold mt-3 text-slate-100">
+            Upload → AI handles everything → Live
           </h2>
-          <p className="text-slate-400 mt-2">
-            From exported build to store listing — Larkx automates the last
-            mile.
-          </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FeatureCard
             icon={<Upload className="h-5 w-5" />}
-            title=".aab/.ipa Upload"
-            desc="Drag & drop your build. We parse versions, bundle IDs, permissions."
+            title="Upload Build"
+            desc="Drop your .aab/.ipa file. That's it."
           />
           <FeatureCard
             icon={<Sparkles className="h-5 w-5" />}
-            title="AI Metadata"
-            desc="Generate titles, descriptions, keywords with length checks & locales."
-          />
-          <FeatureCard
-            icon={<Images className="h-5 w-5" />}
-            title="Screenshot Validator"
-            desc="Auto-resize & validate required sets for App Store and Play."
+            title="AI Magic"
+            desc="Generates screenshots, descriptions, privacy policy."
           />
           <FeatureCard
             icon={<Store className="h-5 w-5" />}
-            title="Store Submission"
-            desc="Submit to TestFlight / Internal Testing, then promote to production."
-          />
-          <FeatureCard
-            icon={<Shield className="h-5 w-5" />}
-            title="Preflight Compliance"
-            desc="Catch privacy strings, data safety, icons & policy issues before review."
-          />
-          <FeatureCard
-            icon={<RefreshCw className="h-5 w-5" />}
-            title="Rejections → Fix → Resubmit"
-            desc="Plain‑English errors, one‑click resubmission with version bump."
+            title="Go Live"
+            desc="Submits to both stores simultaneously."
           />
         </div>
       </section>
 
-      {/* How it works */}
+      {/* Stats */}
       <section id="how" className="container mx-auto px-4 pb-20">
-        <div className="grid md:grid-cols-2 gap-8 items-start">
-          <div>
-            <h3 className="text-2xl md:text-3xl font-semibold">How it works</h3>
-            <p className="text-slate-400 mt-3">
-              Five simple steps — no consoles, no CLI.
-            </p>
-            <ol className="mt-6 space-y-4 text-slate-300">
-              <li className="flex gap-3">
-                <span className="text-indigo-400">1.</span> Upload your{" "}
-                <code>.aab</code>/<code>.ipa</code>.
-              </li>
-              <li className="flex gap-3">
-                <span className="text-indigo-400">2.</span> Connect App Store
-                Connect and Google Play once.
-              </li>
-              <li className="flex gap-3">
-                <span className="text-indigo-400">3.</span> We help you generate content and all required fields automatically.
-              </li>
-              <li className="flex gap-3">
-                <span className="text-indigo-400">4.</span> Generate or edit
-                metadata & screenshots.
-              </li>
-              <li className="flex gap-3">
-                <span className="text-indigo-400">5.</span> Submit, track
-                status, fix rejections with AI help.
-              </li>
-            </ol>
+        <div className="grid md:grid-cols-3 gap-8 text-center">
+          <div className="p-6 rounded-2xl border border-white/10 bg-slate-900/60">
+            <div className="text-4xl font-bold text-indigo-400 mb-2">15 min</div>
+            <div className="text-slate-300">Average time to live</div>
           </div>
-          <Card className="rounded-2xl border-white/10 bg-slate-900/90 backdrop-blur">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-100">
-                <LineChart className="h-5 w-5 text-indigo-400" /> Roadmap
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-slate-200 text-sm">
-              <div className="space-y-3">
-                <RoadItem
-                  title="Phase 1 – MVP"
-                  points={[
-                    "Upload & Submit",
-                    "AI metadata",
-                    "Screenshot validator",
-                    "Rejection handling",
-                  ]}
-                />
-                <RoadItem
-                  title="Phase 2 – A/B & Analytics"
-                  points={[
-                    "Variant testing for titles/screenshots",
-                    "Store analytics ingestion",
-                    "Auto‑promote winners",
-                  ]}
-                />
-                <RoadItem
-                  title="Phase 3 – Optional CI"
-                  points={[
-                    "Code → Build → Submit",
-                    "Signing automation",
-                    "GitHub/GitLab integrations",
-                  ]}
-                />
+          <div className="p-6 rounded-2xl border border-white/10 bg-slate-900/60">
+            <div className="text-4xl font-bold text-emerald-400 mb-2">95%</div>
+            <div className="text-slate-300">First-time approval rate</div>
+          </div>
+          <div className="p-6 rounded-2xl border border-white/10 bg-slate-900/60">
+            <div className="text-4xl font-bold text-blue-400 mb-2">1</div>
+            <div className="text-slate-300">Interface for both stores</div>
               </div>
-            </CardContent>
-          </Card>
         </div>
       </section>
 
       {/* Pricing */}
       <section id="pricing" className="container mx-auto px-4 pb-20">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <Badge className="bg-white/10 border-white/20">Pricing</Badge>
+          <Badge className="bg-white/20 border-white/30 text-slate-100">Pricing</Badge>
           <h3 className="text-3xl md:text-4xl font-semibold mt-3">
             Start free. Upgrade when you ship.
           </h3>
@@ -333,23 +380,25 @@ export default function HomePage() {
 
       {/* FAQ */}
       <section id="faq" className="container mx-auto px-4 pb-28">
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <Badge className="bg-white/20 border-white/30 text-slate-100 mb-4">FAQ</Badge>
+            <h2 className="text-3xl font-semibold">Got questions?</h2>
+          </div>
+          <div className="space-y-4">
           <FaqItem
-            q="Do I need Xcode or the Play Console?"
-            a="No. Upload your .aab/.ipa and connect store accounts once. Larkx handles submission and status tracking."
+              q="I'm not technical. Can I use this?"
+              a="Yes! Larkx is built for non-technical founders. Upload your build, AI does the rest."
           />
           <FaqItem
-            q="Can you fix rejections?"
-            a="We surface the reason, point to the exact field, and guide you through a fix + resubmit flow. Some Apple reviewer messages still require opening App Store Connect to reply."
+              q="What if my app gets rejected?"
+              a="AI explains rejections in plain English and auto-fixes most issues. Resubmit in minutes."
           />
           <FaqItem
-            q="Do you support FlutterFlow & Vibecoding?"
-            a="Yes. If your builder can export .aab/.ipa, we can ship it."
+              q="How fast can I go live?"
+              a="Most apps go live in under 15 minutes. Upload → AI magic → Live on both stores."
           />
-          <FaqItem
-            q="What’s coming next?"
-            a="Phase 2 adds A/B testing & analytics; Phase 3 adds optional CI for code-based teams."
-          />
+          </div>
         </div>
       </section>
 
@@ -400,18 +449,6 @@ function FeatureCard({
   );
 }
 
-function RoadItem({ title, points }: { title: string; points: string[] }) {
-  return (
-    <div>
-      <h4 className="font-medium text-slate-100">{title}</h4>
-      <ul className="mt-2 space-y-1 text-slate-300 list-disc list-inside">
-        {points.map((p, i) => (
-          <li key={i}>{p}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 function PriceCard({
   tier,
