@@ -1,9 +1,11 @@
+"use client"
+
 import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/lib/store/auth";
 import {
   Check,
   Rocket,
@@ -18,6 +20,18 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
+  const { user } = useAuthStore();
+  
+  // Check for session cookie to determine if user is authenticated
+  // This matches the logic in middleware.ts
+  const getSessionCookie = () => {
+    if (typeof document === 'undefined') return null;
+    const cookie = document.cookie.split('; ').find(row => row.startsWith('session='));
+    return cookie ? cookie.split('=')[1] : null;
+  };
+  
+  const isAuthenticated = !!getSessionCookie();
+  
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-930 to-slate-900 text-slate-100">
       {/* Navbar */}
@@ -46,25 +60,12 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="https://github.com/"
-              target="_blank"
-              className="hidden md:inline-flex"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-slate-300 hover:text-white"
-              >
-                <Github className="h-4 w-4 mr-2" /> GitHub
-              </Button>
-            </Link>
-            <Link href="#cta">
+            <Link href="/app/dashboard">
               <Button
                 size="sm"
                 className="bg-indigo-500 hover:bg-indigo-600 rounded-xl"
               >
-                Get early access
+                {isAuthenticated ? "Go to console" : "Get started"}
               </Button>
             </Link>
           </div>
@@ -89,9 +90,9 @@ export default function HomePage() {
               screenshots, submit, track, and fix rejections.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <Link href="#cta">
+              <Link href="/app/dashboard">
                 <Button className="rounded-2xl px-6 py-6 text-base bg-indigo-500 hover:bg-indigo-600">
-                  <Rocket className="h-5 w-5 mr-2" /> Get early access
+                  <Rocket className="h-5 w-5 mr-2" /> {isAuthenticated ? "Go to console" : "Get started"}
                 </Button>
               </Link>
               <Link href="#features">
@@ -220,7 +221,7 @@ export default function HomePage() {
           <div>
             <h3 className="text-2xl md:text-3xl font-semibold">How it works</h3>
             <p className="text-slate-400 mt-3">
-              Four simple steps — no consoles, no CLI.
+              Five simple steps — no consoles, no CLI.
             </p>
             <ol className="mt-6 space-y-4 text-slate-300">
               <li className="flex gap-3">
@@ -232,22 +233,25 @@ export default function HomePage() {
                 Connect and Google Play once.
               </li>
               <li className="flex gap-3">
-                <span className="text-indigo-400">3.</span> Generate or edit
+                <span className="text-indigo-400">3.</span> We help you generate content and all required fields automatically.
+              </li>
+              <li className="flex gap-3">
+                <span className="text-indigo-400">4.</span> Generate or edit
                 metadata & screenshots.
               </li>
               <li className="flex gap-3">
-                <span className="text-indigo-400">4.</span> Submit, track
+                <span className="text-indigo-400">5.</span> Submit, track
                 status, fix rejections with AI help.
               </li>
             </ol>
           </div>
-          <Card className="rounded-2xl border-white/10 bg-slate-900/60">
+          <Card className="rounded-2xl border-white/10 bg-slate-900/90 backdrop-blur">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-slate-100">
                 <LineChart className="h-5 w-5 text-indigo-400" /> Roadmap
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-slate-300 text-sm">
+            <CardContent className="text-slate-200 text-sm">
               <div className="space-y-3">
                 <RoadItem
                   title="Phase 1 – MVP"
@@ -326,32 +330,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section id="cta" className="container mx-auto px-4 pb-24">
-        <Card className="rounded-3xl border-white/10 bg-slate-900/60">
-          <CardContent className="p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-10">
-            <div className="flex-1">
-              <h4 className="text-2xl md:text-3xl font-semibold">
-                Get early access to Larkx
-              </h4>
-              <p className="text-slate-400 mt-2">
-                Be the first to ship with our AI last‑mile agent. Join the
-                waitlist and we’ll invite you soon.
-              </p>
-            </div>
-            <form className="w-full md:w-auto flex gap-3">
-              <Input
-                type="email"
-                placeholder="you@company.com"
-                className="bg-slate-800/60 border-white/10 rounded-2xl"
-              />
-              <Button className="rounded-2xl bg-indigo-500 hover:bg-indigo-600">
-                Join waitlist
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </section>
 
       {/* FAQ */}
       <section id="faq" className="container mx-auto px-4 pb-28">
@@ -425,8 +403,8 @@ function FeatureCard({
 function RoadItem({ title, points }: { title: string; points: string[] }) {
   return (
     <div>
-      <h4 className="font-medium text-slate-200">{title}</h4>
-      <ul className="mt-2 space-y-1 text-slate-400 list-disc list-inside">
+      <h4 className="font-medium text-slate-100">{title}</h4>
+      <ul className="mt-2 space-y-1 text-slate-300 list-disc list-inside">
         {points.map((p, i) => (
           <li key={i}>{p}</li>
         ))}
@@ -454,7 +432,7 @@ function PriceCard({
         highlight
           ? "border-indigo-400/40 shadow-[0_0_0_1px_rgba(129,140,248,.35)]"
           : "border-white/10"
-      } bg-slate-900/50`}
+      } bg-slate-900/90 backdrop-blur`}
     >
       <CardHeader>
         <CardTitle className="text-slate-100 flex items-center justify-between">
@@ -467,9 +445,9 @@ function PriceCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-4xl font-bold">{price}</div>
-        <p className="text-slate-400 text-sm mt-1">per month</p>
-        <ul className="mt-4 space-y-2 text-sm text-slate-300">
+        <div className="text-4xl font-bold text-slate-100">{price}</div>
+        <p className="text-slate-300 text-sm mt-1">per month</p>
+        <ul className="mt-4 space-y-2 text-sm text-slate-200">
           {features.map((f, i) => (
             <li key={i} className="flex items-center gap-2">
               <Check className="h-4 w-4 text-emerald-400" />
