@@ -187,6 +187,90 @@ Timeline of binaries, content versions, and submissions
 
 ---
 
+## 🎨 Design System
+
+Larkx follows a modern, professional design system built on top of **shadcn/ui** components with a custom dark theme optimized for developer tools and SaaS applications.
+
+### 🎯 Design Principles
+
+- **Professional & Trustworthy**: Clean, minimal interface that builds confidence for app store submissions
+- **Accessibility First**: High contrast ratios, keyboard navigation, and screen reader support
+- **Developer-Focused**: Dark theme by default with syntax highlighting and technical aesthetics
+- **Consistent & Scalable**: Component-based architecture with design tokens
+
+### 🌈 Color Palette
+
+#### **Primary Colors**
+- **Primary**: `#dbc230` (Golden Yellow) - Main CTA buttons, highlights, and brand elements
+- **Secondary**: `#885d29` (Deep Brown) - Supporting elements and secondary actions
+- **Accent**: `#493e1e` (Dark Earth) - Borders, dividers, and subtle accents
+
+#### **Background System**
+- **Dark Mode Default**: `slate-950` to `slate-900` gradient backgrounds
+- **Card Surfaces**: Semi-transparent `slate-900/60` with backdrop blur
+- **Borders**: `white/10` opacity for subtle separation
+
+#### **Text Hierarchy**
+- **Primary Text**: `slate-100` (High contrast white)
+- **Secondary Text**: `slate-300` (Medium contrast)
+- **Muted Text**: `slate-400` (Lower contrast for descriptions)
+
+### 🧩 Component Library
+
+Built on **shadcn/ui** with custom styling:
+
+#### **Core Components**
+- **Buttons**: Multiple variants (primary, secondary, ghost, outline)
+- **Cards**: Elevated surfaces with subtle borders and backdrop blur
+- **Badges**: Status indicators and feature highlights
+- **Inputs**: Form controls with focus states and validation
+- **Navigation**: Sticky header with backdrop blur and clean typography
+
+#### **Layout Patterns**
+- **Grid System**: Responsive 12-column grid with consistent spacing
+- **Container**: Max-width containers with responsive padding
+- **Spacing**: 4px base unit with consistent scale (4, 8, 12, 16, 24, 32px)
+
+### 🎭 Visual Elements
+
+#### **Typography**
+- **Font Stack**: System fonts (Arial, Helvetica, sans-serif) for performance
+- **Headings**: Bold, high-contrast with proper hierarchy
+- **Body Text**: Optimized line-height and letter-spacing for readability
+
+#### **Icons**
+- **Icon Library**: Lucide React for consistent, scalable icons
+- **Usage**: Functional icons that enhance UX (upload, store, rocket, etc.)
+- **Sizing**: Consistent 16px, 20px, 24px sizes based on context
+
+#### **Effects**
+- **Backdrop Blur**: Subtle blur effects for overlays and navigation
+- **Gradients**: Smooth color transitions for backgrounds and buttons
+- **Shadows**: Layered shadow system for depth and hierarchy
+
+### 📱 Responsive Design
+
+- **Mobile-First**: Optimized for mobile devices with touch-friendly interactions
+- **Breakpoints**: 
+  - Mobile: `< 768px`
+  - Tablet: `768px - 1024px`
+  - Desktop: `> 1024px`
+- **Touch Targets**: Minimum 44px for interactive elements
+
+### 🎨 Brand Identity
+
+#### **Logo & Branding**
+- **Logo**: Gradient icon with sparkles symbol (indigo to blue)
+- **Brand Colors**: Indigo (`#6366f1`) and Blue (`#3b82f6`) gradients
+- **Typography**: Clean, modern sans-serif with tight letter spacing
+
+#### **Voice & Tone**
+- **Professional**: Clear, concise copy that builds trust
+- **Helpful**: AI-focused messaging that emphasizes automation
+- **Confident**: Bold claims backed by clear value propositions
+
+---
+
 ## 🛠️ Stack
 
 | Layer       | Tech                                      |

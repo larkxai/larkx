@@ -17,6 +17,9 @@ import {
   LogOut,
   Plus,
   Building2,
+  Upload,
+  Store,
+  Sparkles,
 } from "lucide-react";
 
 import {
@@ -62,12 +65,17 @@ const navigation = [
     ],
   },
   {
-    title: "bla",
+    title: "Apps",
     items: [
       {
-        title: "bla",
-        icon: GitBranch,
-        url: "/app/bla-bla",
+        title: "All Apps",
+        icon: Store,
+        url: "/app/apps",
+      },
+      {
+        title: "Upload App",
+        icon: Upload,
+        url: "/app/apps/new",
       },
     ],
   },
@@ -137,14 +145,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 text-white">
+                    <Sparkles className="h-4 w-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
-                      {activeTeam?.name}
+                      {activeTeam?.name || "Larkx"}
                     </span>
                   </div>
                   <ChevronsUpDown className="ml-auto" />
@@ -219,7 +226,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenu>
               {secondaryNav.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild size="sm">
+                  <SidebarMenuButton 
+                    asChild 
+                    size="sm"
+                  >
                     <a href={item.url}>
                       <item.icon className="size-4" />
                       <span>{item.title}</span>
@@ -238,14 +248,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage
                       src={user?.profileImage}
                       alt={user?.firstName}
                     />
-                    <AvatarFallback className="rounded-lg">
+                    <AvatarFallback className="rounded-lg bg-indigo-500 text-white">
                       {user?.firstName?.charAt(0)}
                       {user?.lastName?.charAt(0)}
                     </AvatarFallback>
