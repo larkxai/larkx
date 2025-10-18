@@ -187,7 +187,64 @@ export default function HomePage() {
               </div>
             </div>
             
-            {/* Data Rows */}
+            {/* Data Rows - Ordered by pain level (highest to lowest) */}
+            <div className="grid grid-cols-3 border-b border-white/10">
+              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <span className="text-base font-medium text-slate-200">Rejection Handling</span>
+              </div>
+              <div className="p-6 bg-red-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                </div>
+                <span className="text-base text-red-200">Decode cryptic emails, panic</span>
+              </div>
+              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                </div>
+                <span className="text-base text-emerald-200">Plain English + auto-fix</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 border-b border-white/10">
+              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                <span className="text-base font-medium text-slate-200">First-Time Setup</span>
+              </div>
+              <div className="p-6 bg-red-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                </div>
+                <span className="text-base text-red-200">Hours of research, guess everything</span>
+              </div>
+              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                </div>
+                <span className="text-base text-emerald-200">Guided setup, AI explains everything</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 border-b border-white/10">
+              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <span className="text-base font-medium text-slate-200">Multiple Apps</span>
+              </div>
+              <div className="p-6 bg-red-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                </div>
+                <span className="text-base text-red-200">Manual work × number of apps</span>
+              </div>
+              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                </div>
+                <span className="text-base text-emerald-200">Dashboard of all releases</span>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-3 border-b border-white/10">
               <div className="p-6 bg-slate-800/60 flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
@@ -242,25 +299,6 @@ export default function HomePage() {
                   <Check className="w-3 h-3 text-emerald-400" />
                 </div>
                 <span className="text-base text-emerald-200">AI creates automatically</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-3 border-b border-white/10">
-              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
-                <span className="text-base font-medium text-slate-200">Rejection Handling</span>
-              </div>
-              <div className="p-6 bg-red-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                </div>
-                <span className="text-base text-red-200">Decode cryptic emails, panic</span>
-              </div>
-              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-emerald-400" />
-                </div>
-                <span className="text-base text-emerald-200">Plain English + auto-fix</span>
               </div>
             </div>
             
