@@ -1,29 +1,55 @@
-# 🚀 Larkx — AI Agent for Last-Mile App Deployment
+# 🚀 Larkx — Single Control Center for App Store Releases
 
-Larkx is an AI-powered platform that helps no-code and low-code mobile app creators (e.g., FlutterFlow, Vibecoding) submit their exported `.aab` / `.ipa` files directly to the App Store and Google Play — with automatic metadata generation, screenshot validation, and full submission + rejection handling.
+Larkx is the one window that manages App Store & Google Play releases for non-technical founders. Upload your build file, and our AI agent handles everything else — from generating screenshots and metadata to handling rejections and keeping your releases perfectly synchronized.
 
 ---
 
 ## 🧭 Vision
 
-We’re building an agentic system that takes builder-made apps from “exported” to “live” — and beyond.
+**Core Vision:** A single control center (one window) for managing app releases across Android and iOS, focused on non-technical founders and no-code developers.
+
+**The Problem:** Publishing to App Store and Google Play is painful and slow, especially when you don't have technical skills, designers, or time to handle rejections and multiple store management.
+
+**The Solution:** An AI Agent that guides you through what's missing, builds and validates everything automatically, generates store assets using AI, performs pre-release checks, and keeps Android and iOS releases synchronized — all from one place.
 
 ---
 
 ## 📦 Phase 1 — MVP: Upload, Submit, Resubmit
 
-> 🎯 Goal: Help no-code users submit their `.aab` or `.ipa` files to app stores with zero technical knowledge.
+> 🎯 Goal: Help non-technical founders submit their `.aab` or `.ipa` files to app stores with zero technical knowledge.
 
 ### ✅ Core Features
 
-- **Upload Build**
-- **Store Connection**
-- **AI Metadata Generation**
-- **Screenshot Upload + Validation**
-- **Submission Engine**
-- **Rejection Handling**
-- **Preflight Validation**
-- **Versioned Metadata Model**
+#### 🚨 **Rejection Handling** (Most Critical)
+- **Plain English explanations** of rejection reasons
+- **One-click auto-fix** for common issues
+- **Guided resubmission** with version bumps
+
+#### 🎯 **First-Time Setup**
+- **Guided onboarding** with AI explanations
+- **Step-by-step wizard** for store connections
+- **Smart validation** to catch issues early
+
+#### 📱 **Multiple Apps Management**
+- **Unified dashboard** for all your apps
+- **Bulk operations** across multiple releases
+- **Release tracking** and status monitoring
+
+#### 📸 **AI Content Generation**
+- **Screenshot generation** for all required devices
+- **Store descriptions** optimized for discovery
+- **Privacy policies** created automatically
+- **Metadata optimization** with keyword research
+
+#### 🔄 **Unified Store Management**
+- **Single interface** for both App Store and Google Play
+- **Synchronized releases** across platforms
+- **Consistent versioning** and metadata
+
+#### 🛡️ **Pre-Release Validation**
+- **Compliance checking** before submission
+- **Asset validation** and auto-resizing
+- **Policy compliance** verification
 
 ---
 
@@ -31,13 +57,13 @@ We’re building an agentic system that takes builder-made apps from “exported
 
 > 🎯 Goal: Optimize store performance using data and AI — not just submit, but grow.
 
-### ✅ Core Features
+### ✅ Planned Features
 
-- **Store Analytics Pull**
-- **A/B Testing Engine**
-- **Performance Dashboard**
-- **AI Optimization Suggestions**
-- **Growth Automation**
+- **Variant Testing** for titles and screenshots
+- **Store Analytics Integration** from both platforms
+- **Performance Dashboard** with unified metrics
+- **AI Optimization Suggestions** based on data
+- **Auto-Promote Winners** of A/B tests
 
 ---
 
@@ -47,42 +73,40 @@ We’re building an agentic system that takes builder-made apps from “exported
 
 ### ✅ Planned Features
 
-- **CI Build Pipelines**
-- **Signing Automation**
-- **GitHub/GitLab Integration**
-- **One-Click Deployment from Source**
+- **Code → Build → Submit** automation
+- **Signing Automation** for certificates
+- **GitHub/GitLab Integration** with webhooks
+- **One-Click Deployment** from source code
 
 ---
 
 ## 🧱 Technical Architecture (Phase 1)
 
 ```
-User
- └── Web UI
-       ├── Upload .aab/.ipa
-       ├── Connect Store Accounts
-       ├── Fill/Generate Metadata
-       ├── Upload Screenshots
-       └── Submit
+Non-Technical Founder
+ └── Single Control Center (Web UI)
+       ├── Upload Build File
+       ├── AI-Guided Setup
+       ├── AI Content Generation
+       ├── Pre-Release Validation
+       └── Submit to Both Stores
 
-API Server (NestJS)
- ├── Binary Parser (.aab/.ipa)
- ├── Metadata Generator (OpenAI)
+AI Agent (NestJS)
+ ├── Build File Parser (.aab/.ipa)
+ ├── Content Generator (OpenAI)
+ ├── Screenshot Generator (AI)
+ ├── Rejection Handler (AI)
  ├── Submission Orchestrator
- ├── Preflight Validator
  └── Store API Integrations
        ├── Google Play Developer API
        └── App Store Connect API
 
 Storage
- ├── S3 (uploads: binaries, screenshots, icons)
- └── RDS/Postgres (apps, binaries, content versions, submission history)
+ ├── S3 (builds, screenshots, generated assets)
+ └── PostgreSQL (apps, releases, submission history)
 
-Secrets
- └── AWS KMS or Vault (p8 files, Google service JSONs)
-
-Queue/Workers (optional scale)
- └── Submission queue
+Security
+ └── Encrypted Storage (store credentials, certificates)
 ```
 
 ---
@@ -181,9 +205,9 @@ Timeline of binaries, content versions, and submissions
 
 | Phase | Focus                                        |
 |-------|----------------------------------------------|
-| 1️⃣   | Upload .aab/.ipa → Submit → Resubmit         |
-| 2️⃣   | A/B test metadata/screenshots → Promote best |
-| 3️⃣   | GitHub + CI Build + Auto Deploy              |
+| 1️⃣   | Single Control Center → AI Handles Everything |
+| 2️⃣   | A/B Testing → Auto-Optimize Store Performance |
+| 3️⃣   | Code → Build → Deploy (Optional CI/CD)       |
 
 ---
 

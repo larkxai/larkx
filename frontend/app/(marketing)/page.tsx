@@ -89,6 +89,9 @@ export default function HomePage() {
               <span className="text-blue-400">Google Play</span> releases
             </h1>
             <p className="mt-5 text-slate-300 text-lg max-w-xl">
+              Your AI agent that builds, validates, and publishes mobile apps to iOS and Android — no developers required.
+            </p>
+            <p className="mt-3 text-slate-400 text-base max-w-xl">
               Built for non-technical founders. Upload your build, AI handles everything else.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
