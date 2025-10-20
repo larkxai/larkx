@@ -158,19 +158,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg bg-slate-900/95 backdrop-blur border border-white/10"
                 align="start"
                 side="bottom"
                 sideOffset={4}
               >
-                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                <DropdownMenuLabel className="text-xs text-slate-400">
                   Teams
                 </DropdownMenuLabel>
                 {organization.teams.map((team, index) => (
                   <DropdownMenuItem
                     key={team.name}
                     onClick={() => setActiveTeam(team)}
-                    className="gap-2 p-2"
+                    className="gap-2 p-2 text-slate-100 hover:bg-white/5 focus:bg-white/5"
                   >
                     <div className="flex size-6 items-center justify-center rounded-sm border">
                       {team.logoUrl ? (
@@ -183,12 +183,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
                   </DropdownMenuItem>
                 ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="gap-2 p-2">
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem className="gap-2 p-2 text-slate-100 hover:bg-white/5 focus:bg-white/5">
                   <div className="flex size-6 items-center justify-center rounded-md border bg-background">
                     <Plus className="size-4" />
                   </div>
-                  <div className="font-medium text-muted-foreground">
+                  <div className="font-medium text-slate-400">
                     Add team
                   </div>
                 </DropdownMenuItem>
@@ -269,7 +269,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 bg-slate-900/95 backdrop-blur border border-white/10"
                 align="end"
                 sideOffset={4}
               >
@@ -287,8 +287,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     Notifications
                   </DropdownMenuItem> */}
                 </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem onClick={handleLogout} className="text-slate-100 hover:bg-white/5 focus:bg-white/5">
                   <LogOut className="mr-2" />
                   Log out
                 </DropdownMenuItem>

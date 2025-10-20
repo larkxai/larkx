@@ -43,7 +43,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <p className="text-slate-300 mb-4">bla bla bla</p>
-              <Button asChild className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
+              <Button asChild className="rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white">
                 <Link href="/app/bla-bla/new">
                   <PlusCircle className="mr-2 h-4 w-4" />
                 </Link>
@@ -61,13 +61,13 @@ export default function HomePage() {
             <CardContent>
               <p className="text-slate-300 mb-4">bla bla bla</p>
               <div className="space-x-3">
-                <Button asChild className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
+                <Button asChild className="rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white">
                   <Link href="/app/bla-bla/new">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     bla bla bla
                   </Link>
                 </Button>
-                <Button variant="outline" asChild className="rounded-xl border-white/20 text-slate-100 hover:bg-white/5">
+                <Button variant="outline" asChild className="rounded-xl border-white/20 text-slate-100 hover:bg-white/5 bg-transparent">
                   <Link href="/app/bla-bla">
                     <Eye className="mr-2 h-4 w-4" />
                     bla bla bla

@@ -201,9 +201,9 @@ Larkx follows a modern, professional design system built on top of **shadcn/ui**
 ### 🌈 Color Palette
 
 #### **Primary Colors**
-- **Primary**: `#dbc230` (Golden Yellow) - Main CTA buttons, highlights, and brand elements
-- **Secondary**: `#885d29` (Deep Brown) - Supporting elements and secondary actions
-- **Accent**: `#493e1e` (Dark Earth) - Borders, dividers, and subtle accents
+- **Primary**: `#6366f1` (Indigo) - Main CTA buttons, highlights, and brand elements
+- **Secondary**: `#3b82f6` (Blue) - Supporting elements and secondary actions
+- **Accent**: `#1e293b` (Dark Slate) - Borders, dividers, and subtle accents
 
 #### **Background System**
 - **Dark Mode Default**: `slate-950` to `slate-900` gradient backgrounds

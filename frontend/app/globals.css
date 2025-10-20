@@ -26,49 +26,49 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
     
-    /* Primary - Gold */
-    --primary: 47 75% 52%; /* #dbc230 */
-    --primary-foreground: 0 0% 0%; /* Black text on gold */
+    /* Primary - Indigo */
+    --primary: 239 84% 67%; /* #6366f1 */
+    --primary-foreground: 0 0% 100%; /* White text on indigo */
     
-    /* Secondary - Deep Brown */
-    --secondary: 28 54% 35%; /* #885d29 */
-    --secondary-foreground: 0 0% 100%; /* White text on brown */
+    /* Secondary - Blue */
+    --secondary: 217 91% 60%; /* #3b82f6 */
+    --secondary-foreground: 0 0% 100%; /* White text on blue */
     
     /* Muted - Softer versions */
     --muted: 28 54% 95%; /* Light brown background */
     --muted-foreground: 28 54% 25%; /* Darker brown text */
     
-    /* Accent - Dark Earth */
-    --accent: 43 45% 20%; /* #493e1e */
-    --accent-foreground: 0 0% 100%; /* White text on dark earth */
+    /* Accent - Dark Slate */
+    --accent: 222 84% 5%; /* Dark slate */
+    --accent-foreground: 210 40% 98%; /* Light text */
     
     /* Utility colors */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     
     /* Borders and inputs */
-    --border: 28 54% 90%; /* Light brown border */
-    --input: 28 54% 90%;
-    --ring: 47 75% 52%; /* Gold ring for focus states */
+    --border: 217 32% 17%; /* Dark border */
+    --input: 217 32% 17%;
+    --ring: 239 84% 67%; /* Indigo ring for focus states */
     --radius: 0.5rem; /* Border radius for buttons and elements */
     
     /* Chart colors */
-    --chart-1: 47 75% 52%; /* Gold */
-    --chart-2: 28 54% 35%; /* Deep Brown */
-    --chart-3: 43 45% 20%; /* Dark Earth */
-    --chart-4: 28 54% 45%; /* Medium Brown */
-    --chart-5: 47 75% 65%; /* Light Gold */
+    --chart-1: 239 84% 67%; /* Indigo */
+    --chart-2: 217 91% 60%; /* Blue */
+    --chart-3: 222 84% 5%; /* Dark Slate */
+    --chart-4: 217 32% 17%; /* Medium Slate */
+    --chart-5: 239 84% 75%; /* Light Indigo */
     
     /* Sidebar specific */
     --sidebar: 0 0% 100%;
     --sidebar-foreground: 0 0% 0%;
     --sidebar-background: 0 0% 98%;
-    --sidebar-border: 28 54% 90%;
-    --sidebar-ring: 47 75% 52%;
-    --sidebar-primary: 47 75% 52%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 28 54% 35%;
-    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 217 32% 17%;
+    --sidebar-ring: 239 84% 67%;
+    --sidebar-primary: 239 84% 67%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 32% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
   }
 
   .dark {
@@ -84,46 +84,46 @@ body {
     --popover: 0 0% 15%;
     --popover-foreground: 0 0% 100%;
     
-    /* Primary - Gold (slightly muted) */
-    --primary: 47 65% 45%;
-    --primary-foreground: 0 0% 0%;
+    /* Primary - Indigo (slightly muted) */
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
     
-    /* Secondary - Deep Brown (adjusted for dark mode) */
-    --secondary: 28 44% 45%;
+    /* Secondary - Blue (adjusted for dark mode) */
+    --secondary: 217 91% 60%;
     --secondary-foreground: 0 0% 100%;
     
     /* Muted - Darker versions */
     --muted: 28 34% 25%;
     --muted-foreground: 28 34% 85%;
     
-    /* Accent - Dark Earth (adjusted for dark mode) */
-    --accent: 43 35% 30%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Dark Slate (adjusted for dark mode) */
+    --accent: 222 84% 5%;
+    --accent-foreground: 210 40% 98%;
     
     /* Utility colors */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     
     /* Borders and inputs */
-    --border: 28 34% 25%;
-    --input: 28 34% 25%;
-    --ring: 47 65% 45%;
+    --border: 217 32% 17%;
+    --input: 217 32% 17%;
+    --ring: 239 84% 67%;
     
     /* Chart colors (adjusted for dark mode) */
-    --chart-1: 47 65% 45%;
-    --chart-2: 28 44% 45%;
-    --chart-3: 43 35% 30%;
-    --chart-4: 28 44% 55%;
-    --chart-5: 47 65% 55%;
+    --chart-1: 239 84% 67%;
+    --chart-2: 217 91% 60%;
+    --chart-3: 222 84% 5%;
+    --chart-4: 217 32% 17%;
+    --chart-5: 239 84% 75%;
     
     /* Sidebar specific */
     --sidebar: 222 84% 5%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-background: 222 84% 5%;
     --sidebar-border: 217 32% 17%;
-    --sidebar-ring: 217 32% 17%;
-    --sidebar-primary: 47 75% 52%;
-    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-ring: 239 84% 67%;
+    --sidebar-primary: 239 84% 67%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 217 32% 17%;
     --sidebar-accent-foreground: 210 40% 98%;
   }
