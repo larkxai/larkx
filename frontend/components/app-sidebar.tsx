@@ -20,6 +20,13 @@ import {
   Upload,
   Store,
   Sparkles,
+  ShieldCheck,
+  Globe,
+  Image as ImageIcon,
+  FlaskConical,
+  Settings,
+  Key,
+  Rocket,
 } from "lucide-react";
 
 import {
@@ -57,26 +64,61 @@ const navigation = [
   {
     title: "Main",
     items: [
-      {
-        title: "Home",
-        icon: Home,
-        url: "/app/dashboard",
-      },
+      { title: "Home", icon: Home, url: "/app/dashboard" },
     ],
   },
   {
     title: "Apps",
     items: [
-      {
-        title: "All Apps",
-        icon: Store,
-        url: "/app/apps",
-      },
-      {
-        title: "Upload App",
-        icon: Upload,
-        url: "/app/apps/new",
-      },
+      { title: "All Apps", icon: Store, url: "/app/apps" },
+      { title: "Upload App", icon: Upload, url: "/app/apps/new" },
+      { title: "Submissions", icon: Rocket, url: "/app/submissions" },
+      { title: "History", icon: GitBranch, url: "/app/history" },
+    ],
+  },
+  {
+    title: "Store Setup",
+    items: [
+      { title: "Credentials", icon: Key, url: "/app/credentials" },
+      { title: "Compliance & Preflight", icon: ShieldCheck, url: "/app/preflight" },
+    ],
+  },
+  {
+    title: "AI Content",
+    items: [
+      { title: "Metadata", icon: FileText, url: "/app/content/metadata" },
+      { title: "Screenshots", icon: ImageIcon, url: "/app/content/screenshots" },
+      { title: "Privacy Policy", icon: ShieldCheck, url: "/app/content/privacy" },
+      { title: "Localization", icon: Globe, url: "/app/content/localization" },
+    ],
+  },
+  {
+    title: "Experiments",
+    items: [
+      { title: "Experiments", icon: FlaskConical, url: "/app/experiments" },
+      { title: "Performance", icon: BarChart, url: "/app/performance" },
+    ],
+  },
+  {
+    title: "Automation",
+    items: [
+      { title: "CI/CD", icon: Briefcase, url: "/app/automation/cicd" },
+      { title: "Integrations", icon: GitBranch, url: "/app/integrations" },
+    ],
+  },
+  {
+    title: "Organization",
+    items: [
+      { title: "Teams & Roles", icon: Users, url: "/app/organization/teams" },
+      { title: "Audit Log", icon: FileText, url: "/app/organization/audit" },
+    ],
+  },
+  {
+    title: "Settings",
+    items: [
+      { title: "Billing & Plan", icon: CreditCard, url: "/app/settings/billing" },
+      { title: "API Keys", icon: Key, url: "/app/settings/keys" },
+      { title: "Notifications", icon: Bell, url: "/app/settings/notifications" },
     ],
   },
 ];
