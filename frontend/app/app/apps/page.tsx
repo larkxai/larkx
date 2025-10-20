@@ -17,6 +17,10 @@ interface PlatformInfo {
   status: StoreStatus;
   track?: DistributionTrack;
   lastSubmissionAt?: string;
+  // UI-only context for iteration
+  rejectReason?: string; // short code or text
+  rejectAt?: string; // ISO
+  missingScreenshots?: string; // e.g., "iPad landscape: 3 locales"
 }
 interface AppMock {
   id: string;
@@ -28,7 +32,6 @@ interface AppMock {
   ios?: PlatformInfo;
   locales: number;
   screenshotsComplete: boolean;
-  credentials: { appStoreConnect: "connected" | "missing"; googlePlay: "connected" | "missing" };
   rejectionCount: number;
   updatedAt: string;
 }
@@ -41,18 +44,16 @@ const apps: AppMock[] = [
     ios: { version: "1.2.0", build: 61, status: "preview", track: "testflight", lastSubmissionAt: new Date(Date.now()-6*60*60*1000).toISOString() },
     locales: 6,
     screenshotsComplete: true,
-    credentials: { appStoreConnect: "connected", googlePlay: "connected" },
     rejectionCount: 0,
     updatedAt: new Date(Date.now()-30*60*1000).toISOString(),
   },
   {
     id: "app_shoply",
     name: "Shoply",
-    android: { version: "2.0.1", build: 103, status: "rejected", track: "production", lastSubmissionAt: new Date(Date.now()-4*60*60*1000).toISOString() },
-    ios: { version: "2.0.0", build: 100, status: "in_review", track: "production", lastSubmissionAt: new Date(Date.now()-8*60*60*1000).toISOString() },
+    android: { version: "2.0.1", build: 103, status: "rejected", track: "production", lastSubmissionAt: new Date(Date.now()-4*60*60*1000).toISOString(), rejectReason: "Guideline 2.1 – Metadata", rejectAt: new Date(Date.now()-4*60*60*1000).toISOString() },
+    ios: { version: "2.0.0", build: 100, status: "in_review", track: "production", lastSubmissionAt: new Date(Date.now()-8*60*60*1000).toISOString(), missingScreenshots: "iPad landscape missing in 3 locales" },
     locales: 10,
     screenshotsComplete: false,
-    credentials: { appStoreConnect: "connected", googlePlay: "connected" },
     rejectionCount: 2,
     updatedAt: new Date(Date.now()-90*60*1000).toISOString(),
   },
@@ -63,7 +64,6 @@ const apps: AppMock[] = [
     ios: { version: "1.0.0", build: 1, status: "approved", track: "production", lastSubmissionAt: new Date(Date.now()-24*60*60*1000).toISOString() },
     locales: 2,
     screenshotsComplete: true,
-    credentials: { appStoreConnect: "connected", googlePlay: "missing" },
     rejectionCount: 0,
     updatedAt: new Date(Date.now()-120*60*1000).toISOString(),
   },
@@ -74,18 +74,16 @@ const apps: AppMock[] = [
     ios: { version: "1.1.0", build: 35, status: "in_review", track: "production" },
     locales: 4,
     screenshotsComplete: true,
-    credentials: { appStoreConnect: "connected", googlePlay: "connected" },
     rejectionCount: 1,
     updatedAt: new Date(Date.now()-15*60*1000).toISOString(),
   },
   {
     id: "app_habitsy",
     name: "Habitsy",
-    android: { version: "0.8.0", build: 12, status: "preview", track: "internal" },
+    android: { version: "0.8.0", build: 12, status: "preview", track: "internal", missingScreenshots: "2 Android portraits" },
     ios: { version: "0.8.0", build: 11, status: "preview", track: "testflight" },
     locales: 1,
     screenshotsComplete: false,
-    credentials: { appStoreConnect: "missing", googlePlay: "connected" },
     rejectionCount: 0,
     updatedAt: new Date(Date.now()-240*60*1000).toISOString(),
   },
@@ -118,10 +116,10 @@ function PlatformRow({ icon, p }: { icon: React.ReactNode; p?: AppMock["android"
     <div className="flex items-center justify-between text-sm">
       <span className="text-slate-300 flex items-center gap-2">{icon} <span className="text-slate-200 font-medium">{p.version}</span></span>
       <div className="flex items-center gap-2">
-        {p.track && (
-          <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-slate-400">{p.track}</span>
-        )}
         <StatusBadge status={p.status} />
+        {p.track && (
+          <span className="text-xs text-slate-400">· {p.track}</span>
+        )}
       </div>
     </div>
   );
@@ -158,9 +156,38 @@ export default function AppsPage() {
   const borderFor = (a: AppMock) => {
     const statuses: StoreStatus[] = [a.android?.status as StoreStatus, a.ios?.status as StoreStatus].filter(Boolean) as StoreStatus[];
     if (statuses.includes("rejected")) return "border-pink-400/40 shadow-[0_0_0_1px_rgba(244,114,182,0.35)]";
+    if (statuses.includes("preview") || statuses.includes("draft")) return "border-amber-400/40 shadow-[0_0_0_1px_rgba(251,191,36,0.25)]";
     if (statuses.includes("in_review")) return "border-indigo-400/40 shadow-[0_0_0_1px_rgba(129,140,248,0.35)]";
-    if (statuses.includes("approved") || statuses.includes("live")) return "border-emerald-400/40 shadow-[0_0_0_1px_rgba(52,211,153,0.25)]";
+    if (statuses.includes("approved") || statuses.includes("live")) return "border-white/10 opacity-90";
     return "border-white/10";
+  };
+  // Urgency score for sorting (higher first)
+  const score = (a: AppMock) => {
+    const s = [a.android?.status, a.ios?.status] as (StoreStatus | undefined)[];
+    const hasRejected = s.includes("rejected");
+    const hasIncomplete = s.includes("preview") || s.includes("draft");
+    const hasReview = s.includes("in_review");
+    let sc = 0;
+    if (hasRejected) sc += 100;
+    if (hasIncomplete) sc += 60;
+    if (hasReview) sc += 30;
+    return sc + (Date.now() - new Date(a.updatedAt).getTime()) / -1e7; // newer slightly higher
+  };
+
+  const [sort, setSort] = React.useState("urgency");
+  const sorted = [...filtered].sort((a,b)=>{
+    if (sort === "updated") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    if (sort === "name") return a.name.localeCompare(b.name);
+    return score(b) - score(a);
+  });
+
+  const actionFor = (p?: PlatformInfo): { label: string; intent: "primary" | "neutral" | "danger" } | null => {
+    if (!p) return null;
+    if (p.status === "rejected") return { label: "Fix rejection", intent: "danger" };
+    if (p.status === "in_review") return { label: "View status", intent: "neutral" };
+    if (p.status === "preview" || p.status === "draft") return { label: "Submit", intent: "primary" };
+    if (p.status === "approved" || p.status === "live") return { label: "View release", intent: "neutral" };
+    return { label: "View", intent: "neutral" };
   };
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-930 to-slate-900 text-slate-100">
@@ -192,6 +219,15 @@ export default function AppsPage() {
               <option value="preview">Preview</option>
               <option value="draft">Draft</option>
             </select>
+            <select
+              className="w-40 h-9 rounded-md border border-white/10 bg-slate-900/60 text-slate-100 text-sm px-3"
+              value={sort}
+              onChange={(e)=>setSort(e.target.value)}
+            >
+              <option value="urgency">Sort: Urgency</option>
+              <option value="updated">Sort: Updated</option>
+              <option value="name">Sort: Name</option>
+            </select>
           </div>
           <div className="flex gap-4 text-sm text-slate-300">
             <span><span className="text-indigo-400 font-medium">{agg.inReview}</span> in review</span>
@@ -201,17 +237,23 @@ export default function AppsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filtered.map((app) => (
-            <Card key={app.id} className={`rounded-2xl bg-slate-900/60 backdrop-blur ${borderFor(app)}`}>
+          {sorted.map((app) => (
+            <Card key={app.id} className={`relative rounded-2xl bg-slate-900/60 backdrop-blur ${borderFor(app)}`}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between text-slate-100 text-base">
-                  <span className="truncate">{app.name}</span>
+                  <span className="truncate flex items-center gap-2">
+                    {/* alert dot when any action is needed */}
+                    { (app.android?.status === 'rejected' || app.ios?.status === 'rejected' || app.android?.status === 'preview' || app.ios?.status === 'preview' || app.android?.status === 'draft' || app.ios?.status === 'draft') && (
+                      <span className="inline-block h-2 w-2 rounded-full bg-pink-400" />
+                    )}
+                    {app.name}
+                  </span>
                   <div className="flex items-center gap-2">
                     {app.rejectionCount > 0 && (
-                      <Badge className="bg-pink-500/20 text-pink-300 border-pink-400/30">{app.rejectionCount} rejection{app.rejectionCount>1?"s":""}</Badge>
+                      <Badge className="bg-pink-500/20 text-pink-300 border-pink-400/30">Rejections: {app.rejectionCount}</Badge>
                     )}
                     {!app.screenshotsComplete && (
-                      <Badge className="bg-amber-500/20 text-amber-300 border-amber-400/30">Screenshots</Badge>
+                      <Badge className="bg-amber-500/20 text-amber-300 border-amber-400/30" title={app.android?.missingScreenshots || app.ios?.missingScreenshots || ''}>Screenshots incomplete</Badge>
                     )}
                   </div>
                 </CardTitle>
@@ -225,25 +267,20 @@ export default function AppsPage() {
                     <div className="text-slate-300">Locales</div>
                     <div className="text-slate-200 font-medium">{app.locales}</div>
                   </div>
+                  {/* Per-platform actions focused on release flow */}
                   <div className="rounded-md border border-white/10 bg-white/5 p-2 flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-slate-300"><Apple className="h-3.5 w-3.5" /> ASC</span>
-                    <span className={app.credentials.appStoreConnect === "connected" ? "text-emerald-400" : "text-slate-400"}>
-                      {app.credentials.appStoreConnect}
-                    </span>
+                    <span className="flex items-center gap-2 text-slate-300"><Apple className="h-3.5 w-3.5" /> iOS</span>
+                    {(() => { const a = actionFor(app.ios); return a ? <span className={`${a.intent === 'danger' ? 'text-pink-400' : a.intent === 'primary' ? 'text-indigo-400' : 'text-slate-400'}`}>{a.label}</span> : null; })()}
                   </div>
                   <div className="rounded-md border border-white/10 bg-white/5 p-2 flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-slate-300"><Smartphone className="h-3.5 w-3.5" /> Play</span>
-                    <span className={app.credentials.googlePlay === "connected" ? "text-emerald-400" : "text-slate-400"}>
-                      {app.credentials.googlePlay}
-                    </span>
+                    <span className="flex items-center gap-2 text-slate-300"><Smartphone className="h-3.5 w-3.5" /> Android</span>
+                    {(() => { const a = actionFor(app.android); return a ? <span className={`${a.intent === 'danger' ? 'text-pink-400' : a.intent === 'primary' ? 'text-indigo-400' : 'text-slate-400'}`}>{a.label}</span> : null; })()}
                   </div>
                 </div>
 
                 <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                   <span>Updated {relative(app.updatedAt)}</span>
-                  <Link href={`/app/apps/${app.id}`} className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-slate-300 hover:bg-white/10">
-                    Open
-                  </Link>
+                  <span />
                 </div>
               </CardContent>
             </Card>
