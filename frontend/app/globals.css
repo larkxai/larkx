@@ -34,9 +34,9 @@ body {
     --secondary: 217 91% 60%; /* #3b82f6 */
     --secondary-foreground: 0 0% 100%; /* White text on blue */
     
-    /* Muted - Softer versions */
-    --muted: 28 54% 95%; /* Light brown background */
-    --muted-foreground: 28 54% 25%; /* Darker brown text */
+    /* Muted - Softer versions (light) */
+    --muted: 210 40% 96%; /* Light slate */
+    --muted-foreground: 215 16% 35%; /* Slate grey for placeholders */
     
     /* Accent - Dark Slate */
     --accent: 222 84% 5%; /* Dark slate */
@@ -92,9 +92,9 @@ body {
     --secondary: 217 91% 60%;
     --secondary-foreground: 0 0% 100%;
     
-    /* Muted - Darker versions */
-    --muted: 28 34% 25%;
-    --muted-foreground: 28 34% 85%;
+    /* Muted - Darker versions (dark) */
+    --muted: 217 33% 17%; /* Dark slate */
+    --muted-foreground: 215 20% 65%; /* Lighter slate for placeholders */
     
     /* Accent - Dark Slate (adjusted for dark mode) */
     --accent: 222 84% 5%;

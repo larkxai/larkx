@@ -83,11 +83,11 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-950 via-slate-930 to-slate-900 text-slate-100">
       <div className="w-full max-w-md space-y-8 px-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-slate-400 mt-2">
             Sign in to your account to continue
           </p>
         </div>
