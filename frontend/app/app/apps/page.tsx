@@ -1,12 +1,14 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 // Using a native <select> to avoid any runtime issues with the Select component while we iterate on UX
-import { Smartphone, Apple } from "lucide-react";
+
+import androidIcon from "../../android.png";
+import iosIcon from "../../ios.png";
+
 
 // Inline mocks and types while we iterate on UI/UX
 type StoreStatus = "live" | "in_review" | "rejected" | "draft" | "preview" | "approved";
@@ -189,6 +191,13 @@ export default function AppsPage() {
     if (p.status === "approved" || p.status === "live") return { label: "View release", intent: "neutral" };
     return { label: "View", intent: "neutral" };
   };
+
+  const actionClass = (intent: "primary" | "neutral" | "danger") =>
+    intent === "danger"
+      ? "bg-pink-500 text-white hover:bg-pink-600"
+      : intent === "primary"
+      ? "bg-indigo-500 text-white hover:bg-indigo-600"
+      : "bg-white/10 text-slate-300 hover:bg-white/15";
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-930 to-slate-900 text-slate-100">
       <div className="container mx-auto p-6">
@@ -249,9 +258,6 @@ export default function AppsPage() {
                     {app.name}
                   </span>
                   <div className="flex items-center gap-2">
-                    {app.rejectionCount > 0 && (
-                      <Badge className="bg-pink-500/20 text-pink-300 border-pink-400/30">Rejections: {app.rejectionCount}</Badge>
-                    )}
                     {!app.screenshotsComplete && (
                       <Badge className="bg-amber-500/20 text-amber-300 border-amber-400/30" title={app.android?.missingScreenshots || app.ios?.missingScreenshots || ''}>Screenshots incomplete</Badge>
                     )}
@@ -259,8 +265,28 @@ export default function AppsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <PlatformRow icon={<Smartphone className="h-4 w-4 text-green-400" />} p={app.android} />
-                <PlatformRow icon={<Apple className="h-4 w-4 text-slate-200" />} p={app.ios} />
+                <PlatformRow
+                  icon={
+                    <img
+                      src={androidIcon.src}
+                      alt="Android"
+                      className="h-4 w-4 text-green-400 object-contain"
+                      style={{ display: "inline-block" }}
+                    />
+                  }
+                  p={app.android}
+                />
+                <PlatformRow
+                  icon={
+                    <img
+                      src={iosIcon.src}
+                      alt="iOS"
+                      className="h-4 w-4 text-slate-200 object-contain"
+                      style={{ display: "inline-block" }}
+                    />
+                  }
+                  p={app.ios}
+                />
 
                 <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-400">
                   <div className="rounded-md border border-white/10 bg-white/5 p-2">
@@ -269,12 +295,38 @@ export default function AppsPage() {
                   </div>
                   {/* Per-platform actions focused on release flow */}
                   <div className="rounded-md border border-white/10 bg-white/5 p-2 flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-slate-300"><Apple className="h-3.5 w-3.5" /> iOS</span>
-                    {(() => { const a = actionFor(app.ios); return a ? <span className={`${a.intent === 'danger' ? 'text-pink-400' : a.intent === 'primary' ? 'text-indigo-400' : 'text-slate-400'}`}>{a.label}</span> : null; })()}
+                    <div />
+                    {(() => {
+                      const a = actionFor(app.ios);
+                      return a ? (
+                        <button className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1 ${actionClass(a.intent)}`}>
+                          <img
+                            src={iosIcon.src}
+                            alt="iOS"
+                            className="h-3.5 w-3.5 object-contain"
+                            style={{ display: "inline-block" }}
+                          />{" "}
+                          {a.label}
+                        </button>
+                      ) : null;
+                    })()}
                   </div>
                   <div className="rounded-md border border-white/10 bg-white/5 p-2 flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-slate-300"><Smartphone className="h-3.5 w-3.5" /> Android</span>
-                    {(() => { const a = actionFor(app.android); return a ? <span className={`${a.intent === 'danger' ? 'text-pink-400' : a.intent === 'primary' ? 'text-indigo-400' : 'text-slate-400'}`}>{a.label}</span> : null; })()}
+                    <div />
+                    {(() => {
+                      const a = actionFor(app.android);
+                      return a ? (
+                        <button className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1 ${actionClass(a.intent)}`}>
+                          <img
+                            src={androidIcon.src}
+                            alt="Android"
+                            className="h-3.5 w-3.5 object-contain"
+                            style={{ display: "inline-block" }}
+                          />{" "}
+                          {a.label}
+                        </button>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
 
@@ -290,5 +342,4 @@ export default function AppsPage() {
     </main>
   );
 }
-
 
