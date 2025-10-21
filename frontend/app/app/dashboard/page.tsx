@@ -33,9 +33,9 @@ export default function HomePage() {
     { provider: "Google Play", status: "missing" },
   ];
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-930 to-slate-900 text-slate-100">
-      <div className="container mx-auto p-6">
-        <div>
+    <main className="min-h-screen text-slate-100">
+      <div className="w-full">
+        <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-2xl font-bold text-slate-100">Welcome to Larkx</h1>

@@ -18,8 +18,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-white/10 px-4 bg-slate-900/40 backdrop-blur">
+      <SidebarInset className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b border-white/10 px-6 bg-slate-800/60 backdrop-blur">
             <SidebarTrigger className="-ml-1 text-slate-100 hover:bg-white/5" />
             <Separator orientation="vertical" className="mr-2 h-4 bg-white/10" />
             <Breadcrumb>
@@ -31,7 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Breadcrumb>
             <div className="ml-auto flex gap-2"></div>
           </header>
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

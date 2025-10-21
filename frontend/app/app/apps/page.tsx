@@ -204,10 +204,11 @@ export default function AppsPage() {
       ? "bg-indigo-500 text-white hover:bg-indigo-600"
       : "bg-white/10 text-slate-300 hover:bg-white/15";
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-930 to-slate-900 text-slate-100">
-      <div className="container mx-auto p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
+    <main className="min-h-screen text-slate-100">
+      <div className="w-full">
+        <div className="p-6">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
             <h1 className="text-2xl font-bold">All Apps</h1>
             <p className="text-slate-400">Overview of apps across iOS and Android</p>
           </div>
@@ -354,6 +355,7 @@ export default function AppsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
         </div>
       </div>
     </main>
