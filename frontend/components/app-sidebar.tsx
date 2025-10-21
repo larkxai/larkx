@@ -17,6 +17,7 @@ import {
   Sparkles,
   ShieldCheck,
   Globe,
+  LifeBuoy,
   Image as ImageIcon,
   Key,
   Rocket,
@@ -77,20 +78,14 @@ const navigation = [
       { title: "Localization", icon: Globe, url: "/app/content/localization" },
     ],
   },
-  {
-    title: "Automation",
-    items: [
-      { title: "Integrations", icon: GitBranch, url: "/app/integrations" },
-    ],
-  },
 ];
 
 const secondaryNav = [
-  // {
-  //   title: "Support",
-  //   icon: LifeBuoy,
-  //   url: "#",
-  // },
+  {
+    title: "Support",
+    icon: LifeBuoy,
+    url: "#",
+  },
   {
     title: "Feedback",
     icon: Send,

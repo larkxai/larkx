@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Sparkles, Clock3, Eye, Hash, Image, History, Rocket, Clock } from "lucide-react";
+import { FileText, Sparkles, Clock3, Eye, Hash, Image, History, Rocket, Clock, GitBranch, Settings, Zap } from "lucide-react";
 import androidIcon from "../../../android.png";
 import iosIcon from "../../../ios.png";
 
@@ -54,7 +54,7 @@ export default function AppDetailsPage() {
   const [dataSafetyAndroid, setDataSafetyAndroid] = React.useState("This app collects location data to provide personalized travel recommendations");
   const [privacyPolicyUrl, setPrivacyPolicyUrl] = React.useState("https://travelly.com/privacy");
   const [supportUrl, setSupportUrl] = React.useState("https://travelly.com/support");
-  const [tab, setTab] = React.useState<"content" | "credentials" | "compliance" | "releases" | "history">("content");
+  const [tab, setTab] = React.useState<"content" | "credentials" | "compliance" | "releases" | "history" | "integrations">("content");
   const [currentVersion] = React.useState("v1.2");
   const [showHistory, setShowHistory] = React.useState(false);
 
@@ -220,8 +220,8 @@ export default function AppDetailsPage() {
     <main className="min-h-screen text-slate-100">
       <div className="w-full">
         <div className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
+        <div className="flex items-center justify-between">
+          <div>
             <h1 className="text-2xl font-bold">{app.name}</h1>
             <p className="text-slate-400">Manage store metadata and releases</p>
           </div>
@@ -238,13 +238,14 @@ export default function AppDetailsPage() {
             { key: "credentials", label: "Credentials" },
             { key: "compliance", label: "Compliance" },
             { key: "releases", label: "Releases" },
+            { key: "integrations", label: "CI/CD" },
             { key: "history", label: "History" },
           ].map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key as "content" | "credentials" | "compliance" | "releases" | "history")}
+              onClick={() => setTab(t.key as "content" | "credentials" | "compliance" | "releases" | "integrations" | "history")}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-2 ${
-                tab === (t.key as "content" | "credentials" | "compliance" | "releases" | "history")
+                tab === (t.key as "content" | "credentials" | "compliance" | "releases" | "integrations" | "history")
                   ? "bg-slate-900/70 text-slate-100 border border-white/10"
                   : "text-slate-300 hover:bg-white/10"
               }`}
@@ -721,6 +722,152 @@ export default function AppDetailsPage() {
                     <div className="text-right">
                       <div className="text-xs text-slate-400">1 week ago</div>
                       <div className="text-xs text-emerald-400">Live</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {tab === "integrations" && (
+          <div className="space-y-6">
+            <Card className="rounded-2xl border-white/10 bg-slate-900/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle className="text-slate-100 flex items-center gap-2">
+                  <GitBranch className="h-5 w-5" />
+                  GitHub Actions Integration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <img src={iosIcon.src} alt="iOS" className="h-4 w-4 object-contain" />
+                      <span className="text-sm font-medium text-slate-100">iOS Build</span>
+                    </div>
+                    <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">Connected</span>
+                  </div>
+                  <div className="text-xs text-slate-400 mb-3">
+                    Automatically build and submit iOS apps from your GitHub repository
+                  </div>
+                  <div className="flex gap-2">
+                    <Button className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configure
+                    </Button>
+                    <Button variant="outline" className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 text-sm">
+                      View Workflow
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <img src={androidIcon.src} alt="Android" className="h-4 w-4 object-contain" />
+                      <span className="text-sm font-medium text-slate-100">Android Build</span>
+                    </div>
+                    <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">Connected</span>
+                  </div>
+                  <div className="text-xs text-slate-400 mb-3">
+                    Automatically build and submit Android apps from your GitHub repository
+                  </div>
+                  <div className="flex gap-2">
+                    <Button className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configure
+                    </Button>
+                    <Button variant="outline" className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 text-sm">
+                      View Workflow
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-white/10 bg-slate-900/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle className="text-slate-100 flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  Build Triggers
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-100">Push to main</div>
+                        <div className="text-xs text-slate-400">Automatically build on every push to main branch</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-emerald-400">Active</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-100">Release tags</div>
+                        <div className="text-xs text-slate-400">Build when creating release tags (v1.0.0)</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-400">Inactive</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-100">Pull requests</div>
+                        <div className="text-xs text-slate-400">Build on pull request creation</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-400">Inactive</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-white/10 bg-slate-900/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle className="text-slate-100 flex items-center gap-2">
+                  <Rocket className="h-5 w-5" />
+                  Recent Builds
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-100">Build #42 - iOS</div>
+                        <div className="text-xs text-slate-400">Commit: a1b2c3d - "Update app metadata"</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-400">2 hours ago</div>
+                      <div className="text-xs text-emerald-400">Success</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-pink-400"></div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-100">Build #41 - Android</div>
+                        <div className="text-xs text-slate-400">Commit: e4f5g6h - "Fix build configuration"</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-400">4 hours ago</div>
+                      <div className="text-xs text-pink-400">Failed</div>
                     </div>
                   </div>
                 </div>
