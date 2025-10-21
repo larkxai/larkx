@@ -4,6 +4,10 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 // Using a native <select> to avoid any runtime issues with the Select component while we iterate on UX
 
 import androidIcon from "../../android.png";
@@ -96,7 +100,7 @@ function StatusBadge({ status }: { status: StoreStatus }) {
     approved: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
     live: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
     in_review: "text-indigo-400 border-indigo-400/30 bg-indigo-400/10",
-    rejected: "text-pink-400 border-pink-400/30 bg-pink-400/10",
+    rejected: "text-pink-400 border-pink-400/30 bg-red-400/10",
     draft: "text-slate-400 border-white/10 bg-white/5",
     preview: "text-blue-400 border-blue-400/30 bg-blue-400/10",
   } as any;
@@ -130,6 +134,7 @@ function PlatformRow({ icon, p }: { icon: React.ReactNode; p?: AppMock["android"
 export default function AppsPage() {
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<string>("all");
+  const router = useRouter();
 
   const relative = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -194,16 +199,24 @@ export default function AppsPage() {
 
   const actionClass = (intent: "primary" | "neutral" | "danger") =>
     intent === "danger"
-      ? "bg-pink-500 text-white hover:bg-pink-600"
+      ? "bg-red-500 text-white hover:bg-red-600"
       : intent === "primary"
       ? "bg-indigo-500 text-white hover:bg-indigo-600"
       : "bg-white/10 text-slate-300 hover:bg-white/15";
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-930 to-slate-900 text-slate-100">
       <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">All Apps</h1>
-          <p className="text-slate-400">Overview of apps across iOS and Android</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">All Apps</h1>
+            <p className="text-slate-400">Overview of apps across iOS and Android</p>
+          </div>
+          <Link href="/app/apps/new">
+            <Button className="bg-indigo-500 hover:bg-indigo-600 text-white">
+              <Upload className="h-4 w-4 mr-2" />
+              Upload App
+            </Button>
+          </Link>
         </div>
 
         {/* Controls + aggregates */}
@@ -247,13 +260,17 @@ export default function AppsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {sorted.map((app) => (
-            <Card key={app.id} className={`relative rounded-2xl bg-slate-900/60 backdrop-blur ${borderFor(app)}`}>
+            <Card 
+              key={app.id} 
+              className={`relative rounded-2xl bg-slate-900/60 backdrop-blur ${borderFor(app)} cursor-pointer hover:bg-slate-800/60 transition-colors`}
+              onClick={() => router.push(`/app/apps/${app.id}`)}
+            >
               <CardHeader>
                 <CardTitle className="flex items-center justify-between text-slate-100 text-base">
                   <span className="truncate flex items-center gap-2">
                     {/* alert dot when any action is needed */}
                     { (app.android?.status === 'rejected' || app.ios?.status === 'rejected' || app.android?.status === 'preview' || app.ios?.status === 'preview' || app.android?.status === 'draft' || app.ios?.status === 'draft') && (
-                      <span className="inline-block h-2 w-2 rounded-full bg-pink-400" />
+                      <span className="inline-block h-2 w-2 rounded-full bg-red-400" />
                     )}
                     {app.name}
                   </span>

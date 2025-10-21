@@ -6,12 +6,8 @@ import {
   Users,
   FileText,
   GitBranch,
-  BarChart,
-  Briefcase,
   ChevronsUpDown,
-  LifeBuoy,
   Send,
-  BadgeCheck,
   CreditCard,
   Bell,
   LogOut,
@@ -23,8 +19,6 @@ import {
   ShieldCheck,
   Globe,
   Image as ImageIcon,
-  FlaskConical,
-  Settings,
   Key,
   Rocket,
 } from "lucide-react";
@@ -71,16 +65,8 @@ const navigation = [
     title: "Apps",
     items: [
       { title: "All Apps", icon: Store, url: "/app/apps" },
-      { title: "Upload App", icon: Upload, url: "/app/apps/new" },
       { title: "Submissions", icon: Rocket, url: "/app/submissions" },
       { title: "History", icon: GitBranch, url: "/app/history" },
-    ],
-  },
-  {
-    title: "Store Setup",
-    items: [
-      { title: "Credentials", icon: Key, url: "/app/credentials" },
-      { title: "Compliance & Preflight", icon: ShieldCheck, url: "/app/preflight" },
     ],
   },
   {
@@ -93,32 +79,9 @@ const navigation = [
     ],
   },
   {
-    title: "Experiments",
-    items: [
-      { title: "Experiments", icon: FlaskConical, url: "/app/experiments" },
-      { title: "Performance", icon: BarChart, url: "/app/performance" },
-    ],
-  },
-  {
     title: "Automation",
     items: [
-      { title: "CI/CD", icon: Briefcase, url: "/app/automation/cicd" },
       { title: "Integrations", icon: GitBranch, url: "/app/integrations" },
-    ],
-  },
-  {
-    title: "Organization",
-    items: [
-      { title: "Teams & Roles", icon: Users, url: "/app/organization/teams" },
-      { title: "Audit Log", icon: FileText, url: "/app/organization/audit" },
-    ],
-  },
-  {
-    title: "Settings",
-    items: [
-      { title: "Billing & Plan", icon: CreditCard, url: "/app/settings/billing" },
-      { title: "API Keys", icon: Key, url: "/app/settings/keys" },
-      { title: "Notifications", icon: Bell, url: "/app/settings/notifications" },
     ],
   },
 ];
@@ -142,6 +105,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
   const { user, logout } = useAuthStore();
+
+  console.log(user);
 
   React.useEffect(() => {
     const fetchOrganization = async () => {
@@ -293,17 +258,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage
-                      src={user?.profileImage}
+                      src={"https://i.ibb.co/s99n7GzY/Screenshot-2025-10-20-at-5-08-04-PM.png"}
                       alt={user?.firstName}
-                    />
-                    <AvatarFallback className="rounded-lg bg-indigo-500 text-white">
+                    /> 
+                    {/* <AvatarFallback className="rounded-lg bg-indigo-500 text-white">
                       {user?.firstName?.charAt(0)}
                       {user?.lastName?.charAt(0)}
-                    </AvatarFallback>
+                    </AvatarFallback> */}
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
-                      {user?.firstName} {user?.lastName}
+                      {/* {user?.firstName} {user?.lastName} */}
+                      Alex B
                     </span>
                     <span className="truncate text-xs">{user?.email}</span>
                   </div>
@@ -316,18 +282,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 sideOffset={4}
               >
                 <DropdownMenuGroup>
-                  {/* <DropdownMenuItem>
-                    <BadgeCheck className="mr-2" />
-                    Account
-                  </DropdownMenuItem> */}
-                  {/* <DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Users className="mr-2" />
+                    Teams & Roles
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <FileText className="mr-2" />
+                    Audit Log
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem>
                     <CreditCard className="mr-2" />
-                    Billing
+                    Billing & Plan
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Key className="mr-2" />
+                    API Keys
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Bell className="mr-2" />
                     Notifications
-                  </DropdownMenuItem> */}
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator className="bg-white/10" />
                 <DropdownMenuItem onClick={handleLogout} className="text-slate-100 hover:bg-white/5 focus:bg-white/5">
