@@ -103,7 +103,7 @@ function StatusBadge({ status }: { status: StoreStatus }) {
     rejected: "text-pink-400 border-pink-400/30 bg-red-400/10",
     draft: "text-slate-400 border-white/10 bg-white/5",
     preview: "text-blue-400 border-blue-400/30 bg-blue-400/10",
-  } as any;
+  } as const;
   return (
     <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs ${map[status]}`}>
       {status}

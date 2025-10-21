@@ -5,22 +5,17 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAuthStore } from "@/lib/store/auth";
+// import { useAuthStore } from "@/lib/store/auth";
 import {
   Check,
   Rocket,
-  LineChart,
   Sparkles,
-  Shield,
   Upload,
-  Images,
-  RefreshCw,
   Store,
-  Github,
 } from "lucide-react";
 
 export default function HomePage() {
-  const { user } = useAuthStore();
+  // const { user } = useAuthStore();
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
   const [isClient, setIsClient] = React.useState(false);
   
@@ -146,7 +141,7 @@ export default function HomePage() {
                 </div>
                 <div className="rounded-xl border border-white/10 p-4 bg-slate-800/50">
                   <p className="text-sm text-slate-300">
-                    "As a non-technical founder, I was dreading the app store process. Larkx made it effortless — one upload, and everything was handled automatically. No more juggling multiple consoles."
+                    &quot;As a non-technical founder, I was dreading the app store process. Larkx made it effortless — one upload, and everything was handled automatically. No more juggling multiple consoles.&quot;
                   </p>
                   <p className="text-xs text-slate-500 mt-2">— No-code founder</p>
                 </div>

@@ -6,24 +6,9 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Apple, FileText, Image, Globe, Hash, Users, Star, Eye, Sparkles, History, Clock, Clock3 } from "lucide-react";
+import { FileText, Sparkles, Clock3, Eye, Hash, Image, History, Rocket, Clock } from "lucide-react";
 import androidIcon from "../../../android.png";
 import iosIcon from "../../../ios.png";
-
-const AndroidLogo = ({ className = "h-4 w-4" }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-    <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 9v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9z"/>
-      <path d="M7 9h10"/>
-      <path d="M9.5 5l-1.5 2"/>
-      <path d="M14.5 5l1.5 2"/>
-      <path d="M6 11v2"/>
-      <path d="M18 11v2"/>
-      <circle cx="10" cy="7" r=".5" fill="currentColor" stroke="none"/>
-      <circle cx="14" cy="7" r=".5" fill="currentColor" stroke="none"/>
-    </g>
-  </svg>
-);
 
 type StoreStatus = "live" | "in_review" | "rejected" | "draft" | "preview" | "approved";
 
@@ -70,7 +55,7 @@ export default function AppDetailsPage() {
   const [privacyPolicyUrl, setPrivacyPolicyUrl] = React.useState("https://travelly.com/privacy");
   const [supportUrl, setSupportUrl] = React.useState("https://travelly.com/support");
   const [tab, setTab] = React.useState<"content" | "credentials" | "compliance" | "releases" | "history">("content");
-  const [currentVersion, setCurrentVersion] = React.useState("v1.2");
+  const [currentVersion] = React.useState("v1.2");
   const [showHistory, setShowHistory] = React.useState(false);
 
   const Mismatch = ({ show }: { show: boolean }) =>
@@ -256,9 +241,9 @@ export default function AppDetailsPage() {
           ].map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key as any)}
+              onClick={() => setTab(t.key as "content" | "credentials" | "compliance" | "releases" | "history")}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-2 ${
-                tab === (t.key as any)
+                tab === (t.key as "content" | "credentials" | "compliance" | "releases" | "history")
                   ? "bg-slate-900/70 text-slate-100 border border-white/10"
                   : "text-slate-300 hover:bg-white/10"
               }`}
@@ -494,9 +479,9 @@ export default function AppDetailsPage() {
                       iOS Screenshots
                     </div>
                     <div className="space-y-2 text-xs text-slate-400">
-                      <div>• iPhone 6.7" (3 required)</div>
-                      <div>• iPhone 6.5" (3 required)</div>
-                      <div>• iPad Pro 12.9" (3 required)</div>
+                      <div>• iPhone 6.7&quot; (3 required)</div>
+                      <div>• iPhone 6.5&quot; (3 required)</div>
+                      <div>• iPad Pro 12.9&quot; (3 required)</div>
                     </div>
                     <div className="mt-3 flex gap-2">
                       <Button className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm">
@@ -532,7 +517,7 @@ export default function AppDetailsPage() {
               </CardContent>
             </Card>
 
-            <p className="text-xs text-slate-500">Unified fields with platform-specific inputs reduce context-switching while keeping platform separation clear. Use "copy" buttons to quickly sync values between platforms.</p>
+            <p className="text-xs text-slate-500">Unified fields with platform-specific inputs reduce context-switching while keeping platform separation clear. Use &quot;copy&quot; buttons to quickly sync values between platforms.</p>
           </div>
         )}
 
@@ -781,7 +766,7 @@ export default function AppDetailsPage() {
                   <div className="w-2 h-2 rounded-full bg-blue-400 mt-2"></div>
                   <div className="flex-1">
                     <div className="text-sm text-slate-100">Screenshots uploaded</div>
-                    <div className="text-xs text-slate-400">Added iPhone 6.7" screenshots for 3 locales</div>
+                    <div className="text-xs text-slate-400">Added iPhone 6.7&quot; screenshots for 3 locales</div>
                     <div className="text-xs text-slate-500">2 days ago</div>
                   </div>
                 </div>

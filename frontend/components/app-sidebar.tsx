@@ -13,7 +13,6 @@ import {
   LogOut,
   Plus,
   Building2,
-  Upload,
   Store,
   Sparkles,
   ShieldCheck,
@@ -48,7 +47,7 @@ import {
   DropdownMenuShortcut,
 } from "./ui/dropdown-menu";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import { useRouter } from "next/navigation";
