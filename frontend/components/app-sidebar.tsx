@@ -143,7 +143,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
 
   return (
-    <Sidebar variant="inset" className="bg-slate-950 border-r border-slate-700/50 min-h-screen" {...props}>
+    <Sidebar variant="sidebar" className="bg-slate-950 border-r border-slate-700/50 min-h-screen" {...props}>
       <SidebarHeader className="bg-slate-950">
         <SidebarMenu>
           <SidebarMenuItem>
