@@ -66,6 +66,11 @@ const navigation = [
     items: [
       { title: "All Apps", icon: Store, url: "/app/apps" },
       { title: "Submissions", icon: Rocket, url: "/app/submissions" },
+    ],
+  },
+  {
+    title: "Activity",
+    items: [
       { title: "History", icon: GitBranch, url: "/app/history" },
     ],
   },

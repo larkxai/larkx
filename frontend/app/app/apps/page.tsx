@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 // Using a native <select> to avoid any runtime issues with the Select component while we iterate on UX
@@ -214,8 +214,8 @@ export default function AppsPage() {
           </div>
           <Link href="/app/apps/new">
             <Button className="bg-indigo-500 hover:bg-indigo-600 text-white">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload App
+              <Plus className="h-4 w-4 mr-2" />
+              Add App
             </Button>
           </Link>
         </div>
