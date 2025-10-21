@@ -849,7 +849,7 @@ export default function AppDetailsPage() {
                       <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                       <div>
                         <div className="text-sm font-medium text-slate-100">Build #42 - iOS</div>
-                        <div className="text-xs text-slate-400">Commit: a1b2c3d - &ldquo;Update app metadata"</div>
+                        <div className="text-xs text-slate-400">Commit: a1b2c3d - &ldquo;Update app metadata&quot;</div>
                       </div>
                     </div>
                     <div className="text-right">
