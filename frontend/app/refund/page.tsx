@@ -28,7 +28,7 @@ export default function RefundPage() {
           <section>
             <h2 className="text-2xl font-semibold text-slate-100 mb-4">1. 30-Day Money-Back Guarantee</h2>
             <p className="text-slate-300 leading-relaxed">
-              We offer a 30-day money-back guarantee for all paid subscriptions. If you're not satisfied with our service within the first 30 days of your subscription, you can request a full refund.
+              We offer a 30-day money-back guarantee for all paid subscriptions. If you&apos;re not satisfied with our service within the first 30 days of your subscription, you can request a full refund.
             </p>
           </section>
 
@@ -110,7 +110,7 @@ export default function RefundPage() {
           <section>
             <h2 className="text-2xl font-semibold text-slate-100 mb-4">10. Changes to Refund Policy</h2>
             <p className="text-slate-300 leading-relaxed">
-              We reserve the right to modify this refund policy at any time. Changes will be posted on this page with an updated "Last updated" date. Your continued use of our service after any modifications constitutes acceptance of the updated policy.
+              We reserve the right to modify this refund policy at any time. Changes will be posted on this page with an updated &quot;Last updated&quot; date. Your continued use of our service after any modifications constitutes acceptance of the updated policy.
             </p>
           </section>
 

@@ -28,7 +28,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold text-slate-100 mb-4">1. Acceptance of Terms</h2>
             <p className="text-slate-300 leading-relaxed">
-              By accessing and using Larkx ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+              By accessing and using Larkx (&quot;the Service&quot;), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
             </p>
           </section>
 
@@ -84,7 +84,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold text-slate-100 mb-4">7. Limitation of Liability</h2>
             <p className="text-slate-300 leading-relaxed">
-              Larkx is provided "as is" without warranties of any kind. We are not responsible for app store rejections, delays, or policy changes. Our liability is limited to the amount you paid for the service in the 12 months preceding the claim.
+              Larkx is provided &quot;as is&quot; without warranties of any kind. We are not responsible for app store rejections, delays, or policy changes. Our liability is limited to the amount you paid for the service in the 12 months preceding the claim.
             </p>
           </section>
 

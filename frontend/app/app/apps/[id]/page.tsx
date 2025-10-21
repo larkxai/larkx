@@ -849,7 +849,7 @@ export default function AppDetailsPage() {
                       <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                       <div>
                         <div className="text-sm font-medium text-slate-100">Build #42 - iOS</div>
-                        <div className="text-xs text-slate-400">Commit: a1b2c3d - "Update app metadata"</div>
+                        <div className="text-xs text-slate-400">Commit: a1b2c3d - &ldquo;Update app metadata"</div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -862,7 +862,7 @@ export default function AppDetailsPage() {
                       <div className="w-2 h-2 rounded-full bg-pink-400"></div>
                       <div>
                         <div className="text-sm font-medium text-slate-100">Build #41 - Android</div>
-                        <div className="text-xs text-slate-400">Commit: e4f5g6h - "Fix build configuration"</div>
+                        <div className="text-xs text-slate-400">Commit: e4f5g6h - &quot;Fix build configuration&quot;</div>
                       </div>
                     </div>
                     <div className="text-right">

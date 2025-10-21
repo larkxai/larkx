@@ -3,9 +3,8 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { History, Filter, Search, Calendar, GitBranch, FileText, Image, Settings, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { History, Filter, Calendar, GitBranch, FileText, Image, Settings, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 import androidIcon from "../../android.png";
 import iosIcon from "../../ios.png";
