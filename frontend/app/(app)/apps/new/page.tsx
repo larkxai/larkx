@@ -281,7 +281,7 @@ export default function AddAppPage() {
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Add New App</h1>
+              <h1 className="text-2xl font-bold">New App</h1>
               <p className="text-slate-400">AI-assisted app publishing in 7 simple steps</p>
             </div>
             <Button 

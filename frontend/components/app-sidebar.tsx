@@ -49,6 +49,7 @@ import {
 } from "./ui/dropdown-menu";
 
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { FullscreenLoader } from "@/components/ui/loader";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 import { useRouter } from "next/navigation";
@@ -139,7 +140,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   if (loading || !organization) {
-    return <div>Loading...</div>;
+    return <FullscreenLoader message="Preparing your workspace..." />;
   }
 
   return (

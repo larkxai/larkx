@@ -49,7 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           label = 'Apps';
           break;
         case 'new':
-          label = 'Add New App';
+          label = 'New App';
           break;
         case 'submissions':
           label = 'Submissions';
