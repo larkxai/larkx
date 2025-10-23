@@ -129,13 +129,13 @@ export default function AddAppPage() {
   const [showSuccessDialog, setShowSuccessDialog] = React.useState(false);
 
   const steps = [
-    { number: 1, title: "Upload Build", icon: Upload, description: "Drop your exported file" },
+    { number: 1, title: "Upload Build", icon: Upload, description: "Drop your .aab/.ipa file" },
     { number: 2, title: "Connect Stores", icon: LinkIcon, description: "Link publishing accounts" },
     { number: 3, title: "Auto-Generate", icon: Sparkles, description: "AI prepares your listings" },
     { number: 4, title: "Privacy & Support", icon: Shield, description: "Generate compliance pages" },
     { number: 5, title: "Screenshots", icon: Image, description: "AI creates device mockups" },
-    { number: 6, title: "Pre-Release Check", icon: CheckCircle, description: "Validate everything" },
-    { number: 7, title: "Submit", icon: Rocket, description: "Ship to both stores" }
+    { number: 6, title: "Pre-Submission Check", icon: CheckCircle, description: "Validate metadata & files" },
+    { number: 7, title: "Submit to Test Tracks", icon: Rocket, description: "Deploy to internal testing" }
   ];
 
   const handleFileUpload = async (file: File) => {
@@ -353,11 +353,11 @@ export default function AddAppPage() {
                       <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-slate-100 mb-2">Drop your build file here</h3>
                       <p className="text-slate-400 mb-4">
-                        Supports .aab, .apk, .ipa files or zipped FlutterFlow exports
+                        Supports .aab (Android), .ipa (iOS) files or zipped FlutterFlow exports
                       </p>
                       <input
                         type="file"
-                        accept=".aab,.apk,.ipa,.zip"
+                        accept=".aab,.ipa,.zip"
                         onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
                         className="hidden"
                         id="build-upload"
@@ -1109,7 +1109,7 @@ export default function AddAppPage() {
                 <CardHeader>
                   <CardTitle className="text-slate-100 flex items-center gap-2">
                     <CheckCircle className="h-5 w-5" />
-                    Pre-Release Check
+                    Pre-Submission Check
                   </CardTitle>
                   <p className="text-slate-400">Before we submit, let's check everything</p>
                 </CardHeader>
@@ -1119,7 +1119,7 @@ export default function AddAppPage() {
                       <CheckCircle className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
                       <h3 className="text-xl font-medium text-slate-100 mb-2">Ready to validate?</h3>
                       <p className="text-slate-400 mb-6">
-                        We'll check for common issues and predict possible rejection reasons
+                        We'll validate metadata, file formats, and check for common submission issues
                       </p>
                       <Button 
                         onClick={handleValidate}
@@ -1223,9 +1223,9 @@ export default function AddAppPage() {
                 <CardHeader>
                   <CardTitle className="text-slate-100 flex items-center gap-2">
                     <Rocket className="h-5 w-5" />
-                    Submit to Stores
+                    Submit to Test Tracks
                   </CardTitle>
-                  <p className="text-slate-400">Ready to ship? Submit to both stores</p>
+                  <p className="text-slate-400">Deploy to internal testing tracks first</p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {submissionStatus === "ready" && (
@@ -1237,8 +1237,8 @@ export default function AddAppPage() {
                             <h3 className="text-lg font-medium text-slate-100">App Store Connect</h3>
                           </div>
                           <div className="space-y-2 text-sm text-slate-400">
-                            <div>• Submit to TestFlight for testing</div>
-                            <div>• Submit to App Store Review</div>
+                            <div>• Submit to TestFlight (Internal Testing)</div>
+                            <div>• Prepare for App Store Review</div>
                             <div>• Track submission status</div>
                           </div>
                         </div>
@@ -1249,8 +1249,8 @@ export default function AddAppPage() {
                             <h3 className="text-lg font-medium text-slate-100">Google Play Console</h3>
                           </div>
                           <div className="space-y-2 text-sm text-slate-400">
-                            <div>• Submit to Internal Testing</div>
-                            <div>• Submit to Production</div>
+                            <div>• Submit to Internal Testing Track</div>
+                            <div>• Prepare for Production Release</div>
                             <div>• Track release status</div>
                           </div>
                         </div>
@@ -1262,7 +1262,7 @@ export default function AddAppPage() {
                           className="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-3 text-lg"
                         >
                           <Rocket className="w-5 h-5 mr-2" />
-                          Submit to Both Stores
+                          Submit to Test Tracks
                         </Button>
                       </div>
                     </div>
@@ -1281,9 +1281,9 @@ export default function AddAppPage() {
                   {submissionStatus === "submitted" && (
                     <div className="text-center py-8">
                       <Check className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-medium text-slate-100 mb-2">Successfully submitted!</h3>
+                      <h3 className="text-xl font-medium text-slate-100 mb-2">Submitted to test tracks!</h3>
                       <p className="text-slate-400 mb-6">
-                        Your app has been submitted to both stores. You&apos;ll receive updates on the review process.
+                        Your app has been submitted to internal testing tracks. Next step: prepare for production release.
                       </p>
                       <div className="flex gap-3 justify-center">
                         <Button 
@@ -1349,7 +1349,7 @@ export default function AddAppPage() {
             <div className="flex items-center justify-between p-6 border-b border-white/10">
               <h2 className="text-xl font-semibold text-slate-100 flex items-center gap-2">
                 <Check className="h-5 w-5 text-emerald-400" />
-                App Successfully Submitted!
+                App Submitted to Test Tracks!
               </h2>
               <button
                 onClick={() => setShowSuccessDialog(false)}
@@ -1363,10 +1363,10 @@ export default function AddAppPage() {
                 <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Rocket className="w-8 h-8 text-emerald-400" />
                 </div>
-                <h3 className="text-lg font-medium text-slate-100 mb-2">Your app is on its way!</h3>
+                <h3 className="text-lg font-medium text-slate-100 mb-2">Your app is in testing!</h3>
                 <p className="text-slate-400">
-                  We've successfully submitted your app to both App Store and Google Play. 
-                  You'll receive updates on the review process.
+                  We've successfully submitted your app to internal testing tracks. 
+                  Next step: prepare for production release after testing.
                 </p>
               </div>
 
