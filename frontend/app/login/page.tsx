@@ -23,7 +23,7 @@ function LoginForm() {
 
     try {
       await login({ email, password });
-      const callbackUrl = searchParams.get('callbackUrl') || '/app/dashboard'
+      const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
       window.location.href = callbackUrl;
     } catch (error) {
       console.log(error)

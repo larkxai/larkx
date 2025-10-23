@@ -212,7 +212,7 @@ export default function AppsPage() {
             <h1 className="text-2xl font-bold">All Apps</h1>
             <p className="text-slate-400">Overview of apps across iOS and Android</p>
           </div>
-          <Link href="/app/apps/new">
+          <Link href="/apps/new">
             <Button className="bg-indigo-500 hover:bg-indigo-600 text-white">
               <Plus className="h-4 w-4 mr-2" />
               Add App
@@ -264,7 +264,7 @@ export default function AppsPage() {
             <Card 
               key={app.id} 
               className={`relative rounded-2xl bg-slate-900/60 backdrop-blur ${borderFor(app)} cursor-pointer hover:bg-slate-800/60 transition-colors`}
-              onClick={() => router.push(`/app/apps/${app.id}`)}
+              onClick={() => router.push(`/apps/${app.id}`)}
             >
               <CardHeader>
                 <CardTitle className="flex items-center justify-between text-slate-100 text-base">

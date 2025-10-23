@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
 
   // Redirect authenticated users from login page to dashboard
   if (isAuthenticated && path === '/login') {
-    return NextResponse.redirect(new URL('/app/dashboard', request.url))
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   // Only redirect unauthenticated users from protected routes

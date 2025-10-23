@@ -226,7 +226,7 @@ export default function AppDetailsPage() {
             <p className="text-slate-400">Manage store metadata and releases</p>
           </div>
           <div className="flex gap-2">
-            <Link href="/app/apps" className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10">Back to apps</Link>
+            <Link href="/apps" className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10">Back to apps</Link>
             <Button className="rounded-md bg-indigo-500 hover:bg-indigo-600">Save</Button>
           </div>
         </div>

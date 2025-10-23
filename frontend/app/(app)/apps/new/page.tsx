@@ -286,7 +286,7 @@ export default function AddAppPage() {
             </div>
             <Button 
               variant="outline" 
-              onClick={() => router.push("/app/apps")}
+              onClick={() => router.push("/apps")}
               className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
             >
               Cancel
@@ -1273,7 +1273,7 @@ export default function AddAppPage() {
                       <Loader2 className="w-16 h-16 text-indigo-400 mx-auto mb-4 animate-spin" />
                       <h3 className="text-xl font-medium text-slate-100 mb-2">Submitting to stores...</h3>
                       <p className="text-slate-400">
-                        This may take a few minutes. We'll notify you when it's complete.
+                        This may take a few minutes. We&apos;ll notify you when it&apos;s complete.
                       </p>
                     </div>
                   )}
@@ -1283,11 +1283,11 @@ export default function AddAppPage() {
                       <Check className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
                       <h3 className="text-xl font-medium text-slate-100 mb-2">Successfully submitted!</h3>
                       <p className="text-slate-400 mb-6">
-                        Your app has been submitted to both stores. You'll receive updates on the review process.
+                        Your app has been submitted to both stores. You&apos;ll receive updates on the review process.
                       </p>
                       <div className="flex gap-3 justify-center">
                         <Button 
-                          onClick={() => router.push("/app/apps")}
+                          onClick={() => router.push("/apps")}
                           className="bg-indigo-500 hover:bg-indigo-600 text-white"
                         >
                           View Apps
@@ -1413,7 +1413,7 @@ export default function AddAppPage() {
               <Button
                 onClick={() => {
                   setShowSuccessDialog(false);
-                  router.push("/app/apps");
+                  router.push("/apps");
                 }}
                 variant="outline"
                 className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
@@ -1423,7 +1423,7 @@ export default function AddAppPage() {
               <Button 
                 onClick={() => {
                   setShowSuccessDialog(false);
-                  router.push("/app/apps");
+                  router.push("/apps");
                 }}
                 className="bg-indigo-500 hover:bg-indigo-600 text-white"
               >

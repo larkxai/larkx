@@ -58,29 +58,29 @@ const navigation = [
   {
     title: "Main",
     items: [
-      { title: "Home", icon: Home, url: "/app/dashboard" },
+      { title: "Home", icon: Home, url: "/dashboard" },
     ],
   },
   {
     title: "Apps",
     items: [
-      { title: "All Apps", icon: Store, url: "/app/apps" },
-      { title: "Submissions", icon: Rocket, url: "/app/submissions" },
+      { title: "All Apps", icon: Store, url: "/apps" },
+      { title: "Submissions", icon: Rocket, url: "/submissions" },
     ],
   },
   {
     title: "Activity",
     items: [
-      { title: "History", icon: GitBranch, url: "/app/history" },
+      { title: "History", icon: GitBranch, url: "/history" },
     ],
   },
   {
     title: "AI Content",
     items: [
-      { title: "Metadata", icon: FileText, url: "/app/content/metadata" },
-      { title: "Screenshots", icon: ImageIcon, url: "/app/content/screenshots" },
-      { title: "Privacy Policy", icon: ShieldCheck, url: "/app/content/privacy" },
-      { title: "Localization", icon: Globe, url: "/app/content/localization" },
+      { title: "Metadata", icon: FileText, url: "/content/metadata" },
+      { title: "Screenshots", icon: ImageIcon, url: "/content/screenshots" },
+      { title: "Privacy Policy", icon: ShieldCheck, url: "/content/privacy" },
+      { title: "Localization", icon: Globe, url: "/content/localization" },
     ],
   },
 ];

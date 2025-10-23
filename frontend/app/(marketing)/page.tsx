@@ -59,7 +59,7 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/app/dashboard">
+            <Link href="/dashboard">
               <Button
                 size="sm"
                 className="bg-indigo-500 hover:bg-indigo-600 rounded-xl"
@@ -90,7 +90,7 @@ export default function HomePage() {
               Built for non-technical founders. Upload your build, AI handles everything else.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <Link href="/app/dashboard">
+              <Link href="/dashboard">
                 <Button className="rounded-2xl px-6 py-6 text-base bg-indigo-500 hover:bg-indigo-600">
                   <Rocket className="h-5 w-5 mr-2" /> {isClient ? (isAuthenticated ? "Go to console" : "Get started") : "Get started"}
                 </Button>

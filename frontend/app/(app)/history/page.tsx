@@ -397,7 +397,7 @@ export default function HistoryPage() {
                     </div>
                     <div className="flex-shrink-0">
                       <Link 
-                        href={`/app/apps/${event.appId}`}
+                        href={`/apps/${event.appId}`}
                         className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                       >
                         View App →

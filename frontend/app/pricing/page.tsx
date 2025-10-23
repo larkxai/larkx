@@ -21,7 +21,7 @@ export default function PricingPage() {
           </Link>
 
           <div className="flex items-center gap-3">
-            <Link href="/app/dashboard">
+            <Link href="/dashboard">
               <Button
                 size="sm"
                 className="bg-indigo-500 hover:bg-indigo-600 rounded-xl"

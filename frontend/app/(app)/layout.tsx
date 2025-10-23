@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -7,6 +8,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbLink,
+  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -31,18 +33,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const breadcrumbs = [];
     let currentPath = '';
     
-    // Always start with Dashboard for app routes
-    if (segments[0] === 'app') {
-      breadcrumbs.push({ label: 'Dashboard', href: '/dashboard' });
-      currentPath = '/app';
-    }
-    
     // Process each segment
     segments.forEach((segment, index) => {
       currentPath += `/${segment}`;
-      
-      // Skip the 'app' segment as we already handled it
-      if (segment === 'app') return;
       
       // Generate human-readable labels
       let label = segment;
@@ -108,17 +101,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Breadcrumb>
               <BreadcrumbList className="text-slate-300">
                 {breadcrumbs.map((crumb, index) => (
-                  <BreadcrumbItem key={index}>
-                    {index === breadcrumbs.length - 1 ? (
-                      <BreadcrumbPage className="text-slate-100 font-medium">{crumb.label}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink asChild>
-                        <Link href={crumb.href} className="text-slate-300 hover:text-slate-100">
-                          {crumb.label}
-                        </Link>
-                      </BreadcrumbLink>
+                  <React.Fragment key={index}>
+                    <BreadcrumbItem>
+                      {index === breadcrumbs.length - 1 ? (
+                        <BreadcrumbPage className="text-slate-100 font-medium">{crumb.label}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink asChild>
+                          <Link href={crumb.href} className="text-slate-300 hover:text-slate-100">
+                            {crumb.label}
+                          </Link>
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                    {index < breadcrumbs.length - 1 && (
+                      <BreadcrumbSeparator className="text-slate-400">
+                        <span>/</span>
+                      </BreadcrumbSeparator>
                     )}
-                  </BreadcrumbItem>
+                  </React.Fragment>
                 ))}
               </BreadcrumbList>
             </Breadcrumb>

@@ -459,7 +459,7 @@ export default function SubmissionsPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <Link href={`/app/apps/${submission.appId}`}>
+                        <Link href={`/apps/${submission.appId}`}>
                           <Button variant="outline" size="sm" className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10">
                             View App
                           </Button>
