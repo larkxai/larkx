@@ -44,6 +44,12 @@ interface BuildInfo {
   fileSize: string;
 }
 
+interface BuildFile {
+  file: File;
+  platform: "ios" | "android";
+  info?: BuildInfo;
+}
+
 interface StoreCredentials {
   googlePlay: {
     connected: boolean;
@@ -90,8 +96,7 @@ export default function AddAppPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   
   // Step 1: Upload Build
-  const [buildFile, setBuildFile] = React.useState<File | null>(null);
-  const [buildInfo, setBuildInfo] = React.useState<BuildInfo | null>(null);
+  const [buildFiles, setBuildFiles] = React.useState<BuildFile[]>([]);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   
   // Step 2: Store Credentials
@@ -139,7 +144,10 @@ export default function AddAppPage() {
   ];
 
   const handleFileUpload = async (file: File) => {
-    setBuildFile(file);
+    const platform = file.name.includes('.ipa') ? 'ios' : 'android';
+    const newBuildFile: BuildFile = { file, platform };
+    
+    setBuildFiles(prev => [...prev, newBuildFile]);
     setIsAnalyzing(true);
     
     // Simulate AI analysis
@@ -148,14 +156,21 @@ export default function AddAppPage() {
         name: "Travelly",
         version: "1.2.0",
         buildNumber: "58",
-        platform: file.name.includes('.ipa') ? 'ios' : 'android',
-        packageId: file.name.includes('.ipa') ? undefined : 'com.travelly.app',
-        bundleId: file.name.includes('.ipa') ? 'com.travelly.app' : undefined,
+        platform: platform,
+        packageId: platform === 'android' ? 'com.travelly.app' : undefined,
+        bundleId: platform === 'ios' ? 'com.travelly.app' : undefined,
         fileSize: `${(file.size / 1024 / 1024).toFixed(1)} MB`
       };
-      setBuildInfo(mockInfo);
+      
+      setBuildFiles(prev => prev.map(bf => 
+        bf.file === file ? { ...bf, info: mockInfo } : bf
+      ));
       setIsAnalyzing(false);
     }, 2000);
+  };
+
+  const removeBuildFile = (file: File) => {
+    setBuildFiles(prev => prev.filter(bf => bf.file !== file));
   };
 
   const handleGenerateContent = async () => {
@@ -251,7 +266,7 @@ export default function AddAppPage() {
 
   const canProceed = (step: Step): boolean => {
     switch (step) {
-      case 1: return buildInfo !== null;
+      case 1: return buildFiles.length > 0 && buildFiles.every(bf => bf.info !== undefined);
       case 2: return credentials.googlePlay.connected && credentials.appStore.connected;
       case 3: return generatedContent !== null;
       case 4: return privacyPolicyUrl !== "" && supportUrl !== "";
@@ -348,97 +363,134 @@ export default function AddAppPage() {
                   <p className="text-slate-400">Drop your exported file or connect your builder</p>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {!buildFile ? (
-                    <div className="border-2 border-dashed border-white/20 rounded-xl p-12 text-center hover:border-indigo-400/50 transition-colors">
-                      <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-slate-100 mb-2">Drop your build file here</h3>
-                      <p className="text-slate-400 mb-4">
-                        Supports .aab (Android), .ipa (iOS) files or zipped FlutterFlow exports
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* Android Upload */}
+                    <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:border-indigo-400/50 transition-colors">
+                      <img src={androidIcon.src} alt="Android" className="w-8 h-8 mx-auto mb-3" />
+                      <h3 className="text-lg font-medium text-slate-100 mb-2">Android Build</h3>
+                      <p className="text-slate-400 mb-4 text-sm">
+                        Upload your .aab file
                       </p>
                       <input
                         type="file"
-                        accept=".aab,.ipa,.zip"
+                        accept=".aab"
                         onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
                         className="hidden"
-                        id="build-upload"
+                        id="android-upload"
                       />
                       <label
-                        htmlFor="build-upload"
-                        className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg cursor-pointer transition-colors"
+                        htmlFor="android-upload"
+                        className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors text-sm"
                       >
                         <Upload className="w-4 h-4" />
-                        Choose File
+                        Choose .aab File
                       </label>
                     </div>
-                  ) : (
+
+                    {/* iOS Upload */}
+                    <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:border-indigo-400/50 transition-colors">
+                      <img src={iosIcon.src} alt="iOS" className="w-8 h-8 mx-auto mb-3" />
+                      <h3 className="text-lg font-medium text-slate-100 mb-2">iOS Build</h3>
+                      <p className="text-slate-400 mb-4 text-sm">
+                        Upload your .ipa file
+                      </p>
+                      <input
+                        type="file"
+                        accept=".ipa"
+                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                        className="hidden"
+                        id="ios-upload"
+                      />
+                      <label
+                        htmlFor="ios-upload"
+                        className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors text-sm"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Choose .ipa File
+                      </label>
+                    </div>
+                  </div>
+
+                  {buildFiles.length > 0 && (
                     <div className="space-y-4">
-                      {isAnalyzing ? (
+                      {isAnalyzing && (
                         <div className="flex items-center gap-3 p-4 rounded-lg bg-indigo-500/10 border border-indigo-400/30">
                           <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
-                          <span className="text-indigo-300">🧠 AI is analyzing your build file...</span>
-                        </div>
-                      ) : buildInfo && (
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-400/30">
-                            <Check className="w-5 h-5 text-emerald-400" />
-                            <span className="text-emerald-300">Build file analyzed successfully!</span>
-                          </div>
-                          
-                          <div className="grid md:grid-cols-2 gap-4">
-                            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                              <h4 className="font-medium text-slate-100 mb-3">App Information</h4>
-                              <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                  <span className="text-slate-400">Name:</span>
-                                  <span className="text-slate-200">{buildInfo.name}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-slate-400">Version:</span>
-                                  <span className="text-slate-200">{buildInfo.version}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-slate-400">Build:</span>
-                                  <span className="text-slate-200">{buildInfo.buildNumber}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-slate-400">Size:</span>
-                                  <span className="text-slate-200">{buildInfo.fileSize}</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                              <h4 className="font-medium text-slate-100 mb-3">Platform Details</h4>
-                              <div className="space-y-2 text-sm">
-                                {buildInfo.platform === 'ios' && (
-                                  <div className="flex items-center gap-2">
-                                    <img src={iosIcon.src} alt="iOS" className="w-4 h-4" />
-                                    <span className="text-slate-200">iOS App</span>
-                                  </div>
-                                )}
-                                {buildInfo.platform === 'android' && (
-                                  <div className="flex items-center gap-2">
-                                    <img src={androidIcon.src} alt="Android" className="w-4 h-4" />
-                                    <span className="text-slate-200">Android App</span>
-                                  </div>
-                                )}
-                                {buildInfo.bundleId && (
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">Bundle ID:</span>
-                                    <span className="text-slate-200 font-mono text-xs">{buildInfo.bundleId}</span>
-                                  </div>
-                                )}
-                                {buildInfo.packageId && (
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-400">Package ID:</span>
-                                    <span className="text-slate-200 font-mono text-xs">{buildInfo.packageId}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                          <span className="text-indigo-300">🧠 AI is analyzing your build files...</span>
                         </div>
                       )}
+                      
+                      {!isAnalyzing && buildFiles.some(bf => bf.info) && (
+                        <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-400/30">
+                          <Check className="w-5 h-5 text-emerald-400" />
+                          <span className="text-emerald-300">Build files analyzed successfully!</span>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-3">
+                        {buildFiles.map((buildFile, index) => (
+                          <div key={index} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                {buildFile.platform === 'ios' ? (
+                                  <img src={iosIcon.src} alt="iOS" className="w-6 h-6" />
+                                ) : (
+                                  <img src={androidIcon.src} alt="Android" className="w-6 h-6" />
+                                )}
+                                <div>
+                                  <h4 className="font-medium text-slate-100">
+                                    {buildFile.platform === 'ios' ? 'iOS Build' : 'Android Build'}
+                                  </h4>
+                                  <p className="text-sm text-slate-400">{buildFile.file.name}</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => removeBuildFile(buildFile.file)}
+                                className="text-slate-400 hover:text-slate-200 transition-colors"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                            
+                            {buildFile.info && (
+                              <div className="grid md:grid-cols-2 gap-4 text-sm">
+                                <div className="space-y-2">
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">Name:</span>
+                                    <span className="text-slate-200">{buildFile.info.name}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">Version:</span>
+                                    <span className="text-slate-200">{buildFile.info.version}</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">Build:</span>
+                                    <span className="text-slate-200">{buildFile.info.buildNumber}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">Size:</span>
+                                    <span className="text-slate-200">{buildFile.info.fileSize}</span>
+                                  </div>
+                                </div>
+                                {buildFile.info.bundleId && (
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">Bundle ID:</span>
+                                    <span className="text-slate-200 font-mono text-xs">{buildFile.info.bundleId}</span>
+                                  </div>
+                                )}
+                                {buildFile.info.packageId && (
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-400">Package ID:</span>
+                                    <span className="text-slate-200 font-mono text-xs">{buildFile.info.packageId}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </CardContent>
