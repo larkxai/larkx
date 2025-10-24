@@ -38,7 +38,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     
     // Process each segment
-    segments.forEach((segment, index) => {
+    segments.forEach((segment) => {
       currentPath += `/${segment}`;
       
       // Skip the 'app' segment as we already handled it

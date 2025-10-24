@@ -93,7 +93,6 @@ interface ValidationResult {
 export default function AddAppPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = React.useState<Step>(1);
-  const [isLoading, setIsLoading] = React.useState(false);
   
   // Step 1: Upload Build
   const [buildFiles, setBuildFiles] = React.useState<BuildFile[]>([]);
@@ -713,7 +712,7 @@ export default function AddAppPage() {
                     <Sparkles className="h-5 w-5" />
                     Auto-Generate Metadata
                   </CardTitle>
-                  <p className="text-slate-400">We'll prepare your store listings with AI</p>
+                  <p className="text-slate-400">We&apos;ll prepare your store listings with AI</p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {!generatedContent ? (
@@ -870,7 +869,7 @@ export default function AddAppPage() {
                     <Shield className="h-5 w-5" />
                     Privacy & Support Setup
                   </CardTitle>
-                  <p className="text-slate-400">We'll generate and host your compliance pages</p>
+                  <p className="text-slate-400">We&apos;ll generate and host your compliance pages</p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
@@ -912,7 +911,7 @@ export default function AddAppPage() {
                       ) : (
                         <div className="space-y-4">
                           <div className="text-sm text-slate-400">
-                            AI will generate a privacy policy based on your app's data collection practices
+                            AI will generate a privacy policy based on your app&apos;s data collection practices
                           </div>
                           <Button 
                             onClick={handleGeneratePrivacy}
@@ -973,7 +972,7 @@ export default function AddAppPage() {
                       ) : (
                         <div className="space-y-4">
                           <div className="text-sm text-slate-400">
-                            We'll create a support page with contact information and FAQ
+                            We&apos;ll create a support page with contact information and FAQ
                           </div>
                           <Button 
                             onClick={handleGeneratePrivacy}
@@ -1003,7 +1002,7 @@ export default function AddAppPage() {
                       <div>
                         <h4 className="font-medium text-blue-300 mb-1">AI-Powered Compliance</h4>
                         <p className="text-sm text-blue-200/80">
-                          Our AI analyzes your app's SDKs and data collection to generate compliant privacy policies and data safety descriptions.
+                          Our AI analyzes your app&apos;s SDKs and data collection to generate compliant privacy policies and data safety descriptions.
                         </p>
                       </div>
                     </div>
@@ -1199,7 +1198,7 @@ export default function AddAppPage() {
                       <div>
                         <h4 className="font-medium text-blue-300 mb-1">AI Screenshot Generation</h4>
                         <p className="text-sm text-blue-200/80">
-                          Our AI creates realistic device mockups with your app's interface, optimized for each store's requirements.
+                          Our AI creates realistic device mockups with your app&apos;s interface, optimized for each store&apos;s requirements.
                         </p>
                       </div>
                     </div>
@@ -1216,7 +1215,7 @@ export default function AddAppPage() {
                     <CheckCircle className="h-5 w-5" />
                     Pre-Submission Check
                   </CardTitle>
-                  <p className="text-slate-400">Before we submit, let's check everything</p>
+                  <p className="text-slate-400">Before we submit, let&apos;s check everything</p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {validationResults.length === 0 ? (
@@ -1224,7 +1223,7 @@ export default function AddAppPage() {
                       <CheckCircle className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
                       <h3 className="text-xl font-medium text-slate-100 mb-2">Ready to validate?</h3>
                       <p className="text-slate-400 mb-6">
-                        We'll validate metadata, file formats, and check for common submission issues
+                        We&apos;ll validate metadata, file formats, and check for common submission issues
                       </p>
                       <Button 
                         onClick={handleValidate}
@@ -1470,7 +1469,7 @@ export default function AddAppPage() {
                 </div>
                 <h3 className="text-lg font-medium text-slate-100 mb-2">Your app is in testing!</h3>
                 <p className="text-slate-400">
-                  We've successfully submitted your app to internal testing tracks. 
+                  We&apos;ve successfully submitted your app to internal testing tracks. 
                   Next step: prepare for production release after testing.
                 </p>
               </div>
@@ -1505,9 +1504,9 @@ export default function AddAppPage() {
                 <div className="flex items-start gap-3">
                   <Sparkles className="w-5 h-5 text-blue-400 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-blue-300 mb-1">What's Next?</h4>
+                    <h4 className="font-medium text-blue-300 mb-1">What&apos;s Next?</h4>
                     <p className="text-sm text-blue-200/80">
-                      We'll monitor your submissions and notify you of any updates. 
+                      We&apos;ll monitor your submissions and notify you of any updates. 
                       If there are any issues, our AI will help you fix them automatically.
                     </p>
                   </div>

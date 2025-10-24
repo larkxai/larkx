@@ -30,11 +30,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const segments = pathname.split('/').filter(Boolean);
     
     // Build breadcrumbs dynamically
-    const breadcrumbs = [];
+    const breadcrumbs: { label: string; href: string }[] = [];
     let currentPath = '';
     
     // Process each segment
-    segments.forEach((segment, index) => {
+    segments.forEach((segment) => {
       currentPath += `/${segment}`;
       
       // Generate human-readable labels
