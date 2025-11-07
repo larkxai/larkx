@@ -1,76 +1,18 @@
-"use client"
-
-import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-// import { useAuthStore } from "@/lib/store/auth";
 import {
   Check,
-  Rocket,
   Sparkles,
   Upload,
   Store,
 } from "lucide-react";
+import { HeroCTA } from "@/components/hero-cta";
 
 export default function HomePage() {
-  // const { user } = useAuthStore();
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-  const [isClient, setIsClient] = React.useState(false);
-  
-  // Check for session cookie to determine if user is authenticated
-  // This matches the logic in middleware.ts
-  React.useEffect(() => {
-    setIsClient(true);
-    const getSessionCookie = () => {
-      const cookie = document.cookie.split('; ').find(row => row.startsWith('session='));
-      return cookie ? cookie.split('=')[1] : null;
-    };
-    
-    setIsAuthenticated(!!getSessionCookie());
-  }, []);
-  
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-930 to-slate-900 text-slate-100">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-slate-950/60 border-b border-white/10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="#" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center shadow-md">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <span className="font-semibold tracking-tight">Larkx</span>
-          </Link>
-
-          <div className="hidden md:flex items-center gap-6 text-sm text-slate-300">
-            <Link href="#features" className="hover:text-white">
-              Features
-            </Link>
-            <Link href="#how" className="hover:text-white">
-              How it works
-            </Link>
-            <Link href="#pricing" className="hover:text-white">
-              Pricing
-            </Link>
-            <Link href="#faq" className="hover:text-white">
-              FAQ
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard">
-              <Button
-                size="sm"
-                className="bg-indigo-500 hover:bg-indigo-600 rounded-xl"
-              >
-{isClient ? (isAuthenticated ? "Go to console" : "Get started") : "Get started"}
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <>
       {/* Hero */}
       <section className="container mx-auto px-4 pt-16 md:pt-24 pb-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
@@ -90,13 +32,9 @@ export default function HomePage() {
               Built for non-technical founders. Upload your build, AI handles everything else.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <Link href="/dashboard">
-                <Button className="rounded-2xl px-6 py-6 text-base bg-indigo-500 hover:bg-indigo-600">
-                  <Rocket className="h-5 w-5 mr-2" /> {isClient ? (isAuthenticated ? "Go to console" : "Get started") : "Get started"}
-                </Button>
-              </Link>
+              <HeroCTA />
             </div>
-            <div className="mt-6 flex items-center gap-4 text-sm text-slate-400">
+            <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-slate-400">
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-emerald-400" /> No technical skills required
               </div>
@@ -185,139 +123,50 @@ export default function HomePage() {
               </div>
             </div>
             
-            {/* Data Rows - Ordered by pain level (highest to lowest) */}
-            <div className="grid grid-cols-3 border-b border-white/10">
-              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                <span className="text-base font-medium text-slate-200">Rejection Handling</span>
-              </div>
-              <div className="p-6 bg-red-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                </div>
-                <span className="text-base text-red-200">Decode cryptic emails, panic</span>
-              </div>
-              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-emerald-400" />
-                </div>
-                <span className="text-base text-emerald-200">Plain English + auto-fix</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-3 border-b border-white/10">
-              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                <span className="text-base font-medium text-slate-200">First-Time Setup</span>
-              </div>
-              <div className="p-6 bg-red-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                </div>
-                <span className="text-base text-red-200">Hours of research, guess everything</span>
-              </div>
-              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-emerald-400" />
-                </div>
-                <span className="text-base text-emerald-200">Guided setup, AI explains everything</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-3 border-b border-white/10">
-              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                <span className="text-base font-medium text-slate-200">Multiple Apps</span>
-              </div>
-              <div className="p-6 bg-red-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                </div>
-                <span className="text-base text-red-200">Manual work × number of apps</span>
-              </div>
-              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-emerald-400" />
-                </div>
-                <span className="text-base text-emerald-200">Dashboard of all releases</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-3 border-b border-white/10">
-              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
-                <span className="text-base font-medium text-slate-200">Screenshots</span>
-              </div>
-              <div className="p-6 bg-red-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                </div>
-                <span className="text-base text-red-200">Hire designer, wait weeks</span>
-              </div>
-              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-emerald-400" />
-                </div>
-                <span className="text-base text-emerald-200">AI generates in minutes</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-3 border-b border-white/10">
-              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
-                <span className="text-base font-medium text-slate-200">Store Descriptions</span>
-              </div>
-              <div className="p-6 bg-red-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                </div>
-                <span className="text-base text-red-200">Write from scratch, guess keywords</span>
-              </div>
-              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-emerald-400" />
-                </div>
-                <span className="text-base text-emerald-200">AI writes optimized content</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-3 border-b border-white/10">
-              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
-                <span className="text-base font-medium text-slate-200">Privacy Policy</span>
-              </div>
-              <div className="p-6 bg-red-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                </div>
-                <span className="text-base text-red-200">Guess template or hire lawyer</span>
-              </div>
-              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-emerald-400" />
-                </div>
-                <span className="text-base text-emerald-200">AI creates automatically</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-3">
-              <div className="p-6 bg-slate-800/60 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
-                <span className="text-base font-medium text-slate-200">Multi-Store Sync</span>
-              </div>
-              <div className="p-6 bg-red-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                </div>
-                <span className="text-base text-red-200">Manual sync, version chaos</span>
-              </div>
-              <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-emerald-400" />
-                </div>
-                <span className="text-base text-emerald-200">Perfect sync automatically</span>
-              </div>
-            </div>
+            {/* Data Rows */}
+            <ComparisonRow 
+              task="Rejection Handling"
+              without="Decode cryptic emails, panic"
+              with="Plain English + auto-fix"
+              dotColor="bg-red-500"
+            />
+            <ComparisonRow 
+              task="First-Time Setup"
+              without="Hours of research, guess everything"
+              with="Guided setup, AI explains everything"
+              dotColor="bg-orange-500"
+            />
+            <ComparisonRow 
+              task="Multiple Apps"
+              without="Manual work × number of apps"
+              with="Dashboard of all releases"
+              dotColor="bg-yellow-500"
+            />
+            <ComparisonRow 
+              task="Screenshots"
+              without="Hire designer, wait weeks"
+              with="AI generates in minutes"
+              dotColor="bg-indigo-400"
+            />
+            <ComparisonRow 
+              task="Store Descriptions"
+              without="Write from scratch, guess keywords"
+              with="AI writes optimized content"
+              dotColor="bg-indigo-400"
+            />
+            <ComparisonRow 
+              task="Privacy Policy"
+              without="Guess template or hire lawyer"
+              with="AI creates automatically"
+              dotColor="bg-indigo-400"
+            />
+            <ComparisonRow 
+              task="Multi-Store Sync"
+              without="Manual sync, version chaos"
+              with="Perfect sync automatically"
+              dotColor="bg-indigo-400"
+              isLast
+            />
           </div>
         </div>
       </section>
@@ -363,7 +212,7 @@ export default function HomePage() {
           <div className="p-6 rounded-2xl border border-white/10 bg-slate-900/60">
             <div className="text-4xl font-bold text-blue-400 mb-2">1</div>
             <div className="text-slate-300">Interface for both stores</div>
-              </div>
+          </div>
         </div>
       </section>
 
@@ -413,7 +262,6 @@ export default function HomePage() {
         </div>
       </section>
 
-
       {/* FAQ */}
       <section id="faq" className="container mx-auto px-4 pb-28">
         <div className="max-w-2xl mx-auto">
@@ -422,48 +270,57 @@ export default function HomePage() {
             <h2 className="text-3xl font-semibold">Got questions?</h2>
           </div>
           <div className="space-y-4">
-          <FaqItem
+            <FaqItem
               q="I'm not technical. Can I use this?"
               a="Yes! Larkx is built for non-technical founders. Upload your build, AI does the rest."
-          />
-          <FaqItem
+            />
+            <FaqItem
               q="What if my app gets rejected?"
               a="AI explains rejections in plain English and auto-fixes most issues. Resubmit in minutes."
-          />
-          <FaqItem
+            />
+            <FaqItem
               q="How fast can I go live?"
               a="Most apps go live in under 15 minutes. Upload → AI magic → Live on both stores."
-          />
+            />
           </div>
         </div>
       </section>
+    </>
+  );
+}
 
-      {/* Footer */}
-      <footer className="border-t border-white/10">
-        <div className="container mx-auto px-4 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-slate-400 text-sm">
-            © {new Date().getFullYear()} Larkx. All rights reserved.
-          </p>
-          <div className="flex items-center gap-6 text-sm text-slate-400">
-            <Link href="/pricing" className="hover:text-white">
-              Pricing
-            </Link>
-            <Link href="/privacy" className="hover:text-white">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-white">
-              Terms
-            </Link>
-            <Link href="/refund" className="hover:text-white">
-              Refund Policy
-            </Link>
-            <Link href="#" className="hover:text-white">
-              Contact
-            </Link>
-          </div>
+function ComparisonRow({ 
+  task, 
+  without, 
+  with: withLarkx, 
+  dotColor,
+  isLast = false 
+}: { 
+  task: string; 
+  without: string; 
+  with: string; 
+  dotColor: string;
+  isLast?: boolean;
+}) {
+  return (
+    <div className={`grid grid-cols-3 ${!isLast ? 'border-b border-white/10' : ''}`}>
+      <div className="p-6 bg-slate-800/60 flex items-center gap-3">
+        <div className={`w-2 h-2 rounded-full ${dotColor}`}></div>
+        <span className="text-base font-medium text-slate-200">{task}</span>
+      </div>
+      <div className="p-6 bg-red-900/30 flex items-center gap-3">
+        <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+          <div className="w-2 h-2 rounded-full bg-red-400"></div>
         </div>
-      </footer>
-    </main>
+        <span className="text-base text-red-200">{without}</span>
+      </div>
+      <div className="p-6 bg-emerald-900/30 flex items-center gap-3">
+        <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+          <Check className="w-3 h-3 text-emerald-400" />
+        </div>
+        <span className="text-base text-emerald-200">{withLarkx}</span>
+      </div>
+    </div>
   );
 }
 
@@ -490,7 +347,6 @@ function FeatureCard({
     </Card>
   );
 }
-
 
 function PriceCard({
   tier,
