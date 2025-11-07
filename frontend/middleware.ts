@@ -14,7 +14,10 @@ export function middleware(request: NextRequest) {
   }
 
   // Only redirect unauthenticated users from protected routes
-  if (!isAuthenticated && path.startsWith('/app')) {
+  const protectedRoutes = ['/app', '/dashboard', '/apps', '/history', '/submissions', '/content'];
+  const isProtectedRoute = protectedRoutes.some((route) => path === route || path.startsWith(`${route}/`));
+
+  if (!isAuthenticated && isProtectedRoute) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('callbackUrl', path)
     return NextResponse.redirect(loginUrl)

@@ -15,7 +15,7 @@ export function HeroCTA() {
       const cookie = document.cookie.split('; ').find(row => row.startsWith('session='));
       return cookie ? cookie.split('=')[1] : null;
     };
-    
+
     setIsAuthenticated(!!getSessionCookie());
   }, []);
   
