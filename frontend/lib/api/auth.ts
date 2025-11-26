@@ -5,6 +5,13 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface SignupPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
 interface AuthResponse {
   user: {
     id: string;
@@ -45,6 +52,27 @@ export const authApi = {
     }
 
     return api.auth.login(credentials);
+  },
+
+  signup: async (payload: SignupPayload): Promise<AuthResponse> => {
+    if (isMockMode()) {
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const user = {
+        id: `mock-${payload.email}`,
+        email: payload.email,
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        profileImage: `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(payload.firstName || 'User')}`,
+      };
+
+      return {
+        user,
+        token: btoa(JSON.stringify({ userId: user.id })),
+      };
+    }
+
+    return api.auth.signup(payload);
   },
 
   logout: async (): Promise<void> => {

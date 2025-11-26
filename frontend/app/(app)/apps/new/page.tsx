@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +92,7 @@ interface ValidationResult {
 
 export default function AddAppPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = React.useState<Step>(1);
   
   // Step 1: Upload Build
@@ -132,15 +133,120 @@ export default function AddAppPage() {
   const [submissionStatus, setSubmissionStatus] = React.useState<"ready" | "submitting" | "submitted" | "error">("ready");
   const [showSuccessDialog, setShowSuccessDialog] = React.useState(false);
 
-  const steps = [
-    { number: 1, title: "Upload Build", icon: Upload, description: "Drop your .aab/.ipa file" },
-    { number: 2, title: "Connect Stores", icon: LinkIcon, description: "Link publishing accounts" },
-    { number: 3, title: "Auto-Generate", icon: Sparkles, description: "AI prepares your listings" },
-    { number: 4, title: "Privacy & Support", icon: Shield, description: "Generate compliance pages" },
-    { number: 5, title: "Screenshots", icon: Image, description: "AI creates device mockups" },
-    { number: 6, title: "Pre-Submission Check", icon: CheckCircle, description: "Validate metadata & files" },
-    { number: 7, title: "Submit to Test Tracks", icon: Rocket, description: "Deploy to internal testing" }
-  ];
+  const flowParam = searchParams.get("flow");
+  const flowType: 'new' | 'existing' | null = flowParam === "existing" ? "existing" : flowParam === "new" ? "new" : null;
+
+  React.useEffect(() => {
+    setCurrentStep(1);
+  }, [flowType]);
+
+  const [selectedExistingApp, setSelectedExistingApp] = React.useState<string | null>(null);
+  const existingApps = React.useMemo(
+    () => [
+      { id: "app_1", name: "Travelly", platform: "iOS & Android", status: "In review", updatedAt: "2d ago" },
+      { id: "app_2", name: "Shoply", platform: "Android", status: "Ready for release", updatedAt: "5h ago" },
+      { id: "app_3", name: "Notely", platform: "iOS", status: "Approved", updatedAt: "1w ago" },
+    ],
+    []
+  );
+
+  if (!flowType) {
+    return (
+      <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-930 to-slate-950 text-slate-100">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-40 -left-32 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />
+          <div className="absolute -bottom-32 -right-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
+        </div>
+
+        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-16">
+          <div className="w-full max-w-4xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/apps")}
+                  className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 flex items-center justify-center p-4 rounded-xl"
+                  size="icon"
+                  aria-label="Cancel"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+                <div>
+                  <h1 className="text-3xl font-semibold">Select Flow</h1>
+                  <p className="mt-1 text-slate-400">How would you like to work with Larkx today?</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-10 flex flex-col items-center gap-6 md:flex-row md:items-stretch md:justify-center">
+              <Card className="w-full max-w-sm rounded-3xl border-white/10 bg-slate-900/70 backdrop-blur">
+                <CardHeader>
+                  <CardTitle className="text-slate-100 flex items-center gap-2 text-lg">
+                    <Rocket className="w-5 h-5 text-indigo-400" /> I’m uploading a new app
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <p className="text-slate-400 text-sm leading-relaxed">
+                    Start fresh. We’ll guide you through setting up store listings and submitting your first build.
+                  </p>
+                  <Button
+                    className="w-full rounded-xl bg-indigo-500 hover:bg-indigo-600"
+                    size="lg"
+                    onClick={() => router.replace("/apps/new?flow=new")}
+                  >
+                    Start new app
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="w-full max-w-sm rounded-3xl border-white/10 bg-slate-900/70 backdrop-blur">
+                <CardHeader>
+                  <CardTitle className="text-slate-100 flex items-center gap-2 text-lg">
+                    <Upload className="w-5 h-5 text-blue-400" /> I’m updating an existing app
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <p className="text-slate-400 text-sm leading-relaxed">
+                    Connect your store accounts, pick an existing listing, and upload a new build for submission.
+                  </p>
+                  <Button
+                    className="w-full rounded-xl bg-blue-500 hover:bg-blue-600"
+                    size="lg"
+                    onClick={() => router.replace("/apps/new?flow=existing")}
+                  >
+                    Update existing app
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const steps = React.useMemo(() => {
+    if (flowType === 'existing') {
+      return [
+        { number: 1, title: "Connect Stores & Select App", icon: LinkIcon, description: "Choose an existing listing" },
+        { number: 2, title: "Upload New Build", icon: Upload, description: "Drop your .aab/.ipa file" },
+        { number: 3, title: "Auto-Generate", icon: Sparkles, description: "AI prepares your listings" },
+        { number: 4, title: "Privacy & Support", icon: Shield, description: "Generate compliance pages" },
+        { number: 5, title: "Screenshots", icon: Image, description: "AI creates device mockups" },
+        { number: 6, title: "Pre-Submission Check", icon: CheckCircle, description: "Validate metadata & files" },
+        { number: 7, title: "Submit to Test Tracks", icon: Rocket, description: "Deploy to internal testing" }
+      ];
+    }
+    return [
+      { number: 1, title: "Upload Build", icon: Upload, description: "Drop your .aab/.ipa file" },
+      { number: 2, title: "Connect Stores", icon: LinkIcon, description: "Link publishing accounts" },
+      { number: 3, title: "Auto-Generate", icon: Sparkles, description: "AI prepares your listings" },
+      { number: 4, title: "Privacy & Support", icon: Shield, description: "Generate compliance pages" },
+      { number: 5, title: "Screenshots", icon: Image, description: "AI creates device mockups" },
+      { number: 6, title: "Pre-Submission Check", icon: CheckCircle, description: "Validate metadata & files" },
+      { number: 7, title: "Submit to Test Tracks", icon: Rocket, description: "Deploy to internal testing" }
+    ];
+  }, [flowType]);
 
   const handleFileUpload = async (file: File) => {
     const platform = file.name.includes('.ipa') ? 'ios' : 'android';
@@ -288,26 +394,430 @@ export default function AddAppPage() {
     }
   };
 
+  const renderUploadStep = (options?: { title?: string; subtitle?: string }) => {
+    const title = options?.title ?? "Upload Your Build Files";
+    const subtitle = options?.subtitle ?? "Upload your Android and iOS build files";
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-100 mb-2">{title}</h2>
+          <p className="text-slate-400">{subtitle}</p>
+        </div>
+
+        {isAnalyzing && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-indigo-500/10 border border-indigo-400/30">
+            <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+            <span className="text-indigo-300">🧠 AI is analyzing your build files...</span>
+          </div>
+        )}
+        
+        {!isAnalyzing && buildFiles.some(bf => bf.info) && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-400/30">
+            <Check className="w-5 h-5 text-emerald-400" />
+            <span className="text-emerald-300">Build files analyzed successfully!</span>
+          </div>
+        )}
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Android Card */}
+          <Card className="rounded-2xl border-white/10 bg-slate-900/60 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-slate-100 flex items-center gap-2">
+                <img src={androidIcon.src} alt="Android" className="w-5 h-5" />
+                Android Build
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {buildFiles.find(bf => bf.platform === 'android') ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-slate-100 font-medium">
+                          {buildFiles.find(bf => bf.platform === 'android')?.info?.name ?? 'Android Build'}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">
+                          Version {buildFiles.find(bf => bf.platform === 'android')?.info?.version} · Build {buildFiles.find(bf => bf.platform === 'android')?.info?.buildNumber}
+                        </div>
+                      </div>
+                      <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/30 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Analyzed
+                      </Badge>
+                    </div>
+                    <div className="mt-3 text-xs text-slate-400">
+                      Package ID: {buildFiles.find(bf => bf.platform === 'android')?.info?.packageId}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      File size: {buildFiles.find(bf => bf.platform === 'android')?.info?.fileSize}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" size="sm">
+                      View analysis report
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-slate-400 hover:text-slate-200"
+                      onClick={() => {
+                        const androidFile = buildFiles.find(bf => bf.platform === 'android')?.file;
+                        if (androidFile) removeBuildFile(androidFile);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-dashed border-white/10 rounded-xl p-6 text-center space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-white/5 inline-flex items-center justify-center">
+                    <Upload className="w-5 h-5 text-slate-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-slate-100 font-medium">Android Build</h3>
+                    <p className="text-slate-400 text-sm">Upload your .aab file</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label
+                      htmlFor="android-upload"
+                      className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors text-sm"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Choose .aab File
+                    </label>
+                    <input
+                      type="file"
+                      accept=".aab"
+                      id="android-upload"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                    />
+                    <p className="text-xs text-slate-500">Drag and drop supported</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* iOS Card */}
+          <Card className="rounded-2xl border-white/10 bg-slate-900/60 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-slate-100 flex items-center gap-2">
+                <img src={iosIcon.src} alt="iOS" className="w-5 h-5" />
+                iOS Build
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {buildFiles.find(bf => bf.platform === 'ios') ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-slate-100 font-medium">
+                          {buildFiles.find(bf => bf.platform === 'ios')?.info?.name ?? 'iOS Build'}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">
+                          Version {buildFiles.find(bf => bf.platform === 'ios')?.info?.version} · Build {buildFiles.find(bf => bf.platform === 'ios')?.info?.buildNumber}
+                        </div>
+                      </div>
+                      <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/30 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Analyzed
+                      </Badge>
+                    </div>
+                    <div className="mt-3 text-xs text-slate-400">
+                      Bundle ID: {buildFiles.find(bf => bf.platform === 'ios')?.info?.bundleId}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      File size: {buildFiles.find(bf => bf.platform === 'ios')?.info?.fileSize}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10" size="sm">
+                      View analysis report
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-slate-400 hover:text-slate-200"
+                      onClick={() => {
+                        const iosFile = buildFiles.find(bf => bf.platform === 'ios')?.file;
+                        if (iosFile) removeBuildFile(iosFile);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-dashed border-white/10 rounded-xl p-6 text-center space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-white/5 inline-flex items-center justify-center">
+                    <Upload className="w-5 h-5 text-slate-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-slate-100 font-medium">iOS Build</h3>
+                    <p className="text-slate-400 text-sm">Upload your .ipa file</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label
+                      htmlFor="ios-upload"
+                      className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors text-sm"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Choose .ipa File
+                    </label>
+                    <input
+                      type="file"
+                      accept=".ipa"
+                      id="ios-upload"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                    />
+                    <p className="text-xs text-slate-500">Drag and drop supported</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
+  const renderConnectStoresStep = (options?: { includeExistingPicker?: boolean }) => (
+    <Card className="rounded-2xl border-white/10 bg-slate-900/60 backdrop-blur">
+      <CardHeader>
+        <CardTitle className="text-slate-100 flex items-center gap-2">
+          <LinkIcon className="h-5 w-5" />
+          Connect Store Accounts
+        </CardTitle>
+        <p className="text-slate-400">Link your publishing accounts securely</p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Google Play */}
+          <div className="rounded-lg border border-white/10 bg-white/5 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <img src={androidIcon.src} alt="Android" className="w-6 h-6" />
+              <h3 className="text-lg font-medium text-slate-100">Google Play Console</h3>
+            </div>
+            
+            {credentials.googlePlay.connected ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <Check className="w-4 h-4" />
+                  <span className="text-sm">Connected</span>
+                </div>
+                <div className="text-sm text-slate-400">
+                  Account: {credentials.googlePlay.accountEmail}
+                </div>
+                <div className="text-xs text-slate-500">
+                  Permissions: {credentials.googlePlay.permissions?.join(", ")}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                >
+                  Update Credentials
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-sm text-slate-400">
+                  Connect using OAuth or upload Service Account JSON
+                </div>
+                <div className="space-y-2">
+                  <Button 
+                    className="w-full bg-indigo-500 hover:bg-indigo-600 text-white"
+                    onClick={() => setCredentials(prev => ({
+                      ...prev,
+                      googlePlay: { 
+                        connected: true, 
+                        accountEmail: "developer@example.com",
+                        permissions: ["Release management", "App management"]
+                      }
+                    }))}
+                  >
+                    <Key className="w-4 h-4 mr-2" />
+                    Connect with OAuth
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Upload Service Account
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* App Store Connect */}
+          <div className="rounded-lg border border-white/10 bg-white/5 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <img src={iosIcon.src} alt="iOS" className="w-6 h-6" />
+              <h3 className="text-lg font-medium text-slate-100">App Store Connect</h3>
+            </div>
+            
+            {credentials.appStore.connected ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <Check className="w-4 h-4" />
+                  <span className="text-sm">Connected</span>
+                </div>
+                <div className="text-sm text-slate-400">
+                  Issuer ID: {credentials.appStore.issuerId}
+                </div>
+                <div className="text-sm text-slate-400">
+                  Key ID: {credentials.appStore.keyId}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                >
+                  Update Keys
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-sm text-slate-400">
+                  Upload your API key (Issuer ID, Key ID, Private Key)
+                </div>
+                <div className="space-y-3">
+                  <Input 
+                    placeholder="Issuer ID" 
+                    className="bg-slate-900/60 border-white/10 text-slate-100"
+                  />
+                  <Input 
+                    placeholder="Key ID" 
+                    className="bg-slate-900/60 border-white/10 text-slate-100"
+                  />
+                  <Button className="w-full bg-indigo-500 hover:bg-indigo-600 text-white">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload .p8 key
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {options?.includeExistingPicker && (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-slate-100 font-medium">Select the app to update</h3>
+                <p className="text-slate-400 text-sm">We’ll pull the latest metadata and status automatically.</p>
+              </div>
+              {selectedExistingApp && (
+                <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-400/30 flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Selected
+                </Badge>
+              )}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {existingApps.map(app => (
+                <button
+                  key={app.id}
+                  onClick={() => setSelectedExistingApp(app.id)}
+                  type="button"
+                  className={`text-left rounded-2xl border p-4 transition-all ${
+                    selectedExistingApp === app.id
+                      ? "border-indigo-400/60 bg-indigo-500/10 shadow-[0_0_0_1px_rgba(129,140,248,.35)]"
+                      : "border-white/10 bg-slate-900/40 hover:border-indigo-400/40 hover:bg-indigo-500/5"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-100 font-medium">{app.name}</span>
+                    {selectedExistingApp === app.id && <Check className="w-4 h-4 text-indigo-300" />}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-2">{app.platform}</div>
+                  <div className="text-xs text-slate-500 mt-1">{app.status} • Updated {app.updatedAt}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <main className="min-h-screen text-slate-100">
       <div className="w-full">
         <div className="p-6">
-          {/* Header */}
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">New App</h1>
+          {flowType === null && (
+            <div className="mb-6">
+              <div className="mb-6 flex items-center">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/apps")}
+                  className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 flex items-center justify-center p-4 rounded-xl"
+                  size="icon"
+                  aria-label="Cancel"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+                <div className="ml-4">
+                  <h1 className="text-2xl font-bold flex items-center gap-2">
+                    New App
+                  </h1>
+                  <p className="text-slate-400">Choose how you want to proceed</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="rounded-2xl border-white/10 bg-slate-900/60 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle className="text-slate-100 flex items-center gap-2">
+                      <Rocket className="w-4 h-4 text-indigo-400" /> I’m uploading a new app
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-slate-400 text-sm">Start fresh. We’ll help you set up store listings and submit your first build.</p>
+                    <Button className="rounded-xl bg-indigo-500 hover:bg-indigo-600" onClick={() => setFlowType('new')}>Start new app</Button>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-2xl border-white/10 bg-slate-900/60 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle className="text-slate-100 flex items-center gap-2">
+                      <Upload className="w-4 h-4 text-blue-400" /> I’m updating an existing app
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-slate-400 text-sm">Connect your store accounts, pick an existing listing, and upload a new build.</p>
+                    <Button className="rounded-xl bg-blue-500 hover:bg-blue-600" onClick={() => setFlowType('existing')}>Update existing app</Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+          {flowType !== null && (
+          <div className="mb-6 flex items-center">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/apps")}
+              className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 flex items-center justify-center p-4 rounded-xl"
+              size="icon"
+              aria-label="Cancel"
+            >
+              <X className="w-6 h-6" />
+            </Button>
+            <div className="ml-4">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                {flowType === 'existing' ? 'Update App' : 'New App'}
+              </h1>
               <p className="text-slate-400">AI-assisted app publishing in 7 simple steps</p>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => router.push("/apps")}
-              className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-            >
-              Cancel
-            </Button>
           </div>
-
+          )}
           {/* Progress Steps */}
+          {flowType !== null && (
           <div className="mb-6">
             <div className="flex items-center justify-between overflow-x-auto pb-4">
               {steps.map((step, index) => {
@@ -348,15 +858,17 @@ export default function AddAppPage() {
               })}
             </div>
           </div>
+          )}
 
           {/* Step Content */}
+          {flowType !== null && (
           <div className="space-y-6">
             {/* Step 1: Upload Build */}
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-100 mb-2">Upload Your Build Files</h2>
-                  <p className="text-slate-400">Upload your Android and iOS build files</p>
+                  <h2 className="text-xl font-semibold text-slate-100 mb-2">{flowType === 'existing' ? 'Connect stores & select listing' : 'Upload Your Build Files'}</h2>
+                  <p className="text-slate-400">{flowType === 'existing' ? 'Link your accounts and pick an app to update' : 'Upload your Android and iOS build files'}</p>
                 </div>
 
                 {isAnalyzing && (
@@ -1409,6 +1921,7 @@ export default function AddAppPage() {
               </Card>
             )}
           </div>
+          )}
 
           {/* Navigation */}
           <div className="flex items-center justify-between mt-8">

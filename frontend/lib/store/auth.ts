@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { authApi, LoginCredentials } from '@/lib/api/auth'
+import { authApi, LoginCredentials, SignupPayload } from '@/lib/api/auth'
 
 interface User {
   id: string
@@ -24,6 +24,7 @@ type AuthStore = {
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
+  signup: (payload: SignupPayload) => Promise<void>;
 };
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -49,6 +50,18 @@ export const useAuthStore = create<AuthStore>((set) => ({
       deleteCookie('session');
       set({ user: null, isLoading: false });
       window.location.href = '/login';
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  signup: async (payload) => {
+    set({ isLoading: true });
+    try {
+      const { user, token } = await authApi.signup(payload);
+      setCookie('session', token);
+      set({ user, isLoading: false });
     } catch (error) {
       set({ isLoading: false });
       throw error;

@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useState } from "react"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,6 +77,13 @@ function LoginForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Demo credentials: demo@larkx.ai / demo123
+      </p>
+
+      <p className="text-center text-sm text-slate-400">
+        Don&apos;t have an account?{" "}
+        <Link href="/signup" className="text-indigo-400 hover:text-indigo-300">
+          Create one
+        </Link>
       </p>
     </form>
   )
