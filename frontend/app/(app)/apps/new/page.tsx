@@ -150,6 +150,29 @@ export default function AddAppPage() {
     []
   );
 
+  const steps = React.useMemo(() => {
+    if (flowType === 'existing') {
+      return [
+        { number: 1, title: "Connect Stores & Select App", icon: LinkIcon, description: "Choose an existing listing" },
+        { number: 2, title: "Upload New Build", icon: Upload, description: "Drop your .aab/.ipa file" },
+        { number: 3, title: "Auto-Generate", icon: Sparkles, description: "AI prepares your listings" },
+        { number: 4, title: "Privacy & Support", icon: Shield, description: "Generate compliance pages" },
+        { number: 5, title: "Screenshots", icon: Image, description: "AI creates device mockups" },
+        { number: 6, title: "Pre-Submission Check", icon: CheckCircle, description: "Validate metadata & files" },
+        { number: 7, title: "Submit to Test Tracks", icon: Rocket, description: "Deploy to internal testing" }
+      ];
+    }
+    return [
+      { number: 1, title: "Upload Build", icon: Upload, description: "Drop your .aab/.ipa file" },
+      { number: 2, title: "Connect Stores", icon: LinkIcon, description: "Link publishing accounts" },
+      { number: 3, title: "Auto-Generate", icon: Sparkles, description: "AI prepares your listings" },
+      { number: 4, title: "Privacy & Support", icon: Shield, description: "Generate compliance pages" },
+      { number: 5, title: "Screenshots", icon: Image, description: "AI creates device mockups" },
+      { number: 6, title: "Pre-Submission Check", icon: CheckCircle, description: "Validate metadata & files" },
+      { number: 7, title: "Submit to Test Tracks", icon: Rocket, description: "Deploy to internal testing" }
+    ];
+  }, [flowType]);
+
   if (!flowType) {
     return (
       <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-930 to-slate-950 text-slate-100">
@@ -224,29 +247,6 @@ export default function AddAppPage() {
       </main>
     );
   }
-
-  const steps = React.useMemo(() => {
-    if (flowType === 'existing') {
-      return [
-        { number: 1, title: "Connect Stores & Select App", icon: LinkIcon, description: "Choose an existing listing" },
-        { number: 2, title: "Upload New Build", icon: Upload, description: "Drop your .aab/.ipa file" },
-        { number: 3, title: "Auto-Generate", icon: Sparkles, description: "AI prepares your listings" },
-        { number: 4, title: "Privacy & Support", icon: Shield, description: "Generate compliance pages" },
-        { number: 5, title: "Screenshots", icon: Image, description: "AI creates device mockups" },
-        { number: 6, title: "Pre-Submission Check", icon: CheckCircle, description: "Validate metadata & files" },
-        { number: 7, title: "Submit to Test Tracks", icon: Rocket, description: "Deploy to internal testing" }
-      ];
-    }
-    return [
-      { number: 1, title: "Upload Build", icon: Upload, description: "Drop your .aab/.ipa file" },
-      { number: 2, title: "Connect Stores", icon: LinkIcon, description: "Link publishing accounts" },
-      { number: 3, title: "Auto-Generate", icon: Sparkles, description: "AI prepares your listings" },
-      { number: 4, title: "Privacy & Support", icon: Shield, description: "Generate compliance pages" },
-      { number: 5, title: "Screenshots", icon: Image, description: "AI creates device mockups" },
-      { number: 6, title: "Pre-Submission Check", icon: CheckCircle, description: "Validate metadata & files" },
-      { number: 7, title: "Submit to Test Tracks", icon: Rocket, description: "Deploy to internal testing" }
-    ];
-  }, [flowType]);
 
   const handleFileUpload = async (file: File) => {
     const platform = file.name.includes('.ipa') ? 'ios' : 'android';
@@ -780,7 +780,7 @@ export default function AddAppPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-slate-400 text-sm">Start fresh. We’ll help you set up store listings and submit your first build.</p>
-                    <Button className="rounded-xl bg-indigo-500 hover:bg-indigo-600" onClick={() => setFlowType('new')}>Start new app</Button>
+                    <Button className="rounded-xl bg-indigo-500 hover:bg-indigo-600" onClick={() => router.replace("/apps/new?flow=new")}>Start new app</Button>
                   </CardContent>
                 </Card>
                 <Card className="rounded-2xl border-white/10 bg-slate-900/60 backdrop-blur">
@@ -791,7 +791,7 @@ export default function AddAppPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-slate-400 text-sm">Connect your store accounts, pick an existing listing, and upload a new build.</p>
-                    <Button className="rounded-xl bg-blue-500 hover:bg-blue-600" onClick={() => setFlowType('existing')}>Update existing app</Button>
+                    <Button className="rounded-xl bg-blue-500 hover:bg-blue-600" onClick={() => router.replace("/apps/new?flow=existing")}>Update existing app</Button>
                   </CardContent>
                 </Card>
               </div>
