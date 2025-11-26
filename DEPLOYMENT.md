@@ -844,31 +844,215 @@ aws ec2 authorize-security-group-ingress \
 
 ## Step 12: Test the Deployment
 
-### Test Database Connection
+### 12.1 Get Backend Endpoint
+
+**Option A: Direct IP (for testing)**
 ```bash
-# From backend server or locally
-psql -h <rds_endpoint> -U <rds_username> -d larkx -c "SELECT version();"
+# Get task IP address
+TASK_ARN=$(aws ecs list-tasks \
+  --cluster larkx-cluster \
+  --service-name larkx-backend-service \
+  --region us-east-1 \
+  --query 'taskArns[0]' --output text)
+
+ENI_ID=$(aws ecs describe-tasks \
+  --cluster larkx-cluster \
+  --tasks $TASK_ARN \
+  --region us-east-1 \
+  --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text)
+
+BACKEND_IP=$(aws ec2 describe-network-interfaces \
+  --network-interface-ids $ENI_ID \
+  --region us-east-1 \
+  --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
+
+BACKEND_URL="http://$BACKEND_IP:3000"
+
+echo "Backend URL: $BACKEND_URL"
 ```
 
-### Test Backend API
+**Option B: Load Balancer (production)**
 ```bash
-# Health check
-curl http://your-backend-url/api
+# Get ALB DNS name
+ALB_DNS=$(aws elbv2 describe-load-balancers \
+  --names larkx-alb \
+  --region us-east-1 \
+  --query 'LoadBalancers[0].DNSName' --output text)
 
-# Swagger docs
-curl http://your-backend-url/docs
+BACKEND_URL="http://$ALB_DNS"
+
+echo "Backend URL: $BACKEND_URL"
 ```
 
-### Test Cognito
+### 12.2 Test Health Endpoint
+
 ```bash
+# Test root API endpoint
+curl $BACKEND_URL/api
+
+# Expected response: JSON or 200 OK
+# Example: {"message": "Larkx API is running"}
+
+# Test with verbose output
+curl -v $BACKEND_URL/api
+
+# Test with JSON formatting
+curl -s $BACKEND_URL/api | jq .
+```
+
+### 12.3 Test API Endpoints
+
+```bash
+# Test users endpoint
+curl $BACKEND_URL/api/users
+
+# Test organizations endpoint
+curl $BACKEND_URL/api/organizations/current
+
+# Test apps endpoint (requires org ID)
+curl $BACKEND_URL/api/organizations/org1/apps
+
+# Test with headers
+curl -H "Content-Type: application/json" $BACKEND_URL/api/users
+
+# Test POST endpoint (example)
+curl -X POST $BACKEND_URL/api/organizations/org1/apps \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test App", "packageName": "com.test.app"}'
+```
+
+### 12.4 Test Swagger Documentation
+
+```bash
+# Check if Swagger UI is accessible
+curl $BACKEND_URL/docs
+
+# Open in browser (macOS)
+open $BACKEND_URL/docs
+
+# Open in browser (Linux)
+xdg-open $BACKEND_URL/docs
+
+# Test Swagger JSON
+curl $BACKEND_URL/docs-json
+```
+
+### 12.5 Test Database Connection
+
+```bash
+# Test direct database connection
+RDS_ENDPOINT=$(terraform -C terraform output -raw rds_endpoint)
+RDS_USER=$(terraform -C terraform output -raw rds_username)
+RDS_DB=$(terraform -C terraform output -raw rds_database_name)
+
+psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DB -c "SELECT version();"
+
+# Check if tables exist
+psql -h $RDS_ENDPOINT -U $RDS_USER -d $RDS_DB -c "\dt"
+
+# Test from backend logs
+aws logs filter-log-events \
+  --log-group-name /ecs/larkx-backend \
+  --filter-pattern "database" \
+  --region us-east-1
+```
+
+### 12.6 Test Cognito Integration
+
+```bash
+# Get Cognito details
+COGNITO_POOL_ID=$(terraform -C terraform output -raw cognito_user_pool_id)
+
 # List user pool
-aws cognito-idp list-user-pools --max-results 10
+aws cognito-idp list-user-pools --max-results 10 --region us-east-1
 
 # Create test user
 aws cognito-idp admin-create-user \
-  --user-pool-id <user-pool-id> \
-  --username test@example.com \
-  --user-attributes Name=email,Value=test@example.com
+  --user-pool-id $COGNITO_POOL_ID \
+  --username test@larkx.ai \
+  --user-attributes Name=email,Value=test@larkx.ai Name=email_verified,Value=true \
+  --temporary-password TempPass123! \
+  --region us-east-1
+
+# Test JWT validation (if implemented)
+# Use the token from Cognito login to test protected endpoints
+```
+
+### 12.7 Test S3 Integration
+
+```bash
+# Get S3 bucket name
+S3_BUCKET=$(terraform -C terraform output -raw s3_builds_bucket_name)
+
+# List bucket contents
+aws s3 ls s3://$S3_BUCKET/
+
+# Test presigned URL generation (via API)
+curl -X POST $BACKEND_URL/api/organizations/org1/apps/app1/binaries \
+  -H "Content-Type: application/json" \
+  -d '{"platform": "android", "versionName": "1.0.0", "versionCode": 1}'
+```
+
+### 12.8 Monitor Service Health
+
+```bash
+# Check service status
+aws ecs describe-services \
+  --cluster larkx-cluster \
+  --services larkx-backend-service \
+  --region us-east-1 \
+  --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount,Events:events[0:3]}'
+
+# Check task health
+aws ecs describe-tasks \
+  --cluster larkx-cluster \
+  --tasks $(aws ecs list-tasks --cluster larkx-cluster --service-name larkx-backend-service --query 'taskArns[0]' --output text) \
+  --region us-east-1 \
+  --query 'tasks[0].healthStatus'
+
+# View real-time logs
+aws logs tail /ecs/larkx-backend --follow --region us-east-1
+```
+
+### 12.9 End-to-End Test Script
+
+Create `backend/test-endpoints.sh`:
+```bash
+#!/bin/bash
+
+BACKEND_URL=${1:-"http://localhost:3000"}
+
+echo "Testing Larkx Backend at $BACKEND_URL"
+echo "======================================"
+
+# Health check
+echo -n "Health check: "
+curl -s -o /dev/null -w "%{http_code}" $BACKEND_URL/api
+echo ""
+
+# Users endpoint
+echo -n "Users endpoint: "
+curl -s -o /dev/null -w "%{http_code}" $BACKEND_URL/api/users
+echo ""
+
+# Organizations endpoint
+echo -n "Organizations endpoint: "
+curl -s -o /dev/null -w "%{http_code}" $BACKEND_URL/api/organizations/current
+echo ""
+
+# Swagger docs
+echo -n "Swagger docs: "
+curl -s -o /dev/null -w "%{http_code}" $BACKEND_URL/docs
+echo ""
+
+echo "======================================"
+echo "Test complete!"
+```
+
+Make it executable and run:
+```bash
+chmod +x backend/test-endpoints.sh
+./backend/test-endpoints.sh $BACKEND_URL
 ```
 
 ## Step 13: Set Up Monitoring (Optional but Recommended)
