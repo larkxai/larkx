@@ -65,7 +65,7 @@ variable "s3_cors_origins" {
 variable "rds_engine_version" {
   description = "PostgreSQL engine version"
   type        = string
-  default     = "15.4"
+  default     = "16.11"
 }
 
 variable "rds_instance_class" {

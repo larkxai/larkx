@@ -76,8 +76,16 @@ resource "aws_cognito_user_pool" "main" {
   # Auto-verify email
   auto_verified_attributes = ["email"]
 
-  # MFA configuration (optional)
+  # MFA configuration
   mfa_configuration = var.enable_mfa ? "OPTIONAL" : "OFF"
+
+  # Software token MFA (TOTP) - required when MFA is OPTIONAL
+  dynamic "software_token_mfa_configuration" {
+    for_each = var.enable_mfa ? [1] : []
+    content {
+      enabled = true
+    }
+  }
 
   # Account recovery
   account_recovery_setting {
@@ -91,6 +99,11 @@ resource "aws_cognito_user_pool" "main" {
   tags = {
     Name = "${var.project_name}-user-pool-${var.environment}"
   }
+
+  # Lifecycle: Ignore schema changes after creation (Cognito doesn't allow schema modifications)
+  lifecycle {
+    ignore_changes = [schema]
+  }
 }
 
 # Cognito User Pool Client
@@ -103,8 +116,7 @@ resource "aws_cognito_user_pool_client" "main" {
   id_token_validity      = 24
   refresh_token_validity = 30
 
-  # Token refresh
-  refresh_token_validity = 30
+  # Token validity units
   token_validity_units {
     access_token  = "hours"
     id_token      = "hours"
@@ -318,12 +330,13 @@ resource "aws_db_subnet_group" "main" {
 
 # RDS Parameter Group (for PostgreSQL configuration)
 resource "aws_db_parameter_group" "main" {
-  family = "postgres${replace(var.rds_engine_version, "/\\.[0-9]+$/", "")}"
+  family = "postgres${split(".", var.rds_engine_version)[0]}"
   name   = "${var.project_name}-pg-${var.environment}"
 
   parameter {
-    name  = "shared_preload_libraries"
-    value = "pg_stat_statements"
+    name         = "shared_preload_libraries"
+    value        = "pg_stat_statements"
+    apply_method = "pending-reboot"
   }
 
   tags = {

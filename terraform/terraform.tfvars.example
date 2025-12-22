@@ -25,7 +25,7 @@ s3_cors_origins = [
 ]
 
 # RDS Configuration
-rds_engine_version        = "15.4"
+rds_engine_version        = "16.11"  # Latest stable 16.x. Also available: 17.7, 18.1
 rds_instance_class        = "db.t3.small"  # Consider db.t3.medium or larger for production workloads
 rds_allocated_storage     = 100
 rds_max_allocated_storage = 500
