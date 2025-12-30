@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+All async operations must be properly awaited.
+Do not mix business logic with async side-effects in controllers.
+Wrap multi-step DB operations in transactions when consistency matters.
+Services must be idempotent when used in background jobs or retries.
+Avoid long-running logic in request handlers; move it to background jobs.

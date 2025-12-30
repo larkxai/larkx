@@ -1,0 +1,9 @@
+---
+alwaysApply: true
+---
+Every feature must live in its own NestJS module.
+Controllers handle HTTP only (routing, params, status codes).
+Business logic must live in services, never in controllers.
+Do not import services across modules directly:
+Expose services via exports in the owning module.
+Avoid “god modules”; if a module grows too large, split it.

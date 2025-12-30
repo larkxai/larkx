@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+Use NestJS HttpException (or subclasses) for all user-facing errors.
+Never throw generic Error from controllers.
+Business logic errors should be mapped to HTTP errors at the boundary.
+Do not leak internal errors or stack traces to the client.
+Use global exception filters for cross-cutting concerns only.

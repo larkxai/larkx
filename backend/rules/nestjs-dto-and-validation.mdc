@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+All incoming data must be validated using DTOs.
+Use class-validator and class-transformer consistently.
+Never accept raw request bodies or any types in controllers.
+DTOs define the public API contract and must be explicit.
+Validation rules belong in DTOs, not in services.

@@ -384,7 +384,7 @@ resource "aws_db_instance" "main" {
 
   # Deletion protection
   deletion_protection = var.rds_deletion_protection
-  skip_final_snapshot = !var.rds_deletion_protection
+  skip_final_snapshot = true  # Skip snapshot on destroy
 
   # Tags
   tags = {
