@@ -1,0 +1,48 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+const roots = [
+  "packages/protocol/src",
+  "packages/core/src",
+  "packages/storage-memory/src",
+  "packages/storage-sqlite/src",
+];
+
+describe("package boundaries", () => {
+  it("keeps Node and React Native imports out of the platform-independent packages", () => {
+    const offenders: string[] = [];
+    for (const root of roots) {
+      for (const file of walk(root)) {
+        const source = readFileSync(file, "utf8");
+        if (
+          /from\s+["']node:|from\s+["']react-native|from\s+["']fs["']|from\s+["']path["']/.test(
+            source,
+          )
+        ) {
+          offenders.push(file);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("does not import a model provider into the core", () => {
+    const source = readFileSync("packages/core/src/engine.ts", "utf8");
+    expect(source).not.toMatch(/cactus|ollama|openai|anthropic/i);
+  });
+});
+
+function walk(directory: string): string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry);
+    if (statSync(path).isDirectory()) {
+      files.push(...walk(path));
+    } else if (path.endsWith(".ts")) {
+      files.push(path);
+    }
+  }
+  return files;
+}
