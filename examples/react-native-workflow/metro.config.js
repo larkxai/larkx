@@ -11,7 +11,8 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(workspaceRoot, "node_modules"),
 ];
-config.resolver.disableHierarchicalLookup = true;
+// pnpm keeps Expo's own dependencies beside the package inside .pnpm.
+// Hierarchical lookup is what finds those, including @ungap/structured-clone.
 config.resolver.unstable_enableSymlinks = true;
 
 module.exports = config;
