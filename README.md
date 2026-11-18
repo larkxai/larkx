@@ -6,7 +6,7 @@ Build AI agents that recover from interruptions, continue offline, and coordinat
 
 Cactus runs your models. LarkX runs your workflows.
 
-**Status:** early implementation. Milestones M0 and M1 are covered by automated tests, including real Node.js process termination. M2 adds the React Native adapter. M3 adds durable agents and a Cactus adapter on that same engine. Packages are not published to npm. The agent tests run on Node.js. The Cactus screen has not been executed on an emulator or a device in CI. Hybrid dispatch and LarkX Cloud are specified and not implemented.
+**Status:** early implementation. Milestones M0 and M1 are covered by automated tests, including real Node.js process termination. M2 adds the React Native adapter. M3 adds durable agents and a Cactus adapter on that same engine. M4 adds an optional metadata-only exporter to LarkX Cloud. Packages are not published to npm. The agent tests run on Node.js. The Cactus screen has not been executed on an emulator or a device in CI. Hybrid dispatch is specified and not implemented. The Cloud service stays in a private repository.
 
 Website: [https://larkx.ai](https://larkx.ai)
 
@@ -24,8 +24,9 @@ License: Apache-2.0
 | Durable agents, tools, model adapters (`@larkx/agent`) | Implemented on the existing engine. Scripted model in CI. No device run for Cactus  |
 | React Native adapter                                   | Implemented on the shared engine. Device and emulator runs are not in CI            |
 | Cactus adapter (`@larkx/cactus`)                       | Implemented against cactus-react-native 1.13.1. Native dev build only. Not run here |
+| Optional Cloud telemetry (`@larkx/telemetry`)          | Implemented. Metadata only. Execution does not wait on it. Not a device run         |
 | HTTP transport, worker SDK, reference coordinator      | Not implemented                                                                     |
-| Managed LarkX Cloud                                    | Out of this repository. Planned for `larkxai/cloud`                                 |
+| Managed LarkX Cloud                                    | Ingestion lives in `larkxai/cloud`. This tree only sends the batch                  |
 
 The unscoped npm name `larkx` belongs to an unrelated project. The intended scope is `@larkx`. Those packages were not on the registry when this tree was created, and this repository does not publish them.
 
@@ -148,6 +149,7 @@ flowchart TB
     rn["@larkx/react-native"]
     agent["@larkx/agent"]
     cactus["@larkx/cactus"]
+    telemetry["@larkx/telemetry"]
     app --> core
     agent --> core
     core --> protocol
@@ -158,6 +160,7 @@ flowchart TB
     rn --> sqlite
     rn --> core
     cactus --> agent
+    telemetry --> core
   end
 
   subgraph later [Specified, not in this repository yet]
@@ -171,6 +174,7 @@ flowchart TB
   transport -.-> coordinator
   worker -.-> coordinator
   coordinator -.-> cloud
+  telemetry -.-> cloud
 ```
 
 Authoritative documents:
@@ -183,6 +187,7 @@ Authoritative documents:
 - [Storage](docs/architecture/storage.md)
 - [Side effects](docs/architecture/side-effects.md)
 - [Cloud observability specification](docs/cloud-observability-spec.md)
+- [Telemetry export](docs/architecture/telemetry.md)
 
 Agents and the model adapter are implemented: [agents](docs/architecture/agents.md), [model adapter](docs/architecture/model-adapter.md). Hybrid dispatch, mobile lifecycle, and a future Rust core: [hybrid](docs/architecture/hybrid-dispatch.md), [mobile](docs/architecture/mobile-lifecycle.md), [Rust](docs/architecture/rust-migration.md).
 
@@ -246,7 +251,7 @@ pnpm test
 
 ## Roadmap
 
-[ROADMAP.md](ROADMAP.md) lists M0 through M7. M0 through M3 are in this tree. M3's Cactus screen still needs an emulator or device run before it is called validated on hardware. The managed cloud service stays in a private repository.
+[ROADMAP.md](ROADMAP.md) lists M0 through M7. M0 through M4 are in this tree. M3's Cactus screen and M4's physical-device sync still need a device run before they are called validated on hardware. The managed cloud service stays in a private repository.
 
 ## Contributing
 

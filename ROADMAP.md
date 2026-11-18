@@ -57,16 +57,17 @@ Not part of M3:
 - Ollama, RunAnywhere, and LangGraph.
 - Token-level inference resume or KV-cache persistence.
 - Parallel tool calls.
-- A Cloud exporter. Agent runs use the existing journal. See [the observability spec](docs/cloud-observability-spec.md).
+- Agent runs use the existing journal. See [the observability spec](docs/cloud-observability-spec.md).
 
 ## M4 — Cloud observability
 
-Not started in this repository. `larkxai/cloud` is the private ingestion side. The passive boundary is already written in [docs/cloud-observability-spec.md](docs/cloud-observability-spec.md). This tree does not export telemetry. Cloud must not claim ownership, retry steps, or write local workflow state.
+`@larkx/telemetry` is the optional client. `larkxai/cloud` remains the private ingestion side. The boundary is [docs/cloud-observability-spec.md](docs/cloud-observability-spec.md) and [docs/architecture/telemetry.md](docs/architecture/telemetry.md). Cloud does not claim ownership, retry steps, or write local workflow state.
 
 - Metadata-only export of the existing journal. Agent name and version are the workflow name and version. Step keys distinguish model and tool steps. Attempt timestamps are the durations.
-- Do not upload prompts, model responses, tool arguments, tool outputs, or artifacts by default.
-- No new event type until the Cloud repository agrees. Provider and model id currently sit on the step output, which stays on the device.
+- Prompts, model responses, tool arguments, tool outputs, and artifacts stay on the device. The exporter uses a payload allowlist.
+- No new event type. Provider and model id sit on the step output, which stays on the device. A future non-sensitive field needs a telemetry version and a Cloud change first.
 - Billing, accounts, and enterprise permissions stay out of the public repository.
+- Automated coverage is in `tests/telemetry`. A physical-device timeline was not captured for this change. The procedure is in [docs/validation/m4-physical-device.md](docs/validation/m4-physical-device.md).
 
 ## M5 — Developer experience and additional integrations
 

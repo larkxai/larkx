@@ -34,6 +34,8 @@ An expired lease does not, by itself, let another owner take a run while the ori
 
 `useLarkxRun(engine, runId)` subscribes for display. It does not own the run.
 
+`readJournal` is forwarded from the shared engine. `createExpoSqliteDriver` opens a second database for exporter state. Cloud sync itself is `@larkx/telemetry`, not this package. Call `setActive(false)` when the app leaves the foreground. The adapter does not schedule native background uploads.
+
 ## What this package does not do
 
 - Native background scheduling.

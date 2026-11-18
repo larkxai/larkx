@@ -1,6 +1,13 @@
 import { createAgent, createScriptedModel, defineTool } from "@larkx/agent";
 import type { ModelResponse } from "@larkx/agent";
-import { createNodeEngine } from "@larkx/node";
+import { createNodeEngine, createNodeSqliteDriver } from "@larkx/node";
+import {
+  createCloudTelemetry,
+  createMemoryTelemetryStore,
+  createSqliteTelemetryStore,
+  journalFromEngine,
+  type CloudTelemetry,
+} from "@larkx/telemetry";
 
 const room = defineTool({
   name: "get_room_info",
@@ -80,7 +87,10 @@ const model = createScriptedModel({
 });
 
 const database = process.argv[2] ?? ":memory:";
+const endpoint = process.env.LARKX_CLOUD_ENDPOINT?.trim() ?? "";
+const apiKey = process.env.LARKX_INGESTION_KEY?.trim() ?? "";
 const engine = createNodeEngine({ database, workflows: [], heartbeat: false });
+const cloud = openTelemetry(engine, database, endpoint, apiKey);
 const agent = createAgent({
   engine,
   name: "renovation-agent",
@@ -97,10 +107,40 @@ const run = await agent.start({
 });
 const result = await run.result();
 const steps = await engine.getSteps(run.id);
+let sync: { phase: string; error: string | null } | null = null;
+if (cloud.telemetry) {
+  const flushed = await cloud.telemetry.flush();
+  sync = { phase: flushed.phase, error: flushed.error };
+}
 process.stdout.write(
-  `${JSON.stringify({ result, steps: steps.map((step) => step.stepKey) }, null, 2)}\n`,
+  `${JSON.stringify({ result, steps: steps.map((step) => step.stepKey), cloud: sync }, null, 2)}\n`,
 );
+await cloud.telemetry?.stop();
+cloud.driver?.close();
 await engine.close();
+
+function openTelemetry(
+  runtime: Parameters<typeof journalFromEngine>[0],
+  databasePath: string,
+  cloudEndpoint: string,
+  cloudKey: string,
+): { telemetry: CloudTelemetry | null; driver: { close(): void } | null } {
+  if (cloudEndpoint.length === 0 || cloudKey.length === 0) {
+    return { telemetry: null, driver: null };
+  }
+  const driver =
+    databasePath === ":memory:" ? null : createNodeSqliteDriver(`${databasePath}.telemetry`);
+  const telemetry = createCloudTelemetry({
+    endpoint: cloudEndpoint,
+    apiKey: cloudKey,
+    journal: journalFromEngine(runtime),
+    state: driver ? createSqliteTelemetryStore(driver) : createMemoryTelemetryStore(),
+    appId: process.env.LARKX_APP_ID?.trim() || "node-agent",
+    runtime: "node",
+    intervalMs: 0,
+  });
+  return { telemetry, driver };
+}
 
 function call(name: string, args: ModelResponse["calls"][number]["arguments"]): ModelResponse {
   return { message: null, finish: "tool_calls", calls: [{ id: name, name, arguments: args }] };

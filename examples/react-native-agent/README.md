@@ -7,7 +7,9 @@ Two modes share the screen:
 - **Test** uses `createScriptedModel`. `search_furniture` waits 8 seconds and can be cancelled. The tool calls are deterministic. This is the reliable interruption drill.
 - **Device** uses `@larkx/cactus` and `CactusLM`. The model is `qwen3-0.6b` (SDK default `int8`). Tool calls come from `complete()`. They are not scripted. A small model can return an invalid call. That failure is stored as a tool step. The screen does not replace it with a successful plan.
 
-Both modes use local room data, a local budget, a bundled furniture list, and `save_plan`. `save_plan` is idempotent and uses the step `operationId` as the plan id. Nothing in the tools contacts a server.
+Both modes use local room data, a local budget, a bundled furniture list, and `save_plan`. `save_plan` is idempotent and uses the step `operationId` as the plan id. The tools do not contact a server.
+
+Cloud sync is optional. Set `EXPO_PUBLIC_LARKX_CLOUD_ENDPOINT` and `EXPO_PUBLIC_LARKX_INGESTION_KEY` before Metro starts. Leave them empty and the Cloud card stays Disabled. The card otherwise shows Connected, Offline, Pending synchronization, or Authentication error. It also shows the current run id and a Sync action. The ingestion key is not in this repository. Reset deletes `larkx-agent.db` and `larkx-agent-telemetry.db`.
 
 ## Native build
 
@@ -65,9 +67,21 @@ Interrupted inference starts the model step over. It does not continue from the 
 
 The test mode makes step 5 repeatable: start **Test**, and force-quit while `search_furniture` is the running row. That wait is 8 seconds and observes cancellation. Recover, and the session list shows `search_furniture` once for the new attempt, not a second copy of the earlier tools.
 
+## Cloud sync on a device
+
+The interruption drill above does not require Cloud. When the two environment variables are set, continue:
+
+1. With the network up, tap **Sync** and find the run id in LarkX Cloud.
+2. Enable airplane mode during an unfinished step and confirm the card says Offline.
+3. Force-quit, reopen, tap **Recover**, and let the agent finish offline.
+4. Restore the network and tap **Sync**.
+5. The Cloud timeline should contain the events from before the quit and the events committed after recovery. It should not contain the prompt or the tool outputs.
+
+That sequence was not executed on a phone for this change. The procedure and the empty result are recorded in [docs/validation/m4-physical-device.md](../../docs/validation/m4-physical-device.md).
+
 ## Reset
 
-**Reset** deletes `larkx-agent.db` and the in-memory session list. It does not delete the Cactus model file.
+**Reset** deletes `larkx-agent.db`, `larkx-agent-telemetry.db`, and the in-memory session list. It does not delete the Cactus model file.
 
 ## What the screen is not claiming
 

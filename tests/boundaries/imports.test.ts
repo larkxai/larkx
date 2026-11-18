@@ -9,6 +9,7 @@ const roots = [
   "packages/agent/src",
   "packages/storage-memory/src",
   "packages/storage-sqlite/src",
+  "packages/telemetry/src",
 ];
 
 describe("package boundaries", () => {

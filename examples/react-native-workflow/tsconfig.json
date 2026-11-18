@@ -7,5 +7,5 @@
     "noEmit": true,
     "customConditions": ["react-native"]
   },
-  "include": ["App.tsx", "index.ts", "src/**/*.ts"]
+  "include": ["App.tsx", "index.ts", "src/**/*.ts", "src/**/*.d.ts"]
 }

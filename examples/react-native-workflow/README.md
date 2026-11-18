@@ -23,6 +23,8 @@ Open the project in Expo Go on SDK 58, or in an Android or iOS emulator. This re
 
 The screen shows the run id, status, current step, stored outputs, operation ids, the handlers invoked in this JavaScript session, and the latest history events.
 
+Cloud sync is optional. Set `EXPO_PUBLIC_LARKX_CLOUD_ENDPOINT` and `EXPO_PUBLIC_LARKX_INGESTION_KEY` to show Connected, Offline, Pending synchronization, or Authentication error, plus the run id and a Sync action. Without those variables the card stays Disabled and no request is sent. The key is not in this repository. Reset deletes `larkx.db` and `larkx-workflow-telemetry.db` together.
+
 ## Manual checks
 
 ### A. Force-quit during pause
@@ -39,7 +41,7 @@ The screen shows the run id, status, current step, stored outputs, operation ids
 1. Enable airplane mode.
 2. Press Start on a new Notes run.
 3. Let it finish.
-4. Status becomes `COMPLETED`. The demo has no server call to fail.
+4. Status becomes `COMPLETED`. Local steps do not wait on Cloud. With no ingestion key configured, the demo sends no request.
 
 ### C. Suspend past the lease
 
@@ -63,7 +65,7 @@ The screen shows the run id, status, current step, stored outputs, operation ids
 4. The run is `BLOCKED`. Charge is not called again.
 5. Press Reconcile only after you know the effect did not happen. That retries the same operation id.
 
-Reset deletes `larkx.db` and the in-memory session list.
+Reset deletes `larkx.db`, `larkx-workflow-telemetry.db`, and the in-memory session list.
 
 ## Automated coverage
 

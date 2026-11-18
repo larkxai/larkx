@@ -1,6 +1,6 @@
 # Cloud observability specification
 
-Status: specification only. This repository does not export telemetry, and it does not contain a Cloud client or a Cloud API. `larkxai/cloud` is the private repository that would implement the ingestion side.
+Status: `@larkx/telemetry` implements the client side of this contract. Ingestion, accounts, and the dashboard stay in the private `larkxai/cloud` repository. This repository does not contain the Cloud API.
 
 M2 is the React Native adapter on the shared local engine. The automated checks for that adapter run on Node.js. They do not include an emulator or a device run. The journals below come from that shared engine: the Node example used by `tests/crash-recovery/crash.test.ts`, the same recovery rules covered by `tests/react-native/restart.test.ts`, and the effect-policy cases in `tests/engine/effects.test.ts`.
 
@@ -8,7 +8,7 @@ Cloud is a passive observer. The local runtime remains the source of truth. Clou
 
 ## How to read this document
 
-Sections 1 through 8 describe behavior that exists in this tree. Sections 9 through 13 describe a proposed export and ingestion contract that does not exist yet. Section 14 points at JSON fixtures that mix the two: the `journal` object is a projection of stored rows, and each `telemetryBatches[].body` is a proposed request body. Section 15 is the same split in one table.
+Sections 1 through 8 describe the local runtime. Sections 9 through 13 are the export contract. `@larkx/telemetry` sends that body. `larkxai/cloud` accepts it. Section 14 points at JSON fixtures: the `journal` object is a projection of stored rows, and each `telemetryBatches[].body` is the request body. Section 15 separates local execution from Cloud.
 
 Fixture `purpose` values (`full-resync`, `committed-before-recovery`, `checkpoint-suffix`) are labels for the files. They are not fields of the request body.
 
@@ -36,12 +36,15 @@ flowchart TB
     rn --> sqlite
   end
 
-  subgraph proposed [Not in this repository]
-    exporter[Future on-device exporter]
-    cloud[larkxai/cloud ingestion]
-    exporter -.-> cloud
+  subgraph client [Optional client in this repository]
+    exporter["@larkx/telemetry"]
   end
 
+  subgraph service [Not in this repository]
+    cloud[larkxai/cloud ingestion]
+  end
+
+  exporter -.-> cloud
   sqlite -.-> exporter
 ```
 
@@ -56,12 +59,13 @@ flowchart TB
 | `@larkx/agent`          | `createAgent` and `defineTool` on the same engine. One local step per model decision and per tool call. No provider SDK.                                                            |
 | `@larkx/cactus`         | Optional `cactus-react-native` 1.13.1 adapter. Not imported by the agent loop or the engine.                                                                                        |
 | `@larkx/testing`        | Fake clocks and storage conformance cases.                                                                                                                                          |
+| `@larkx/telemetry`      | Optional metadata-only exporter. Reads `readJournal`. Posts `/v1/telemetry/batches`. Does not execute workflows.                                                                    |
 
 `@larkx/protocol`, `@larkx/core`, `@larkx/storage-memory`, and `@larkx/storage-sqlite` do not import `node:*`, `react-native`, `fs`, `path`, or a database driver.
 
 There is one durability log. `workflow_runs` and `workflow_steps` are authoritative. `workflow_events` is an append-only journal written in the same transaction as the state change. Replay does not fold events back into state. The `outbox` table exists for a future dispatcher. The engine does not write it. M2 artifact rows store metadata for a local file copy. They are not execution events, and they are not uploaded.
 
-The public engine surface that exists today is `createEngine` / `createNodeEngine` / `openReactNativeEngine`: `register`, `start`, `resume`, `recover`, `getRun`, `listRuns`, `cancel`, `subscribe`, `getHistory`, `getSteps`, `reconcileStep`, and `close`. `register` adds a workflow after construction. `subscribe` delivers events to in-process listeners after they are stored. It is not a network subscription. `getHistory` returns the journal. `getSteps` returns authoritative step rows, including outputs. Outputs are not part of the journal and are not part of the proposed export.
+The public engine surface that exists today is `createEngine` / `createNodeEngine` / `openReactNativeEngine`: `register`, `start`, `resume`, `recover`, `getRun`, `listRuns`, `cancel`, `subscribe`, `getHistory`, `getSteps`, `readJournal`, `reconcileStep`, and `close`. `register` adds a workflow after construction. `subscribe` delivers events to in-process listeners after they are stored. It is not a network subscription. `getHistory` returns the journal. `getSteps` returns authoritative step rows, including outputs. `readJournal` returns the metadata projection the exporter sends. Outputs are not part of that projection.
 
 `engine.capabilities` is:
 
@@ -86,7 +90,7 @@ Three numbers are independent. A mismatch in one does not imply a mismatch in th
 | Execution protocol  | `PROTOCOL_VERSION`       | `1`            | States, transitions, event names, and error codes. A stored run executes only when the stored protocol version equals the runtime. `checkProtocolCompatibility` has no compatible-range rule yet. |
 | Storage schema      | `STORAGE_SCHEMA_VERSION` | `1`            | SQLite migrations. A newer database than the library refuses to open.                                                                                                                             |
 | Workflow definition | `workflow.version`       | Integer `>= 1` | The version registered with `defineWorkflow`. A missing version blocks the run. It is not replayed on a different version.                                                                        |
-| Telemetry export    | none                     | none           | Proposed in section 9 as `telemetryVersion: 1`. Not a constant in this repository.                                                                                                                |
+| Telemetry export    | `TELEMETRY_VERSION`      | `1`            | Batch format in section 9. Independent of the execution protocol and the storage schema. `@larkx/telemetry` exports the constant.                                                                 |
 
 `protocolVersion` is stored on `workflow_runs`. It is copied into `WORKFLOW_CREATED`. It is not a per-event field.
 
@@ -513,13 +517,13 @@ The run's `updated_at` can be later than the last event. Release touches the run
 
 Memory storage runs the same reducer and the same prefix check. It has no SQL. Crash recovery is a SQLite behavior.
 
-## 9. Proposed versioned telemetry export protocol
+## 9. Versioned telemetry export protocol
 
-This section is a proposal for a future on-device exporter and for `larkxai/cloud`. Nothing here is implemented. Adding it later must not change reducer behavior.
+`@larkx/telemetry` sends this document. `larkxai/cloud` stores it. Adding a field later must not change reducer behavior, and it needs a new `telemetryVersion` after both repositories agree.
 
 `telemetryVersion` is `1`. It is not `PROTOCOL_VERSION` and not `STORAGE_SCHEMA_VERSION`. A batch carries all three so a consumer can refuse a journal it does not understand.
 
-The exporter reads the local journal and the authoritative rows. It does not open a second log inside the workflow engine. The execution journal remains the source. A checkpoint of "what Cloud has acknowledged" would be exporter state, outside `workflow_events`, and would not be an execution event.
+The exporter reads `readJournal`. It does not open a second log inside the workflow engine and it does not query private SQLite workflow tables. The execution journal remains the source. The checkpoint of what Cloud has acknowledged is exporter state, outside `workflow_events`, and it is not an execution event.
 
 Export is pull-shaped from the device's point of view: the device sends when it can. Cloud does not call the device, and the response contains no command, cursor to execute, or reconcile instruction. Delivery is at least once. Execution does not wait for an acknowledgement. A device that never connects still completes, fails, or blocks locally.
 
@@ -527,7 +531,7 @@ Export is pull-shaped from the device's point of view: the device sends when it 
 
 `telemetryBatches[].body` in the fixtures is this document. `purpose` is not part of it.
 
-| Field                   | Proposed meaning                                                                                           |
+| Field                   | Meaning                                                                                                    |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `telemetryVersion`      | `1`                                                                                                        |
 | `protocolVersion`       | Copied from the run. Must be `1` for this document.                                                        |
@@ -544,7 +548,7 @@ Each run object copies the metadata projection: `runId`, `workflowName`, `workfl
 
 `fromSequence` is the sequence of the first event in this batch. `throughSequence` is the sequence of the last. For a full resend they are `1` and the current maximum. For a checkpoint suffix, `fromSequence` is `acknowledged + 1`. The step and attempt arrays are a snapshot of current authoritative rows, not a history of every past status. A later batch replaces that snapshot. Events are not a snapshot. They append.
 
-Step and attempt objects in the fixtures are the proposed projection: identity, status, effect, target, operation id, attempt number, descriptor (`execution`, `effects`, `timeoutMs`), timestamps, and error code plus the `retryable` boolean. They omit input, output, error message, owner id, and local file paths.
+Step and attempt objects are the metadata projection: identity, status, effect, target, operation id, attempt number, descriptor (`execution`, `effects`, `timeoutMs`), timestamps, and error code plus the `retryable` boolean. They omit input, output, error message, owner id, and local file paths.
 
 Event objects match `ExecutionEventRecord`: `eventId`, `runId`, `sequence`, `type`, `payload`, `createdAt`.
 
@@ -560,18 +564,18 @@ Event objects match `ExecutionEventRecord`: `eventId`, `runId`, `sequence`, `typ
 - The same sequence with a different `eventId` or payload is a conflict. The batch is not applied.
 - Cloud stores the projection. It does not store a fence it could present back to a device.
 
-## 10. Proposed batch ingestion API
+## 10. Batch ingestion API
 
-No route exists in this repository. The shape below is the contract `larkxai/cloud` can implement and that a future exporter can call.
+No route exists in this repository. `larkxai/cloud` implements it. `@larkx/telemetry` calls it.
 
 ```http
 POST /v1/telemetry/batches
 Content-Type: application/json
 Idempotency-Key: <batchId>
-Authorization: Bearer <installation credential>
+Authorization: Bearer lkx_ing_...
 ```
 
-The body is the batch in section 9. `Idempotency-Key` equals `batchId`. The credential identifies `installationId`. This repository does not define the token format, issuer, or rotation. Cloud must not accept a workflow owner id as that credential.
+The body is the batch in section 9. `Idempotency-Key` equals `batchId`. A repeated key with the same canonical body returns the original success response. A repeated key with a different body is `invalid_batch`. The bearer token is a project ingestion key. It is not a workflow owner id. `source.installationId` is a separate field. Cloud may bind a key to one installation; a mismatch is `401`.
 
 Success, including a full duplicate of a batch Cloud already applied:
 
@@ -592,7 +596,7 @@ Success, including a full duplicate of a batch Cloud already applied:
 
 `acceptedThroughSequence` is the highest contiguous sequence Cloud has for that installation and run after the transaction. `duplicateSequences` lists sequences in this batch that matched the stored prefix. The body contains no `actions` array.
 
-Proposed errors, also not `ERROR_CODES`:
+Errors, also not `ERROR_CODES`:
 
 | HTTP | `error`             | When                                                                                                                                                                      |
 | ---- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -603,7 +607,7 @@ Proposed errors, also not `ERROR_CODES`:
 | 413  | `batch_too_large`   | More than 500 events or a body larger than 256 KiB                                                                                                                        |
 | 422  | `sensitive_payload` | A payload contains a sensitive key                                                                                                                                        |
 
-The limits are proposed server limits, not runtime limits. A conflict or a gap rolls back the whole batch. Cloud does not apply a suffix after a bad prefix.
+The limits are the Cloud limits. The exporter uses the same caps. A conflict or a gap rolls back the whole batch. Cloud does not apply a suffix after a bad prefix.
 
 `GET` of a run, if Cloud offers one for its own operators, returns the stored projection. It is not an API the device is required to call, and it is not a way to repair a device.
 
@@ -611,7 +615,7 @@ The limits are proposed server limits, not runtime limits. A conflict or a gap r
 
 The local journal is already durable. Connectivity is not required for execution. The exporter's job is to copy a prefix that already committed.
 
-Proposed device checkpoint, not implemented: remember `acceptedThroughSequence` per run in exporter state. On the next connectivity window, send events with `sequence` greater than that value, plus the current run, step, and attempt snapshot. If the checkpoint is lost, send the full journal. Both are represented in the crash fixtures.
+The exporter stores `acceptedThroughSequence` per run and per destination. On the next flush it sends events with `sequence` greater than that value, plus the current run, step, and attempt snapshot. The same unacknowledged body is retried with the same `batchId`. If the checkpoint is lost, the next flush sends the journal from sequence 1. Both shapes are in the crash fixtures.
 
 | Fixture field               | What Cloud should do                                                                                                                           |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -634,11 +638,11 @@ Ordering across batches follows `sequence`, never `createdAt` and never arrival 
 
 Out of order clocks are normal. Recovery uses a new process clock. Fixtures rebase one capture onto `1700000000000` and keep the original deltas, including ties. Cloud must not sort a run by `createdAt`.
 
-The exporter should treat acknowledgement as the only Cloud response it understands. It should ignore any additional property. It must not resume, reconcile, or cancel because of a response. If Cloud is unreachable, it keeps the checkpoint where it was and retries the same suffix later with a new `batchId` or the same one. The execution engine is not involved in that retry.
+The exporter treats acknowledgement as the only Cloud response it understands. Extra properties are ignored. A response cannot resume, reconcile, or cancel a run. If Cloud is unreachable, the checkpoint stays where it was and the same body is retried with the same `batchId`. The execution engine is not involved in that retry. A `401`, and a held `400`, `409`, `413`, or `422`, are not retried by the foreground timer. The next manual `flush()` tries once.
 
 ## 12. Privacy and metadata-only telemetry defaults
 
-The default data policy is `device-only`. That policy forbids remote dispatch of step inputs. It is enforced today. Telemetry is a different channel, and it is not implemented. The proposed default is still to send nothing until a host explicitly configures an exporter. When an exporter is configured, the only defined mode is `metadata-only`.
+The default data policy is `device-only`. That policy forbids remote dispatch of step inputs. It is enforced today. Telemetry is a different channel and it is off until a host constructs an exporter. When an exporter is configured, the only defined mode is `metadata-only`. Payloads are copied through an allowlist of keys the runtime already stores. Sensitive keys are not selected and then removed.
 
 Metadata-only includes statuses, names, versions, step keys, effect classes, execution target, operation ids, attempt numbers, event types, error codes, the `retryable` boolean, sequences, and timestamps.
 
@@ -650,7 +654,7 @@ Metadata-only excludes:
 - Payload keys `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`.
 - Prompts, model responses, tool results, and chain-of-thought. The journal already refuses those keys. The exporter must refuse them again.
 - Artifact bytes, `local_uri`, and `remote_reference`. M2 artifact rows point at application storage. They are not telemetry.
-- Owner ids and lease deadlines. `ownershipEpoch` and `ownerPresent` are the only ownership facts in the proposed snapshot.
+- Owner ids and lease deadlines. `ownershipEpoch` and `ownerPresent` are the only ownership facts in the snapshot.
 
 `cloud-allowed` does not add inputs, outputs, or prompts to this export. It only changes whether a future dispatcher would be allowed to send a step. This runtime still refuses that dispatcher. Observability of a `device-only` run is limited to the metadata projection above. There is no second mode in this specification.
 
@@ -673,7 +677,7 @@ An agent run is a normal workflow run:
 
 Provider id and model id are fields on the model step output (`provider`, `model`). That output also contains the assistant text and the tool-call arguments. Metadata-only export still excludes step output. Do not upload user messages, model responses, tool arguments, tool outputs, or artifacts by default. They are not in the journal today, and M3 does not put them there.
 
-A future exporter that needs the provider and model id without the response would need a new non-sensitive field. That field is not in this contract. Add it in `@larkx/protocol` first, with a telemetry version change, after the Cloud repository agrees.
+The exporter does not read `provider` or `model` out of that output, and it does not promote tool names into the batch. A compatible extension would add a new non-sensitive field in `@larkx/protocol`, bump `telemetryVersion`, and land in `larkxai/cloud` before this client sends it. That extension is not part of version 1.
 
 Unchanged rules:
 
@@ -686,7 +690,7 @@ Unchanged rules:
 - Existing type names and their current payloads keep their meaning.
 - `REMOTE_*` and `WORKFLOW_WAITING` stay unused until a hybrid milestone emits them. Cloud must not execute them.
 
-Local agent execution does not read Cloud credentials. This repository still does not contain an exporter, an ingestion client, or a dashboard.
+Local agent execution does not read Cloud credentials. This repository contains the exporter. It does not contain the ingestion service or the dashboard.
 
 ## 14. Example telemetry payloads
 
@@ -821,9 +825,9 @@ The operation id in `STEP_STARTED` above is the fixture id for `summarize` in th
 | `UNKNOWN_OUTCOME`    | Local `BLOCKED` until the application calls `reconcileStep`                               | Cloud displays it. Cloud does not reconcile                                                      |
 | Ownership            | Local fence. Epoch changes are not events                                                 | Snapshot may include the epoch and `ownerPresent`. The owner id is omitted. Cloud does not claim |
 | Cancellation         | Local `cancel`                                                                            | Cloud does not cancel                                                                            |
-| Network              | None for execution. React Native recovery does not wait for a network                     | Device sends batches when a future exporter is configured                                        |
+| Network              | None for execution. React Native recovery does not wait for a network                     | Optional exporter sends batches in the foreground, after recovery, and on an explicit flush      |
 | Dispatch and workers | Types only. `remoteDispatch: false`                                                       | Not part of this contract                                                                        |
-| Agents               | Not started                                                                               | Future events need a new telemetry version and must keep the privacy rules                       |
-| API                  | None                                                                                      | `POST /v1/telemetry/batches` as specified in section 10                                          |
+| Agents               | Ordinary workflow runs. No `AGENT_*` events                                               | Same journal. No separate agent protocol. Provider and model id stay on the device               |
+| API                  | None in this repository                                                                   | `POST /v1/telemetry/batches` in `larkxai/cloud`, called by `@larkx/telemetry`                    |
 
 A Cloud implementation can be developed against the five fixtures without a device. Those fixtures are not a claim that the Expo example has been run on an emulator or a phone. They are the journal the shared M2 engine writes.
