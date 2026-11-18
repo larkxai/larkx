@@ -1,7 +1,7 @@
 import { LarkxError } from "@larkx/core";
 import { defineTool, type Tool, type ToolContext } from "@larkx/agent";
 
-import { BUDGET, ROOM, searchCatalog } from "./catalog.js";
+import { BUDGET, ROOM, searchCatalog } from "./catalog";
 
 const session: string[] = [];
 

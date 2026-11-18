@@ -11,10 +11,10 @@ import {
 import { deleteDatabaseSync } from "expo-sqlite";
 import type { CloudTelemetry } from "@larkx/telemetry";
 
-import { cactusModel, clearRenovationAgents, renovationAgents } from "./src/agents.js";
-import { REQUEST } from "./src/catalog.js";
-import { TELEMETRY_DATABASE, cloudLabel, openCloud } from "./src/cloud.js";
-import { clearSessionCalls, sessionCalls } from "./src/tools.js";
+import { cactusModel, clearRenovationAgents, renovationAgents } from "./src/agents";
+import { REQUEST } from "./src/catalog";
+import { TELEMETRY_DATABASE, cloudLabel, openCloud } from "./src/cloud";
+import { clearSessionCalls, sessionCalls } from "./src/tools";
 
 const DATABASE = "larkx-agent.db";
 
