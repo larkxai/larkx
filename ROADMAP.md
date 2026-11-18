@@ -41,19 +41,43 @@ Implemented in this tree. Automated tests run on Node.js. An emulator or device 
 
 The adapter does not promise background execution after the operating system has killed the app. Recovery happens when the app is allowed to run again. Native background scheduling is not part of M2.
 
-## M3 — Durable agents
+## M3 — Durable agents and Cactus
+
+Implemented in this tree. Automated tests run on Node.js with a scripted model, including `SIGKILL` against SQLite. The Cactus screen has not been run on an emulator or a device in this change.
+
+- `@larkx/agent`: `ModelAdapter`, `defineTool`, and `createAgent` on the existing engine.
+- One durable step per model decision and per tool call. No second log.
+- Replay of committed decisions and tool results.
+- A deterministic scripted model for tests and for the React Native test mode.
+- `@larkx/cactus` against `cactus-react-native` 1.13.1. Download and `init` stay outside the agent run.
+- `examples/node-agent` and `examples/react-native-agent`.
+
+Not part of M3:
+
+- Ollama, RunAnywhere, and LangGraph.
+- Token-level inference resume or KV-cache persistence.
+- Parallel tool calls.
+- A Cloud exporter. Agent runs use the existing journal. See [the observability spec](docs/cloud-observability-spec.md).
+
+## M4 — Cloud observability
+
+Not started in this repository. `larkxai/cloud` is the private ingestion side. The passive boundary is already written in [docs/cloud-observability-spec.md](docs/cloud-observability-spec.md). This tree does not export telemetry. Cloud must not claim ownership, retry steps, or write local workflow state.
+
+- Metadata-only export of the existing journal. Agent name and version are the workflow name and version. Step keys distinguish model and tool steps. Attempt timestamps are the durations.
+- Do not upload prompts, model responses, tool arguments, tool outputs, or artifacts by default.
+- No new event type until the Cloud repository agrees. Provider and model id currently sit on the step output, which stays on the device.
+- Billing, accounts, and enterprise permissions stay out of the public repository.
+
+## M5 — Developer experience and additional integrations
 
 Not started.
 
-- `ModelAdapter`, `defineTool`, and `createAgent` on top of the workflow engine.
-- One durable step per model decision and per tool call.
-- Replay of committed decisions. No second durability log inside the agent layer.
-- A deterministic fake model for tests.
-- A Cactus adapter written against the current Cactus SDK, after that API is inspected.
-- Ollama as an optional Node development adapter.
-- RunAnywhere and LangGraph only after their APIs are checked. They are not implied by this roadmap item.
+- More examples, clearer errors, and subscription samples.
+- A documented release process once the `@larkx` npm scope is confirmed and credentials exist.
+- Further model providers after their SDKs are checked. Ollama is the first candidate for Node. Nothing here implies RunAnywhere or LangGraph.
+- Performance measurements. `benchmarks/` currently records that no numbers have been taken.
 
-## M4 — Hybrid execution
+## M6 — Hybrid execution
 
 Not started. The dispatch types in `@larkx/protocol` are the contract to implement, not a working transport.
 
@@ -67,27 +91,10 @@ Not started. The dispatch types in `@larkx/protocol` are the contract to impleme
 
 The reference coordinator is a development tool. It is not LarkX Cloud.
 
-## M5 — Developer experience
+## M7 — Native runtime and Rust, if justified
 
-Not started.
+Not scheduled as implementation work. A Rust core is only justified for pieces that profiling shows the TypeScript runtime cannot meet. It would not execute TypeScript callbacks inside Rust.
 
-- More examples, clearer errors, and subscription samples.
-- A documented release process once the `@larkx` npm scope is confirmed and credentials exist.
-- Performance measurements. `benchmarks/` currently records that no numbers have been taken.
-
-## M6 — Commercial platform
-
-Not in this repository.
-
-`larkxai/cloud` is the planned private home for managed orchestration, fleet visibility, metering, authentication, and billing. The public repository should keep the protocol and a self-hostable reference coordinator. It should not grow a billing system.
-
-The passive observability boundary for that repository is specified in [docs/cloud-observability-spec.md](docs/cloud-observability-spec.md). This tree does not export telemetry. Cloud must not claim ownership, retry steps, or write local workflow state.
-
-## M7 — Later expansion
-
-Not scheduled as implementation work.
-
-- A Rust core for selected state-machine and storage pieces, without executing TypeScript callbacks inside Rust.
 - Swift and Kotlin SDKs.
 - Native background scheduling.
 - Resource-aware routing once real capability adapters exist.

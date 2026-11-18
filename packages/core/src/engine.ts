@@ -137,6 +137,12 @@ export interface Engine {
   getHistory(runId: string): Promise<ExecutionEventRecord[]>;
   getSteps(runId: string): Promise<StepSnapshot[]>;
   reconcileStep(runId: string, stepKey: string, resolution: ReconcileResolution): Promise<void>;
+  /**
+   * Register a workflow after the engine exists.
+   * The same definition object may be registered again. A different object for
+   * the same name and version is rejected.
+   */
+  register(workflow: AnyWorkflow): void;
   close(): Promise<void>;
 }
 
@@ -197,6 +203,23 @@ class LocalEngine implements Engine {
       durableTime: true,
       storageKind: options.storage.kind,
     };
+  }
+
+  register(workflow: AnyWorkflow): void {
+    this.assertOpen();
+    const key = registryKey(workflow.name, workflow.version);
+    const existing = this.registry.get(key);
+    if (existing === workflow) {
+      return;
+    }
+    if (existing) {
+      throw new LarkxError({
+        code: "invalid_workflow_definition",
+        message: `Workflow ${workflow.name}@${String(workflow.version)} is registered more than once.`,
+        retryable: false,
+      });
+    }
+    this.registry.set(key, workflow);
   }
 
   async start<TInput, TOutput>(

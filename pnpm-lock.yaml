@@ -14,6 +14,12 @@ importers:
       '@eslint/js':
         specifier: 9.39.5
         version: 9.39.5
+      '@larkx/agent':
+        specifier: workspace:*
+        version: link:packages/agent
+      '@larkx/cactus':
+        specifier: workspace:*
+        version: link:packages/cactus
       '@larkx/core':
         specifier: workspace:*
         version: link:packages/core
@@ -60,6 +66,18 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@types/node@22.20.5)(vite@8.3.8(@types/node@22.20.5)(terser@5.51.2))
 
+  examples/node-agent:
+    dependencies:
+      '@larkx/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@larkx/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@larkx/node':
+        specifier: workspace:*
+        version: link:../../packages/node
+
   examples/node-workflow:
     dependencies:
       '@larkx/core':
@@ -68,6 +86,58 @@ importers:
       '@larkx/node':
         specifier: workspace:*
         version: link:../../packages/node
+
+  examples/react-native-agent:
+    dependencies:
+      '@larkx/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@larkx/cactus':
+        specifier: workspace:*
+        version: link:../../packages/cactus
+      '@larkx/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@larkx/react-native':
+        specifier: workspace:*
+        version: link:../../packages/react-native
+      cactus-react-native:
+        specifier: 1.13.1
+        version: 1.13.1(react-native-nitro-modules@0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+      expo:
+        specifier: 58.0.26
+        version: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
+      expo-crypto:
+        specifier: 58.0.8
+        version: 58.0.8(expo@58.0.26)
+      expo-file-system:
+        specifier: 58.0.14
+        version: 58.0.14(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))
+      expo-network:
+        specifier: 58.0.5
+        version: 58.0.5(expo@58.0.26)(react@19.3.0)
+      expo-sqlite:
+        specifier: 58.0.18
+        version: 58.0.18(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+      expo-status-bar:
+        specifier: 58.0.5
+        version: 58.0.5(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-native:
+        specifier: 0.88.1
+        version: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
+      react-native-nitro-modules:
+        specifier: 0.33.9
+        version: 0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   examples/react-native-workflow:
     dependencies:
@@ -108,6 +178,34 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+
+  packages/agent:
+    dependencies:
+      '@larkx/core':
+        specifier: workspace:*
+        version: link:../core
+      '@larkx/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+
+  packages/cactus:
+    dependencies:
+      '@larkx/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@larkx/core':
+        specifier: workspace:*
+        version: link:../core
+      '@larkx/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      cactus-react-native:
+        specifier: 1.13.1
+        version: 1.13.1(react-native-nitro-modules@0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+      react-native-nitro-modules:
+        specifier: 0.33.9
+        version: 0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
 
   packages/core:
     dependencies:
@@ -1502,6 +1600,13 @@ packages:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
     engines: {node: '>= 0.8'}
 
+  cactus-react-native@1.13.1:
+    resolution: {integrity: sha512-Q423+VFU5Z2KNv3C3D6/chK3V6S8Q9E/SHlmJcbLkIFau4xMUQI0ptl7b+m7WzWstAoWxxzNOM6q7UGu5T1paw==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+      react-native-nitro-modules: ^0.33.9
+
   callsites@3.1.0:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
     engines: {node: '>=6'}
@@ -2723,6 +2828,12 @@ packages:
 
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
+
+  react-native-nitro-modules@0.33.9:
+    resolution: {integrity: sha512-BM9C5mCGYYjrc8CDWZZ0anLWU/knH2xaEuFzvzogKTOW6fzgS6mmsCdM3ty+AhImJNSYwK19DLrHaqwnrrwEzw==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
 
   react-native@0.88.1:
     resolution: {integrity: sha512-wajWcLZ93GCN7k4Uwh4CS4L2Ah8ohcvkOXnvIYmh4Yvuqho5j3APZ9qozK+nQrHWSgauq4h8D3HN5DKK84SrHA==}
@@ -4940,6 +5051,12 @@ snapshots:
 
   bytes@3.1.2: {}
 
+  cactus-react-native@1.13.1(react-native-nitro-modules@0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0):
+    dependencies:
+      react: 19.3.0
+      react-native: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
+      react-native-nitro-modules: 0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+
   callsites@3.1.0: {}
 
   camelcase@6.3.0: {}
@@ -6288,6 +6405,11 @@ snapshots:
       - utf-8-validate
 
   react-is@18.3.1: {}
+
+  react-native-nitro-modules@0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0):
+    dependencies:
+      react: 19.3.0
+      react-native: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
 
   react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0):
     dependencies:

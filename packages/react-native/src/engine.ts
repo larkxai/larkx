@@ -89,6 +89,7 @@ export function createReactNativeEngine(options: ReactNativeEngineOptions): Reac
     getHistory: (runId) => engine.getHistory(runId),
     getSteps: (runId) => engine.getSteps(runId),
     reconcileStep: (runId, stepKey, resolution) => engine.reconcileStep(runId, stepKey, resolution),
+    register: (workflow) => engine.register(workflow),
     importArtifact: (input) =>
       importDurableArtifact({
         storage,
