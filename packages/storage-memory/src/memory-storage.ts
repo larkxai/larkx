@@ -23,6 +23,11 @@ import { LarkxError, isRecoverableWorkflowStatus, isWorkflowStatus } from "@lark
 export interface MemoryStorageOptions {
   /** Test hook. Production callers leave this unset. A true result may steal a live lease. */
   readonly mayStealFrom?: (ownerId: string) => boolean;
+  /**
+   * When true, another owner cannot take a run just because the lease expired.
+   * `mayStealFrom` remains the explicit permission to replace an owner.
+   */
+  readonly exclusiveOwnership?: boolean;
 }
 
 /**
@@ -82,7 +87,11 @@ class MemoryStorage implements WorkflowStorage {
       const state = this.require(runId);
       const maySteal =
         state.run.ownerId !== null && (this.options.mayStealFrom?.(state.run.ownerId) ?? false);
-      const outcome = reduceClaim(state, { ...input, maySteal });
+      const outcome = reduceClaim(state, {
+        ...input,
+        maySteal,
+        ...(this.options.exclusiveOwnership ? { exclusive: true } : {}),
+      });
       this.runs.set(runId, outcome.state);
       return outcome;
     });

@@ -45,6 +45,11 @@ import type { SqliteDriver, SqliteValue } from "./driver.js";
 export interface SqliteStorageOptions {
   readonly mayStealFrom?: (ownerId: string) => boolean;
   readonly onClaim?: (outcome: ClaimOutcome) => void;
+  /**
+   * When true, another owner cannot take a run just because the lease expired.
+   * Mobile storage turns this on. Node leaves it off and uses the pid file.
+   */
+  readonly exclusiveOwnership?: boolean;
 }
 
 export function createSqliteStorage(
@@ -101,7 +106,11 @@ class SqliteStorage implements WorkflowStorage {
         const state = this.require(runId);
         const maySteal =
           state.run.ownerId !== null && (this.options.mayStealFrom?.(state.run.ownerId) ?? false);
-        const claimed = reduceClaim(state, { ...input, maySteal });
+        const claimed = reduceClaim(state, {
+          ...input,
+          maySteal,
+          ...(this.options.exclusiveOwnership ? { exclusive: true } : {}),
+        });
         this.persist(state, claimed.state);
         return claimed;
       });

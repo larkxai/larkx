@@ -6,7 +6,7 @@ Build AI agents that recover from interruptions, continue offline, and coordinat
 
 Cactus runs your models. LarkX runs your workflows.
 
-**Status:** early implementation. The local durable workflow engine (milestones M0 and M1) is in this repository and covered by automated tests, including real Node.js process termination. Packages are not published to npm. Agents, React Native, hybrid dispatch, and LarkX Cloud are specified and not implemented.
+**Status:** early implementation. Milestones M0 and M1 are covered by automated tests, including real Node.js process termination. M2 adds the React Native adapter on the same engine. Packages are not published to npm. The Expo app has not been executed on an emulator or a device in CI. Agents, hybrid dispatch, and LarkX Cloud are specified and not implemented.
 
 Website: [https://larkx.ai](https://larkx.ai)
 
@@ -14,17 +14,17 @@ License: Apache-2.0
 
 ## Project status
 
-| Area                                               | State                                                      |
-| -------------------------------------------------- | ---------------------------------------------------------- |
-| Execution protocol (`@larkx/protocol`)             | Implemented, version 1                                     |
-| Local workflow runtime (`@larkx/core`)             | Implemented                                                |
-| Memory storage                                     | Implemented. Does not survive process exit                 |
-| SQLite storage and Node adapter                    | Implemented. Node's built-in `node:sqlite` is experimental |
-| Replay, crash recovery, effect policies, ownership | Implemented and tested on Node.js                          |
-| Durable agents, tools, model adapters              | Not implemented                                            |
-| React Native adapter and device tests              | Not implemented                                            |
-| HTTP transport, worker SDK, reference coordinator  | Not implemented                                            |
-| Managed LarkX Cloud                                | Out of this repository. Planned for `larkxai/cloud`        |
+| Area                                               | State                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------ |
+| Execution protocol (`@larkx/protocol`)             | Implemented, version 1                                                   |
+| Local workflow runtime (`@larkx/core`)             | Implemented                                                              |
+| Memory storage                                     | Implemented. Does not survive process exit                               |
+| SQLite storage and Node adapter                    | Implemented. Node's built-in `node:sqlite` is experimental               |
+| Replay, crash recovery, effect policies, ownership | Implemented and tested on Node.js                                        |
+| Durable agents, tools, model adapters              | Not implemented                                                          |
+| React Native adapter                               | Implemented on the shared engine. Device and emulator runs are not in CI |
+| HTTP transport, worker SDK, reference coordinator  | Not implemented                                                          |
+| Managed LarkX Cloud                                | Out of this repository. Planned for `larkxai/cloud`                      |
 
 The unscoped npm name `larkx` belongs to an unrelated project. The intended scope is `@larkx`. Those packages were not on the registry when this tree was created, and this repository does not publish them.
 
@@ -154,16 +154,18 @@ flowchart TB
     memory["@larkx/storage-memory"]
     sqlite["@larkx/storage-sqlite"]
     node["@larkx/node"]
+    rn["@larkx/react-native"]
     app --> core
     core --> protocol
     core --> memory
     core --> sqlite
     node --> sqlite
     node --> core
+    rn --> sqlite
+    rn --> core
   end
 
   subgraph later [Specified, not in this repository yet]
-    rn["@larkx/react-native"]
     agent["@larkx/agent"]
     transport["@larkx/transport-http"]
     worker["@larkx/worker"]
@@ -172,7 +174,6 @@ flowchart TB
   end
 
   core -.-> agent
-  core -.-> rn
   core -.-> transport
   transport -.-> coordinator
   worker -.-> coordinator
@@ -211,16 +212,16 @@ Not claimed:
 - Encrypted local databases, secure-enclave storage, or any regulatory certification.
 - Battery, thermal, or memory-aware routing.
 - Parallel steps. Execution is sequential.
-- React Native behavior. The core avoids Node and React Native imports so a later adapter can sit on the same engine. That has not been run on a device or emulator.
+- React Native behavior on a phone or emulator. The adapter is in the repository. The automated proof uses Node process death against the mobile storage policy and the shared SQLite schema. That is not a substitute for Expo Go, an emulator, or a device.
 
 ## Platform support
 
-| Platform                            | Support                                           |
-| ----------------------------------- | ------------------------------------------------- |
-| Node.js 22.13+                      | Local workflows, file SQLite, process-death tests |
-| React Native                        | Not implemented                                   |
-| Browser                             | Not a target of this release                      |
-| Native iOS, Android, embedded, Rust | Design constraints only                           |
+| Platform                            | Support                                                                            |
+| ----------------------------------- | ---------------------------------------------------------------------------------- |
+| Node.js 22.13+                      | Local workflows, file SQLite, process-death tests, and the mobile ownership policy |
+| React Native, Expo SDK 58           | Adapter and demo app. Not executed here on an emulator or a device                 |
+| Browser                             | Not a target of this release                                                       |
+| Native iOS, Android, embedded, Rust | Design constraints only                                                            |
 
 ## Integration support
 
@@ -249,7 +250,7 @@ pnpm test
 
 ## Roadmap
 
-[ROADMAP.md](ROADMAP.md) lists M0 through M7. M0 and M1 are the current tree. M2 is the React Native adapter. The agent layer follows the local engine rather than replacing it. The managed cloud service stays in a private repository.
+[ROADMAP.md](ROADMAP.md) lists M0 through M7. M0 through M2 are in this tree. M2 still needs an emulator or device run before it is called mobile-validated. The agent layer follows the local engine rather than replacing it. The managed cloud service stays in a private repository.
 
 ## Contributing
 

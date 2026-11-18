@@ -31,15 +31,15 @@ Not part of M1, even though some types exist:
 
 ## M2 — React Native
 
-Not started.
+Implemented in this tree. Automated tests run on Node.js. An emulator or device run is still required before calling the mobile path validated.
 
-- A SQLite driver behind the existing `SqliteDriver` interface.
-- Engine startup and `recover()` when the application runtime is available.
-- Lifecycle and connectivity signals.
-- A local-only demo that does not require a network.
-- Device or emulator tests, reported separately from the Node suite.
+- `@larkx/react-native` opens Expo SQLite through the existing `SqliteDriver` interface and the existing schema.
+- `openReactNativeEngine` plus `recover()` on launch and when the app becomes active.
+- Exclusive ownership: a suspended runtime stays the owner after the lease expires. A new JavaScript realm may take the run because the previous owner is no longer registered.
+- Local artifact copy into application storage before the step result is returned.
+- `examples/react-native-workflow` is the local demo. It does not call a network API.
 
-The first mobile release still will not promise background execution after the operating system has killed the app. Recovery happens when the app is allowed to run again.
+The adapter does not promise background execution after the operating system has killed the app. Recovery happens when the app is allowed to run again. Native background scheduling is not part of M2.
 
 ## M3 — Durable agents
 

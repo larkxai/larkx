@@ -2,6 +2,13 @@
 
 This file summarizes user-visible changes. Packages are versioned at 0.1.0 and are not published.
 
+## Unreleased
+
+- `@larkx/react-native` runs the existing engine on Expo SQLite, with mobile ownership, foreground recovery, and local artifact copies.
+- Storage can use exclusive ownership so an expired lease is not treated as a dead executor.
+- Stopping a run cancels its heartbeat timer instead of leaving that timer until the next interval.
+- `examples/react-native-workflow` is a local demo. It has not been executed on an emulator or a device in CI.
+
 ## 0.1.0
 
 First implementation of local durable execution.
