@@ -54,7 +54,7 @@ function createWorkflows(): NonNullable<DemoGlobals["__larkxDemoWorkflows"]> {
         effects: "pure",
         run: async () => {
           trace("intake");
-          await delay(700);
+          await delay(8_000);
           return input.text.trim().toLowerCase();
         },
       });
@@ -63,7 +63,7 @@ function createWorkflows(): NonNullable<DemoGlobals["__larkxDemoWorkflows"]> {
         effects: "pure",
         run: async () => {
           trace("count");
-          await delay(700);
+          await delay(8_000);
           return normalized.length;
         },
       });
@@ -72,7 +72,7 @@ function createWorkflows(): NonNullable<DemoGlobals["__larkxDemoWorkflows"]> {
         effects: "pure",
         run: async () => {
           trace("pause");
-          await delay(4_000);
+          await delay(15_000);
           return "paused";
         },
       });
@@ -81,7 +81,7 @@ function createWorkflows(): NonNullable<DemoGlobals["__larkxDemoWorkflows"]> {
         effects: "idempotent",
         run: async ({ operationId }) => {
           trace("record");
-          await delay(700);
+          await delay(8_000);
           return { operationId, total, normalized };
         },
       });
@@ -96,7 +96,7 @@ function createWorkflows(): NonNullable<DemoGlobals["__larkxDemoWorkflows"]> {
         effects: "non-idempotent",
         run: async ({ operationId }) => {
           trace("charge");
-          await delay(3_000);
+          await delay(15_000);
           return { operationId };
         },
       });
