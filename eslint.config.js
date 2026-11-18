@@ -5,6 +5,7 @@ import tseslint from "typescript-eslint";
 const platformAgnostic = [
   "packages/protocol/**/*.ts",
   "packages/core/**/*.ts",
+  "packages/agent/**/*.ts",
   "packages/storage-memory/**/*.ts",
   "packages/storage-sqlite/**/*.ts",
 ];
@@ -37,9 +38,21 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ["node:*", "react-native", "react-native/*", "fs", "path", "better-sqlite3"],
+              group: [
+                "node:*",
+                "react-native",
+                "react-native/*",
+                "fs",
+                "path",
+                "better-sqlite3",
+                "cactus-react-native",
+                "@larkx/cactus",
+                "@larkx/cactus/*",
+                "expo",
+                "expo/*",
+              ],
               message:
-                "Platform-independent LarkX packages cannot import Node, filesystem, or React Native modules.",
+                "Platform-independent LarkX packages cannot import Node, filesystem, React Native, or a model provider.",
             },
           ],
         },

@@ -1,6 +1,6 @@
 # Model adapter
 
-This document is a design note. There is no `@larkx/agent` package and no provider adapter in this repository.
+`ModelAdapter` lives in `@larkx/agent`. `@larkx/cactus` is the Cactus implementation. The engine does not import either package.
 
 ## Role
 
@@ -35,6 +35,8 @@ A committed model step is replayed. The adapter is not called again for that ste
 
 ## Providers
 
-Cactus is the planned first on-device adapter and must be written against the published SDK, not a guessed message format. Ollama is a reasonable Node development adapter. Neither is wired up. Agent tests should use a deterministic fake adapter so recovery tests do not depend on a model server.
+Cactus is implemented in `@larkx/cactus` against `cactus-react-native` 1.13.1. The calls are `download`, `init`, `complete`, `stop`, and `getModelName`. See that package README for the options that keep inference local. Ollama is not wired. RunAnywhere and LangGraph are not scheduled.
 
-The core's import boundary test fails if the engine starts referring to Cactus, Ollama, OpenAI, or Anthropic.
+`createScriptedModel` is the deterministic adapter. Recovery tests use it so they do not need a device or a downloaded model.
+
+The core's import boundary test fails if the engine starts referring to Cactus, Ollama, OpenAI, or Anthropic. The agent package has the same import boundary.

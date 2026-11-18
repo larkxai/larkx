@@ -19,6 +19,8 @@
     "changeset": "changeset"
   },
   "devDependencies": {
+    "@larkx/agent": "workspace:*",
+    "@larkx/cactus": "workspace:*",
     "@larkx/core": "workspace:*",
     "@larkx/node": "workspace:*",
     "@larkx/protocol": "workspace:*",

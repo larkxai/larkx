@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const roots = [
   "packages/protocol/src",
   "packages/core/src",
+  "packages/agent/src",
   "packages/storage-memory/src",
   "packages/storage-sqlite/src",
 ];
@@ -17,7 +18,7 @@ describe("package boundaries", () => {
       for (const file of walk(root)) {
         const source = readFileSync(file, "utf8");
         if (
-          /from\s+["']node:|from\s+["']react-native|from\s+["']fs["']|from\s+["']path["']/.test(
+          /from\s+["']node:|from\s+["']react-native|from\s+["']fs["']|from\s+["']path["']|from\s+["']cactus-react-native|from\s+["']@larkx\/cactus|from\s+["']expo/.test(
             source,
           )
         ) {
@@ -44,6 +45,13 @@ describe("package boundaries", () => {
   it("does not import a model provider into the core", () => {
     const source = readFileSync("packages/core/src/engine.ts", "utf8");
     expect(source).not.toMatch(/cactus|ollama|openai|anthropic/i);
+  });
+
+  it("keeps the Cactus SDK inside the native module", () => {
+    const adapter = readFileSync("packages/cactus/src/adapter.ts", "utf8");
+    expect(adapter).not.toMatch(/cactus-react-native/);
+    const native = readFileSync("packages/cactus/src/native.ts", "utf8");
+    expect(native).toMatch(/cactus-react-native/);
   });
 });
 

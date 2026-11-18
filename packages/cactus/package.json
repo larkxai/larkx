@@ -1,0 +1,39 @@
+{
+  "name": "@larkx/cactus",
+  "version": "0.1.0",
+  "description": "Cactus model adapter for LarkX agents. Optional. The agent loop does not import this package.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./adapter": {
+      "types": "./dist/adapter.d.ts",
+      "import": "./dist/adapter.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@larkx/agent": "workspace:*",
+    "@larkx/core": "workspace:*",
+    "@larkx/protocol": "workspace:*"
+  },
+  "peerDependencies": {
+    "cactus-react-native": "1.13.1",
+    "react-native-nitro-modules": "^0.33.9"
+  },
+  "devDependencies": {
+    "cactus-react-native": "1.13.1",
+    "react-native-nitro-modules": "0.33.9"
+  }
+}

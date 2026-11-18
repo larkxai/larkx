@@ -53,13 +53,15 @@ flowchart TB
 | `@larkx/storage-sqlite` | Schema version 1 and the shared SQL adapter. Drivers are injected. `kind` is `"sqlite"`.                                                                                            |
 | `@larkx/node`           | `node:sqlite`, pid-file reclaim, `createNodeEngine`.                                                                                                                                |
 | `@larkx/react-native`   | Expo SQLite through the same driver interface and schema, exclusive ownership, lifecycle binding, local artifact copy, `openReactNativeEngine`.                                     |
+| `@larkx/agent`          | `createAgent` and `defineTool` on the same engine. One local step per model decision and per tool call. No provider SDK.                                                            |
+| `@larkx/cactus`         | Optional `cactus-react-native` 1.13.1 adapter. Not imported by the agent loop or the engine.                                                                                        |
 | `@larkx/testing`        | Fake clocks and storage conformance cases.                                                                                                                                          |
 
 `@larkx/protocol`, `@larkx/core`, `@larkx/storage-memory`, and `@larkx/storage-sqlite` do not import `node:*`, `react-native`, `fs`, `path`, or a database driver.
 
 There is one durability log. `workflow_runs` and `workflow_steps` are authoritative. `workflow_events` is an append-only journal written in the same transaction as the state change. Replay does not fold events back into state. The `outbox` table exists for a future dispatcher. The engine does not write it. M2 artifact rows store metadata for a local file copy. They are not execution events, and they are not uploaded.
 
-The public engine surface that exists today is `createEngine` / `createNodeEngine` / `openReactNativeEngine`: `start`, `resume`, `recover`, `getRun`, `listRuns`, `cancel`, `subscribe`, `getHistory`, `getSteps`, `reconcileStep`, and `close`. `subscribe` delivers events to in-process listeners after they are stored. It is not a network subscription. `getHistory` returns the journal. `getSteps` returns authoritative step rows, including outputs. Outputs are not part of the journal and are not part of the proposed export.
+The public engine surface that exists today is `createEngine` / `createNodeEngine` / `openReactNativeEngine`: `register`, `start`, `resume`, `recover`, `getRun`, `listRuns`, `cancel`, `subscribe`, `getHistory`, `getSteps`, `reconcileStep`, and `close`. `register` adds a workflow after construction. `subscribe` delivers events to in-process listeners after they are stored. It is not a network subscription. `getHistory` returns the journal. `getSteps` returns authoritative step rows, including outputs. Outputs are not part of the journal and are not part of the proposed export.
 
 `engine.capabilities` is:
 
@@ -654,23 +656,37 @@ Metadata-only excludes:
 
 Installation and application ids are labels the host chooses. They should not be account emails or user names. The fixtures use `installation-example` and `example-app`.
 
-## 13. Compatibility requirements for future M3 agent events
+## 13. Agent runs and the existing journal
 
-M3, durable agents, is not started. There is no `@larkx/agent` package, no model adapter, and no agent event name in `EVENT_TYPES`. Cloud must not invent `AGENT_*` types or require them for ingestion.
+M3 records agents with the event types that already exist. There is still no `AGENT_*` event in `EVENT_TYPES`. Cloud must not invent those types or require them for ingestion. No `telemetryVersion` bump is proposed. Coordinate before adding one.
 
-The roadmap's constraints, which a future M3 implementation has to keep if this telemetry contract is to survive:
+An agent run is a normal workflow run:
 
-- One durable step per model decision and per tool call, recorded in the existing journal. No second durability log.
-- Replay of a committed decision does not call the model again. Cloud must not call a model to "fill in" a run.
-- Tool calls use the existing effect classes. A non-idempotent tool that is interrupted is `UNKNOWN_OUTCOME` and `BLOCKED`, not an automatic retry. Cloud must not retry it.
-- Step keys stay caller-supplied. This specification does not assign a key scheme for decisions or tools.
+| Cloud field                                 | Where it already is                                                                                                                      |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent name and version                      | `workflowName`, `workflowVersion`                                                                                                        |
+| Run id                                      | `runId`                                                                                                                                  |
+| Model and tool steps                        | `stepKey`. The agent package uses `model-<iteration>` and `tool-<iteration>-<index>`. These are ordinary step keys, not a protocol enum. |
+| Effect, attempt, operation id               | Existing step and attempt rows, and the existing event payloads                                                                          |
+| Duration                                    | `startedAt` and `completedAt` on the attempt row                                                                                         |
+| Retry, recovery, blocked, failed, completed | `STEP_RETRY_SCHEDULED`, `WORKFLOW_RECOVERED`, `STEP_OUTCOME_UNKNOWN`, `WORKFLOW_BLOCKED`, `WORKFLOW_FAILED`, `WORKFLOW_COMPLETED`        |
+
+Provider id and model id are fields on the model step output (`provider`, `model`). That output also contains the assistant text and the tool-call arguments. Metadata-only export still excludes step output. Do not upload user messages, model responses, tool arguments, tool outputs, or artifacts by default. They are not in the journal today, and M3 does not put them there.
+
+A future exporter that needs the provider and model id without the response would need a new non-sensitive field. That field is not in this contract. Add it in `@larkx/protocol` first, with a telemetry version change, after the Cloud repository agrees.
+
+Unchanged rules:
+
+- One durable step per model decision and per tool call. No second durability log.
+- Replay of a committed decision does not call the model again. Cloud must not call a model to fill in a run.
+- A non-idempotent tool that is interrupted is `UNKNOWN_OUTCOME` and `BLOCKED`. Cloud must not retry it.
 - Operation ids stay stable across retries of a step.
-- Payloads continue to reject `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`. Prompts and tool results stay on the step records, on the device, and out of the metadata export.
-- New event names are added to `EVENT_TYPES` in `@larkx/protocol` first. They need a new `telemetryVersion`. Version 1 rejects unknown types so a typo cannot pass as a new agent event.
-- Existing type names and their current payloads keep their meaning. M3 should use `STEP_STARTED`, `STEP_COMPLETED`, `STEP_FAILED`, `STEP_RETRY_SCHEDULED`, `STEP_OUTCOME_UNKNOWN`, and the workflow events for facts those types already carry.
-- `REMOTE_*` and `WORKFLOW_WAITING` stay unused until a hybrid milestone actually emits them. Accepting the names in version 1 only means a batch that contains them is well-typed. This runtime does not produce them, and Cloud must not execute them.
+- Payloads continue to reject `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`.
+- New event names are added to `EVENT_TYPES` first. They need a new `telemetryVersion`.
+- Existing type names and their current payloads keep their meaning.
+- `REMOTE_*` and `WORKFLOW_WAITING` stay unused until a hybrid milestone emits them. Cloud must not execute them.
 
-Until those names exist in `@larkx/protocol`, an exporter must not send them, and Cloud must not branch product behavior on them.
+Local agent execution does not read Cloud credentials. This repository still does not contain an exporter, an ingestion client, or a dashboard.
 
 ## 14. Example telemetry payloads
 

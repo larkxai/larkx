@@ -30,6 +30,10 @@ The right to commit the next command for a run. At most one owner. A fence (owne
 
 The run stopped because continuing would guess. Unknown side effects, a missing workflow version, a protocol mismatch, and replay divergence all block. Reconcile or cancel. Do not expect `resume` alone to move a blocked run.
 
+## Agent
+
+A workflow whose steps are model decisions and tool calls. The agent package chooses the step keys. The engine stores the results. See [Agents](../architecture/agents.md).
+
 ## Data policy
 
 `device-only` or `cloud-allowed`. The stricter one wins. The default is `device-only`.
