@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { AppState, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { LarkxError } from "@larkx/core";
 import {
@@ -9,7 +9,9 @@ import {
   type ReactNativeEngine,
 } from "@larkx/react-native";
 import { deleteDatabaseSync } from "expo-sqlite";
+import type { CloudTelemetry } from "@larkx/telemetry";
 
+import { TELEMETRY_DATABASE, cloudLabel, openCloud } from "./src/cloud";
 import { clearSessionCalls, demoWorkflows, sessionCalls } from "./src/workflow";
 
 const DATABASE = "larkx.db";
@@ -22,7 +24,23 @@ export function App() {
   const [online, setOnline] = useState<boolean | null>(null);
   const [banner, setBanner] = useState("Recovering local runs.");
   const [calls, setCalls] = useState<string[]>([]);
+  const [cloud, setCloud] = useState("Disabled");
+  const [pendingEvents, setPendingEvents] = useState(0);
+  const telemetryRef = useRef<CloudTelemetry | null>(null);
+  const driverRef = useRef<{ close(): void } | null>(null);
   const observation = useLarkxRun(engine, runId);
+
+  function rememberCloud(telemetry: CloudTelemetry | null): void {
+    telemetryRef.current = telemetry;
+    if (!telemetry) {
+      setCloud("Disabled");
+      setPendingEvents(0);
+      return;
+    }
+    const status = telemetry.current();
+    setCloud(cloudLabel(status.phase));
+    setPendingEvents(status.pendingEvents);
+  }
 
   useEffect(() => {
     const runtime = openReactNativeEngine({
@@ -31,10 +49,26 @@ export function App() {
     });
     engineRef.current = runtime;
     setEngine(runtime);
+    const connection = openCloud(runtime);
+    driverRef.current = connection.driver;
+    rememberCloud(connection.telemetry);
     const lifecycle = bindReactNativeLifecycle(
       { recover: () => engineRef.current?.recover() ?? Promise.resolve([]) },
-      setOnline,
+      (next) => {
+        setOnline(next);
+        if (next) {
+          telemetryRef.current?.setActive(true);
+          void telemetryRef.current?.flush().then(() => rememberCloud(telemetryRef.current));
+        }
+      },
     );
+    const appState = AppState.addEventListener("change", (state) => {
+      const active = state === "active";
+      telemetryRef.current?.setActive(active);
+      if (active) {
+        void telemetryRef.current?.flush().then(() => rememberCloud(telemetryRef.current));
+      }
+    });
     void runtime.recover().then(async () => {
       const runs = await runtime.listRuns();
       const newest = [...runs].sort((left, right) => right.updatedAt - left.updatedAt)[0];
@@ -42,11 +76,17 @@ export function App() {
         setRunId(newest.runId);
         setMode(newest.workflowName === "mobile-charge" ? "charge" : "notes");
       }
-      setBanner("Local runtime ready. No server is required.");
+      setBanner("Local runtime ready. Cloud is optional.");
       setCalls([...sessionCalls()]);
+      void telemetryRef.current?.flush().then(() => rememberCloud(telemetryRef.current));
     });
+    const timer = setInterval(() => rememberCloud(telemetryRef.current), 1000);
     return () => {
+      clearInterval(timer);
+      appState.remove();
       lifecycle.remove();
+      void telemetryRef.current?.stop();
+      driverRef.current?.close();
     };
   }, []);
 
@@ -110,18 +150,37 @@ export function App() {
     }
   }
 
+  async function synchronize(): Promise<void> {
+    const telemetry = telemetryRef.current;
+    if (!telemetry) {
+      setCloud("Disabled");
+      return;
+    }
+    const flushed = await telemetry.flush();
+    setCloud(cloudLabel(flushed.phase));
+    setPendingEvents(telemetry.current().pendingEvents);
+  }
+
   async function reset(): Promise<void> {
     if (!activeEngine) {
       return;
     }
+    await telemetryRef.current?.stop();
+    telemetryRef.current = null;
+    driverRef.current?.close();
+    driverRef.current = null;
     await activeEngine.close();
     deleteDatabaseSync(DATABASE);
+    deleteDatabaseSync(TELEMETRY_DATABASE);
     clearSessionCalls();
     const runtime = openReactNativeEngine({
       database: DATABASE,
       workflows: [demoWorkflows().notes, demoWorkflows().charge],
     });
     engineRef.current = runtime;
+    const connection = openCloud(runtime);
+    driverRef.current = connection.driver;
+    rememberCloud(connection.telemetry);
     setEngine(runtime);
     setRunId(null);
     setCalls([]);
@@ -139,8 +198,8 @@ export function App() {
       <Text style={styles.title}>On-device workflow</Text>
       <Text style={styles.banner}>{banner}</Text>
       <Text style={styles.meta}>
-        Network {online === null ? "unknown" : online ? "online" : "offline"}. This demo never sends
-        a request.
+        Network {online === null ? "unknown" : online ? "online" : "offline"}. Local steps do not
+        wait for Cloud.
       </Text>
 
       <View style={styles.row}>
@@ -152,7 +211,18 @@ export function App() {
         <Action label="Recover" onPress={() => void recover()} />
         <Action label="Reconcile" onPress={() => void reconcile()} />
         <Action label="Reset" onPress={() => void reset()} />
+        <Action label="Sync" onPress={() => void synchronize()} />
       </View>
+
+      <Card title="Cloud">
+        <Fact label="Connection" value={cloud} />
+        <Fact label="Run" value={runId ?? "none"} />
+        <Fact label="Pending events" value={String(pendingEvents)} />
+        <Text style={styles.hint}>
+          Set EXPO_PUBLIC_LARKX_CLOUD_ENDPOINT and EXPO_PUBLIC_LARKX_INGESTION_KEY to enable
+          metadata sync. The keys are not in this repository.
+        </Text>
+      </Card>
 
       <Card title="Run">
         <Fact label="ID" value={runId ?? "none"} />

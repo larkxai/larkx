@@ -7,5 +7,5 @@
     "noEmit": true,
     "customConditions": ["react-native"]
   },
-  "include": ["App.tsx", "index.ts", "abort-controller.d.ts", "src/**/*.ts"]
+  "include": ["App.tsx", "index.ts", "abort-controller.d.ts", "src/**/*.ts", "src/**/*.d.ts"]
 }

@@ -8,6 +8,7 @@ import { createMobileSqliteStorage } from "./storage.js";
 export { importDurableArtifact } from "./artifacts.js";
 export type { DurableFileSystem, ImportArtifactInput } from "./artifacts.js";
 
+export { createExpoSqliteDriver } from "./expo-sqlite-driver.js";
 export { createReactNativeEngine, openReactNativeEngine } from "./engine.js";
 export type { ReactNativeEngine, ReactNativeEngineOptions } from "./engine.js";
 

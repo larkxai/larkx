@@ -55,6 +55,8 @@ await engine.recover();
 
 Connectivity comes from `expo-network` when the app becomes active. Offline does not fail a local workflow. Coming online calls `recover()` again. The local runtime still does not enter `WAITING`.
 
+An optional `@larkx/telemetry` exporter can flush after that recovery, when connectivity is reported online, and from an explicit Sync control. `setActive(false)` clears its foreground timer when `AppState` is not `active`. The timer is not a background scheduler. Suspension still freezes JavaScript timers. Local inference does not read the ingestion key.
+
 ## Artifacts
 
 `importDurableArtifact` reads a temporary URI, writes the bytes under the application document directory `larkx-artifacts`, checks the written bytes, and only then inserts the artifact row. A step handler must finish that import before it returns a reference.

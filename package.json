@@ -27,6 +27,7 @@
     "@larkx/react-native": "workspace:*",
     "@larkx/storage-memory": "workspace:*",
     "@larkx/storage-sqlite": "workspace:*",
+    "@larkx/telemetry": "workspace:*",
     "@larkx/testing": "workspace:*",
     "@changesets/cli": "2.31.1",
     "@eslint/js": "9.39.5",

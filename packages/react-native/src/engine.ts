@@ -88,6 +88,7 @@ export function createReactNativeEngine(options: ReactNativeEngineOptions): Reac
     subscribe: (runId, listener) => engine.subscribe(runId, listener),
     getHistory: (runId) => engine.getHistory(runId),
     getSteps: (runId) => engine.getSteps(runId),
+    readJournal: (runId) => engine.readJournal(runId),
     reconcileStep: (runId, stepKey, resolution) => engine.reconcileStep(runId, stepKey, resolution),
     register: (workflow) => engine.register(workflow),
     importArtifact: (input) =>

@@ -14,6 +14,7 @@ import {
 } from "@larkx/protocol";
 
 import { createSystemClock, type Clock } from "./clock.js";
+import { projectJournal, type JournalDocument } from "./journal.js";
 import { decodeJson, encodeJson, encodePayload } from "./json.js";
 import type { ApplyOutcome, StorageCommand } from "./reduce.js";
 import type {
@@ -136,6 +137,11 @@ export interface Engine {
   subscribe(runId: string, listener: (event: ExecutionEventRecord) => void): () => void;
   getHistory(runId: string): Promise<ExecutionEventRecord[]>;
   getSteps(runId: string): Promise<StepSnapshot[]>;
+  /**
+   * Metadata projection of a committed run.
+   * The result has no workflow input, step input, step output, error message, or owner id.
+   */
+  readJournal(runId: string): Promise<JournalDocument | null>;
   reconcileStep(runId: string, stepKey: string, resolution: ReconcileResolution): Promise<void>;
   /**
    * Register a workflow after the engine exists.
@@ -367,6 +373,14 @@ class LocalEngine implements Engine {
   async getSteps(runId: string): Promise<StepSnapshot[]> {
     const state = await this.requireExecution(runId);
     return state.steps.map(toStepSnapshot);
+  }
+
+  async readJournal(runId: string): Promise<JournalDocument | null> {
+    const state = await this.storage.loadExecution(runId);
+    if (!state) {
+      return null;
+    }
+    return projectJournal(state);
   }
 
   async reconcileStep(

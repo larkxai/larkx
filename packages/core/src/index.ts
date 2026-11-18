@@ -19,6 +19,15 @@ export type { ErrorCode } from "@larkx/protocol";
 
 export { decodeJson, encodeJson } from "./json.js";
 
+export { projectJournal } from "./journal.js";
+export type {
+  JournalAttempt,
+  JournalDescriptor,
+  JournalDocument,
+  JournalRun,
+  JournalStep,
+} from "./journal.js";
+
 export type {
   ArtifactRecord,
   AttemptRecord,

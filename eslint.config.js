@@ -8,6 +8,7 @@ const platformAgnostic = [
   "packages/agent/**/*.ts",
   "packages/storage-memory/**/*.ts",
   "packages/storage-sqlite/**/*.ts",
+  "packages/telemetry/**/*.ts",
 ];
 
 export default tseslint.config(

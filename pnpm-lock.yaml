@@ -38,6 +38,9 @@ importers:
       '@larkx/storage-sqlite':
         specifier: workspace:*
         version: link:packages/storage-sqlite
+      '@larkx/telemetry':
+        specifier: workspace:*
+        version: link:packages/telemetry
       '@larkx/testing':
         specifier: workspace:*
         version: link:packages/testing
@@ -77,6 +80,9 @@ importers:
       '@larkx/node':
         specifier: workspace:*
         version: link:../../packages/node
+      '@larkx/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
 
   examples/node-workflow:
     dependencies:
@@ -101,6 +107,12 @@ importers:
       '@larkx/react-native':
         specifier: workspace:*
         version: link:../../packages/react-native
+      '@larkx/storage-sqlite':
+        specifier: workspace:*
+        version: link:../../packages/storage-sqlite
+      '@larkx/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
       cactus-react-native:
         specifier: 1.13.1
         version: 1.13.1(react-native-nitro-modules@0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
@@ -147,6 +159,12 @@ importers:
       '@larkx/react-native':
         specifier: workspace:*
         version: link:../../packages/react-native
+      '@larkx/storage-sqlite':
+        specifier: workspace:*
+        version: link:../../packages/storage-sqlite
+      '@larkx/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
       expo:
         specifier: 58.0.26
         version: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
@@ -281,6 +299,18 @@ importers:
       '@larkx/protocol':
         specifier: workspace:*
         version: link:../protocol
+
+  packages/telemetry:
+    dependencies:
+      '@larkx/core':
+        specifier: workspace:*
+        version: link:../core
+      '@larkx/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@larkx/storage-sqlite':
+        specifier: workspace:*
+        version: link:../storage-sqlite
 
   packages/testing:
     dependencies:
