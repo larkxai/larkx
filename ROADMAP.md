@@ -81,6 +81,8 @@ Not in this repository.
 
 `larkxai/cloud` is the planned private home for managed orchestration, fleet visibility, metering, authentication, and billing. The public repository should keep the protocol and a self-hostable reference coordinator. It should not grow a billing system.
 
+The passive observability boundary for that repository is specified in [docs/cloud-observability-spec.md](docs/cloud-observability-spec.md). This tree does not export telemetry. Cloud must not claim ownership, retry steps, or write local workflow state.
+
 ## M7 — Later expansion
 
 Not scheduled as implementation work.

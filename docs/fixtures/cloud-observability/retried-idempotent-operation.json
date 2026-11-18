@@ -1,0 +1,1068 @@
+{
+  "fixtureFormat": 1,
+  "name": "retried-idempotent-operation",
+  "summary": "summarize is idempotent. SIGKILL falls inside its first attempt. Recovery retries it with the same operation id.",
+  "classification": {
+    "journal": "implemented",
+    "telemetryBatches": "proposed"
+  },
+  "provenance": {
+    "runtime": "@larkx/core 0.1.0",
+    "protocolVersion": 1,
+    "storageSchemaVersion": 1,
+    "timeOrigin": 1700000000000,
+    "source": "examples/node-workflow --crash-during summarize, then a second process. Same operation-id rule as tests/engine/replay.test.ts and tests/react-native/restart.test.ts.",
+    "capture": "The completed workflow output's operationId equalled the operationId on both STEP_STARTED events for summarize. That output is not in this file. createdAt deltas match the capture.",
+    "omitted": ["workflow input", "step output", "owner id", "stored error message"]
+  },
+  "journal": {
+    "phase": "retried",
+    "run": {
+      "runId": "letters-run",
+      "workflowName": "count-letters",
+      "workflowVersion": 1,
+      "status": "COMPLETED",
+      "protocolVersion": 1,
+      "dataPolicy": "device-only",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000081,
+      "cancelRequested": false,
+      "ownershipEpoch": 3,
+      "ownerPresent": false,
+      "errorCode": null,
+      "errorRetryable": null,
+      "blockedReasonCode": null
+    },
+    "steps": [
+      {
+        "runId": "letters-run",
+        "stepKey": "normalize",
+        "stepOrder": 0,
+        "status": "COMPLETED",
+        "executionTarget": "local",
+        "selectedTarget": "local",
+        "effectType": "pure",
+        "attemptCount": 1,
+        "operationId": "00000000-0000-4000-8000-000000004101",
+        "descriptor": {
+          "effects": "pure",
+          "execution": "local",
+          "timeoutMs": null
+        },
+        "nextAttemptAt": null,
+        "errorCode": null,
+        "errorRetryable": null,
+        "createdAt": 1700000000004,
+        "updatedAt": 1700000000005
+      },
+      {
+        "runId": "letters-run",
+        "stepKey": "count",
+        "stepOrder": 1,
+        "status": "COMPLETED",
+        "executionTarget": "local",
+        "selectedTarget": "local",
+        "effectType": "pure",
+        "attemptCount": 1,
+        "operationId": "00000000-0000-4000-8000-000000004102",
+        "descriptor": {
+          "effects": "pure",
+          "execution": "local",
+          "timeoutMs": null
+        },
+        "nextAttemptAt": null,
+        "errorCode": null,
+        "errorRetryable": null,
+        "createdAt": 1700000000006,
+        "updatedAt": 1700000000008
+      },
+      {
+        "runId": "letters-run",
+        "stepKey": "summarize",
+        "stepOrder": 2,
+        "status": "COMPLETED",
+        "executionTarget": "local",
+        "selectedTarget": "local",
+        "effectType": "idempotent",
+        "attemptCount": 2,
+        "operationId": "00000000-0000-4000-8000-000000004103",
+        "descriptor": {
+          "effects": "idempotent",
+          "execution": "local",
+          "timeoutMs": null
+        },
+        "nextAttemptAt": null,
+        "errorCode": null,
+        "errorRetryable": null,
+        "createdAt": 1700000000009,
+        "updatedAt": 1700000000079
+      }
+    ],
+    "attempts": [
+      {
+        "attemptId": "00000000-0000-4000-8000-000000004201",
+        "runId": "letters-run",
+        "stepKey": "normalize",
+        "attemptNumber": 1,
+        "executionTarget": "local",
+        "status": "COMPLETED",
+        "startedAt": 1700000000004,
+        "completedAt": 1700000000005,
+        "errorCode": null,
+        "errorRetryable": null
+      },
+      {
+        "attemptId": "00000000-0000-4000-8000-000000004202",
+        "runId": "letters-run",
+        "stepKey": "count",
+        "attemptNumber": 1,
+        "executionTarget": "local",
+        "status": "COMPLETED",
+        "startedAt": 1700000000006,
+        "completedAt": 1700000000008,
+        "errorCode": null,
+        "errorRetryable": null
+      },
+      {
+        "attemptId": "00000000-0000-4000-8000-000000004203",
+        "runId": "letters-run",
+        "stepKey": "summarize",
+        "attemptNumber": 1,
+        "executionTarget": "local",
+        "status": "INTERRUPTED",
+        "startedAt": 1700000000009,
+        "completedAt": 1700000000075,
+        "errorCode": "transient_execution_failure",
+        "errorRetryable": true
+      },
+      {
+        "attemptId": "00000000-0000-4000-8000-000000004204",
+        "runId": "letters-run",
+        "stepKey": "summarize",
+        "attemptNumber": 2,
+        "executionTarget": "local",
+        "status": "COMPLETED",
+        "startedAt": 1700000000077,
+        "completedAt": 1700000000079,
+        "errorCode": null,
+        "errorRetryable": null
+      }
+    ],
+    "events": [
+      {
+        "eventId": "00000000-0000-4000-8000-000000004001",
+        "runId": "letters-run",
+        "sequence": 1,
+        "type": "WORKFLOW_CREATED",
+        "payload": {
+          "workflowName": "count-letters",
+          "workflowVersion": 1,
+          "protocolVersion": 1,
+          "dataPolicy": "device-only"
+        },
+        "createdAt": 1700000000000
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000004002",
+        "runId": "letters-run",
+        "sequence": 2,
+        "type": "WORKFLOW_STARTED",
+        "payload": {
+          "workflowName": "count-letters",
+          "workflowVersion": 1
+        },
+        "createdAt": 1700000000002
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000004003",
+        "runId": "letters-run",
+        "sequence": 3,
+        "type": "STEP_STARTED",
+        "payload": {
+          "effects": "pure",
+          "execution": "local",
+          "operationId": "00000000-0000-4000-8000-000000004101",
+          "stepKey": "normalize"
+        },
+        "createdAt": 1700000000004
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000004004",
+        "runId": "letters-run",
+        "sequence": 4,
+        "type": "STEP_COMPLETED",
+        "payload": {
+          "attempt": 1,
+          "effects": "pure",
+          "execution": "local",
+          "stepKey": "normalize"
+        },
+        "createdAt": 1700000000005
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000004005",
+        "runId": "letters-run",
+        "sequence": 5,
+        "type": "STEP_STARTED",
+        "payload": {
+          "effects": "pure",
+          "execution": "local",
+          "operationId": "00000000-0000-4000-8000-000000004102",
+          "stepKey": "count"
+        },
+        "createdAt": 1700000000006
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000004006",
+        "runId": "letters-run",
+        "sequence": 6,
+        "type": "STEP_COMPLETED",
+        "payload": {
+          "attempt": 1,
+          "effects": "pure",
+          "execution": "local",
+          "stepKey": "count"
+        },
+        "createdAt": 1700000000008
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000004007",
+        "runId": "letters-run",
+        "sequence": 7,
+        "type": "STEP_STARTED",
+        "payload": {
+          "effects": "idempotent",
+          "execution": "local",
+          "operationId": "00000000-0000-4000-8000-000000004103",
+          "stepKey": "summarize"
+        },
+        "createdAt": 1700000000009
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000004008",
+        "runId": "letters-run",
+        "sequence": 8,
+        "type": "WORKFLOW_RECOVERED",
+        "payload": {
+          "from": "RUNNING"
+        },
+        "createdAt": 1700000000074
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000004009",
+        "runId": "letters-run",
+        "sequence": 9,
+        "type": "WORKFLOW_STARTED",
+        "payload": {
+          "resumed": true
+        },
+        "createdAt": 1700000000074
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-00000000400a",
+        "runId": "letters-run",
+        "sequence": 10,
+        "type": "STEP_RETRY_SCHEDULED",
+        "payload": {
+          "effects": "idempotent",
+          "reason": "interrupted",
+          "stepKey": "summarize"
+        },
+        "createdAt": 1700000000075
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-00000000400b",
+        "runId": "letters-run",
+        "sequence": 11,
+        "type": "STEP_STARTED",
+        "payload": {
+          "effects": "idempotent",
+          "execution": "local",
+          "operationId": "00000000-0000-4000-8000-000000004103",
+          "stepKey": "summarize"
+        },
+        "createdAt": 1700000000077
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-00000000400c",
+        "runId": "letters-run",
+        "sequence": 12,
+        "type": "STEP_COMPLETED",
+        "payload": {
+          "attempt": 2,
+          "effects": "idempotent",
+          "execution": "local",
+          "stepKey": "summarize"
+        },
+        "createdAt": 1700000000079
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-00000000400d",
+        "runId": "letters-run",
+        "sequence": 13,
+        "type": "WORKFLOW_COMPLETED",
+        "payload": {},
+        "createdAt": 1700000000080
+      }
+    ]
+  },
+  "telemetryBatches": [
+    {
+      "purpose": "committed-before-recovery",
+      "body": {
+        "telemetryVersion": 1,
+        "protocolVersion": 1,
+        "storageSchemaVersion": 1,
+        "batchId": "00000000-0000-4000-8000-00000000b401",
+        "exportedAt": 1700000000009,
+        "mode": "metadata-only",
+        "source": {
+          "installationId": "installation-example",
+          "appId": "example-app",
+          "runtime": "node"
+        },
+        "runs": [
+          {
+            "runId": "letters-run",
+            "workflowName": "count-letters",
+            "workflowVersion": 1,
+            "status": "RUNNING",
+            "protocolVersion": 1,
+            "dataPolicy": "device-only",
+            "createdAt": 1700000000000,
+            "updatedAt": 1700000000009,
+            "cancelRequested": false,
+            "ownershipEpoch": 1,
+            "ownerPresent": true,
+            "errorCode": null,
+            "errorRetryable": null,
+            "blockedReasonCode": null,
+            "fromSequence": 1,
+            "throughSequence": 7,
+            "steps": [
+              {
+                "runId": "letters-run",
+                "stepKey": "normalize",
+                "stepOrder": 0,
+                "status": "COMPLETED",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "pure",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000004101",
+                "descriptor": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000004,
+                "updatedAt": 1700000000005
+              },
+              {
+                "runId": "letters-run",
+                "stepKey": "count",
+                "stepOrder": 1,
+                "status": "COMPLETED",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "pure",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000004102",
+                "descriptor": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000006,
+                "updatedAt": 1700000000008
+              },
+              {
+                "runId": "letters-run",
+                "stepKey": "summarize",
+                "stepOrder": 2,
+                "status": "RUNNING",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "idempotent",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000004103",
+                "descriptor": {
+                  "effects": "idempotent",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000009,
+                "updatedAt": 1700000000009
+              }
+            ],
+            "attempts": [
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004201",
+                "runId": "letters-run",
+                "stepKey": "normalize",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "COMPLETED",
+                "startedAt": 1700000000004,
+                "completedAt": 1700000000005,
+                "errorCode": null,
+                "errorRetryable": null
+              },
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004202",
+                "runId": "letters-run",
+                "stepKey": "count",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "COMPLETED",
+                "startedAt": 1700000000006,
+                "completedAt": 1700000000008,
+                "errorCode": null,
+                "errorRetryable": null
+              },
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004203",
+                "runId": "letters-run",
+                "stepKey": "summarize",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "STARTED",
+                "startedAt": 1700000000009,
+                "completedAt": null,
+                "errorCode": null,
+                "errorRetryable": null
+              }
+            ],
+            "events": [
+              {
+                "eventId": "00000000-0000-4000-8000-000000004001",
+                "runId": "letters-run",
+                "sequence": 1,
+                "type": "WORKFLOW_CREATED",
+                "payload": {
+                  "workflowName": "count-letters",
+                  "workflowVersion": 1,
+                  "protocolVersion": 1,
+                  "dataPolicy": "device-only"
+                },
+                "createdAt": 1700000000000
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004002",
+                "runId": "letters-run",
+                "sequence": 2,
+                "type": "WORKFLOW_STARTED",
+                "payload": {
+                  "workflowName": "count-letters",
+                  "workflowVersion": 1
+                },
+                "createdAt": 1700000000002
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004003",
+                "runId": "letters-run",
+                "sequence": 3,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000004101",
+                  "stepKey": "normalize"
+                },
+                "createdAt": 1700000000004
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004004",
+                "runId": "letters-run",
+                "sequence": 4,
+                "type": "STEP_COMPLETED",
+                "payload": {
+                  "attempt": 1,
+                  "effects": "pure",
+                  "execution": "local",
+                  "stepKey": "normalize"
+                },
+                "createdAt": 1700000000005
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004005",
+                "runId": "letters-run",
+                "sequence": 5,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000004102",
+                  "stepKey": "count"
+                },
+                "createdAt": 1700000000006
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004006",
+                "runId": "letters-run",
+                "sequence": 6,
+                "type": "STEP_COMPLETED",
+                "payload": {
+                  "attempt": 1,
+                  "effects": "pure",
+                  "execution": "local",
+                  "stepKey": "count"
+                },
+                "createdAt": 1700000000008
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004007",
+                "runId": "letters-run",
+                "sequence": 7,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "idempotent",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000004103",
+                  "stepKey": "summarize"
+                },
+                "createdAt": 1700000000009
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "purpose": "full-resync",
+      "body": {
+        "telemetryVersion": 1,
+        "protocolVersion": 1,
+        "storageSchemaVersion": 1,
+        "batchId": "00000000-0000-4000-8000-00000000b402",
+        "exportedAt": 1700000000081,
+        "mode": "metadata-only",
+        "source": {
+          "installationId": "installation-example",
+          "appId": "example-app",
+          "runtime": "node"
+        },
+        "runs": [
+          {
+            "runId": "letters-run",
+            "workflowName": "count-letters",
+            "workflowVersion": 1,
+            "status": "COMPLETED",
+            "protocolVersion": 1,
+            "dataPolicy": "device-only",
+            "createdAt": 1700000000000,
+            "updatedAt": 1700000000081,
+            "cancelRequested": false,
+            "ownershipEpoch": 3,
+            "ownerPresent": false,
+            "errorCode": null,
+            "errorRetryable": null,
+            "blockedReasonCode": null,
+            "fromSequence": 1,
+            "throughSequence": 13,
+            "steps": [
+              {
+                "runId": "letters-run",
+                "stepKey": "normalize",
+                "stepOrder": 0,
+                "status": "COMPLETED",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "pure",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000004101",
+                "descriptor": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000004,
+                "updatedAt": 1700000000005
+              },
+              {
+                "runId": "letters-run",
+                "stepKey": "count",
+                "stepOrder": 1,
+                "status": "COMPLETED",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "pure",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000004102",
+                "descriptor": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000006,
+                "updatedAt": 1700000000008
+              },
+              {
+                "runId": "letters-run",
+                "stepKey": "summarize",
+                "stepOrder": 2,
+                "status": "COMPLETED",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "idempotent",
+                "attemptCount": 2,
+                "operationId": "00000000-0000-4000-8000-000000004103",
+                "descriptor": {
+                  "effects": "idempotent",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000009,
+                "updatedAt": 1700000000079
+              }
+            ],
+            "attempts": [
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004201",
+                "runId": "letters-run",
+                "stepKey": "normalize",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "COMPLETED",
+                "startedAt": 1700000000004,
+                "completedAt": 1700000000005,
+                "errorCode": null,
+                "errorRetryable": null
+              },
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004202",
+                "runId": "letters-run",
+                "stepKey": "count",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "COMPLETED",
+                "startedAt": 1700000000006,
+                "completedAt": 1700000000008,
+                "errorCode": null,
+                "errorRetryable": null
+              },
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004203",
+                "runId": "letters-run",
+                "stepKey": "summarize",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "INTERRUPTED",
+                "startedAt": 1700000000009,
+                "completedAt": 1700000000075,
+                "errorCode": "transient_execution_failure",
+                "errorRetryable": true
+              },
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004204",
+                "runId": "letters-run",
+                "stepKey": "summarize",
+                "attemptNumber": 2,
+                "executionTarget": "local",
+                "status": "COMPLETED",
+                "startedAt": 1700000000077,
+                "completedAt": 1700000000079,
+                "errorCode": null,
+                "errorRetryable": null
+              }
+            ],
+            "events": [
+              {
+                "eventId": "00000000-0000-4000-8000-000000004001",
+                "runId": "letters-run",
+                "sequence": 1,
+                "type": "WORKFLOW_CREATED",
+                "payload": {
+                  "workflowName": "count-letters",
+                  "workflowVersion": 1,
+                  "protocolVersion": 1,
+                  "dataPolicy": "device-only"
+                },
+                "createdAt": 1700000000000
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004002",
+                "runId": "letters-run",
+                "sequence": 2,
+                "type": "WORKFLOW_STARTED",
+                "payload": {
+                  "workflowName": "count-letters",
+                  "workflowVersion": 1
+                },
+                "createdAt": 1700000000002
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004003",
+                "runId": "letters-run",
+                "sequence": 3,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000004101",
+                  "stepKey": "normalize"
+                },
+                "createdAt": 1700000000004
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004004",
+                "runId": "letters-run",
+                "sequence": 4,
+                "type": "STEP_COMPLETED",
+                "payload": {
+                  "attempt": 1,
+                  "effects": "pure",
+                  "execution": "local",
+                  "stepKey": "normalize"
+                },
+                "createdAt": 1700000000005
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004005",
+                "runId": "letters-run",
+                "sequence": 5,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000004102",
+                  "stepKey": "count"
+                },
+                "createdAt": 1700000000006
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004006",
+                "runId": "letters-run",
+                "sequence": 6,
+                "type": "STEP_COMPLETED",
+                "payload": {
+                  "attempt": 1,
+                  "effects": "pure",
+                  "execution": "local",
+                  "stepKey": "count"
+                },
+                "createdAt": 1700000000008
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004007",
+                "runId": "letters-run",
+                "sequence": 7,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "idempotent",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000004103",
+                  "stepKey": "summarize"
+                },
+                "createdAt": 1700000000009
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004008",
+                "runId": "letters-run",
+                "sequence": 8,
+                "type": "WORKFLOW_RECOVERED",
+                "payload": {
+                  "from": "RUNNING"
+                },
+                "createdAt": 1700000000074
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004009",
+                "runId": "letters-run",
+                "sequence": 9,
+                "type": "WORKFLOW_STARTED",
+                "payload": {
+                  "resumed": true
+                },
+                "createdAt": 1700000000074
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-00000000400a",
+                "runId": "letters-run",
+                "sequence": 10,
+                "type": "STEP_RETRY_SCHEDULED",
+                "payload": {
+                  "effects": "idempotent",
+                  "reason": "interrupted",
+                  "stepKey": "summarize"
+                },
+                "createdAt": 1700000000075
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-00000000400b",
+                "runId": "letters-run",
+                "sequence": 11,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "idempotent",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000004103",
+                  "stepKey": "summarize"
+                },
+                "createdAt": 1700000000077
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-00000000400c",
+                "runId": "letters-run",
+                "sequence": 12,
+                "type": "STEP_COMPLETED",
+                "payload": {
+                  "attempt": 2,
+                  "effects": "idempotent",
+                  "execution": "local",
+                  "stepKey": "summarize"
+                },
+                "createdAt": 1700000000079
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-00000000400d",
+                "runId": "letters-run",
+                "sequence": 13,
+                "type": "WORKFLOW_COMPLETED",
+                "payload": {},
+                "createdAt": 1700000000080
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "purpose": "checkpoint-suffix",
+      "body": {
+        "telemetryVersion": 1,
+        "protocolVersion": 1,
+        "storageSchemaVersion": 1,
+        "batchId": "00000000-0000-4000-8000-00000000b403",
+        "exportedAt": 1700000000081,
+        "mode": "metadata-only",
+        "source": {
+          "installationId": "installation-example",
+          "appId": "example-app",
+          "runtime": "node"
+        },
+        "runs": [
+          {
+            "runId": "letters-run",
+            "workflowName": "count-letters",
+            "workflowVersion": 1,
+            "status": "COMPLETED",
+            "protocolVersion": 1,
+            "dataPolicy": "device-only",
+            "createdAt": 1700000000000,
+            "updatedAt": 1700000000081,
+            "cancelRequested": false,
+            "ownershipEpoch": 3,
+            "ownerPresent": false,
+            "errorCode": null,
+            "errorRetryable": null,
+            "blockedReasonCode": null,
+            "fromSequence": 8,
+            "throughSequence": 13,
+            "steps": [
+              {
+                "runId": "letters-run",
+                "stepKey": "normalize",
+                "stepOrder": 0,
+                "status": "COMPLETED",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "pure",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000004101",
+                "descriptor": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000004,
+                "updatedAt": 1700000000005
+              },
+              {
+                "runId": "letters-run",
+                "stepKey": "count",
+                "stepOrder": 1,
+                "status": "COMPLETED",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "pure",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000004102",
+                "descriptor": {
+                  "effects": "pure",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000006,
+                "updatedAt": 1700000000008
+              },
+              {
+                "runId": "letters-run",
+                "stepKey": "summarize",
+                "stepOrder": 2,
+                "status": "COMPLETED",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "idempotent",
+                "attemptCount": 2,
+                "operationId": "00000000-0000-4000-8000-000000004103",
+                "descriptor": {
+                  "effects": "idempotent",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000009,
+                "updatedAt": 1700000000079
+              }
+            ],
+            "attempts": [
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004201",
+                "runId": "letters-run",
+                "stepKey": "normalize",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "COMPLETED",
+                "startedAt": 1700000000004,
+                "completedAt": 1700000000005,
+                "errorCode": null,
+                "errorRetryable": null
+              },
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004202",
+                "runId": "letters-run",
+                "stepKey": "count",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "COMPLETED",
+                "startedAt": 1700000000006,
+                "completedAt": 1700000000008,
+                "errorCode": null,
+                "errorRetryable": null
+              },
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004203",
+                "runId": "letters-run",
+                "stepKey": "summarize",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "INTERRUPTED",
+                "startedAt": 1700000000009,
+                "completedAt": 1700000000075,
+                "errorCode": "transient_execution_failure",
+                "errorRetryable": true
+              },
+              {
+                "attemptId": "00000000-0000-4000-8000-000000004204",
+                "runId": "letters-run",
+                "stepKey": "summarize",
+                "attemptNumber": 2,
+                "executionTarget": "local",
+                "status": "COMPLETED",
+                "startedAt": 1700000000077,
+                "completedAt": 1700000000079,
+                "errorCode": null,
+                "errorRetryable": null
+              }
+            ],
+            "events": [
+              {
+                "eventId": "00000000-0000-4000-8000-000000004008",
+                "runId": "letters-run",
+                "sequence": 8,
+                "type": "WORKFLOW_RECOVERED",
+                "payload": {
+                  "from": "RUNNING"
+                },
+                "createdAt": 1700000000074
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000004009",
+                "runId": "letters-run",
+                "sequence": 9,
+                "type": "WORKFLOW_STARTED",
+                "payload": {
+                  "resumed": true
+                },
+                "createdAt": 1700000000074
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-00000000400a",
+                "runId": "letters-run",
+                "sequence": 10,
+                "type": "STEP_RETRY_SCHEDULED",
+                "payload": {
+                  "effects": "idempotent",
+                  "reason": "interrupted",
+                  "stepKey": "summarize"
+                },
+                "createdAt": 1700000000075
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-00000000400b",
+                "runId": "letters-run",
+                "sequence": 11,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "idempotent",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000004103",
+                  "stepKey": "summarize"
+                },
+                "createdAt": 1700000000077
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-00000000400c",
+                "runId": "letters-run",
+                "sequence": 12,
+                "type": "STEP_COMPLETED",
+                "payload": {
+                  "attempt": 2,
+                  "effects": "idempotent",
+                  "execution": "local",
+                  "stepKey": "summarize"
+                },
+                "createdAt": 1700000000079
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-00000000400d",
+                "runId": "letters-run",
+                "sequence": 13,
+                "type": "WORKFLOW_COMPLETED",
+                "payload": {},
+                "createdAt": 1700000000080
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

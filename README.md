@@ -189,6 +189,7 @@ Authoritative documents:
 - [State machines](docs/architecture/state-machines.md)
 - [Storage](docs/architecture/storage.md)
 - [Side effects](docs/architecture/side-effects.md)
+- [Cloud observability specification](docs/cloud-observability-spec.md)
 
 Hybrid dispatch, the model adapter, mobile lifecycle, and a future Rust core are design notes only: [hybrid](docs/architecture/hybrid-dispatch.md), [model adapter](docs/architecture/model-adapter.md), [mobile](docs/architecture/mobile-lifecycle.md), [Rust](docs/architecture/rust-migration.md).
 
