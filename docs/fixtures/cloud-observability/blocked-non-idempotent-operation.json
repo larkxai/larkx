@@ -1,0 +1,549 @@
+{
+  "fixtureFormat": 1,
+  "name": "blocked-non-idempotent-operation",
+  "summary": "charge is non-idempotent. SIGKILL leaves it RUNNING. Recovery records UNKNOWN_OUTCOME and BLOCKED. The handler does not run again.",
+  "classification": {
+    "journal": "implemented",
+    "telemetryBatches": "proposed"
+  },
+  "provenance": {
+    "runtime": "@larkx/core 0.1.0",
+    "protocolVersion": 1,
+    "storageSchemaVersion": 1,
+    "timeOrigin": 1700000000000,
+    "source": "examples/node-workflow --workflow charge-once --crash-during charge, then a second process. Same path as tests/crash-recovery/crash.test.ts and tests/react-native/restart.test.ts.",
+    "capture": "The second process exited with status BLOCKED and the invocation log contained charge once. Reconcile is not part of this fixture.",
+    "omitted": [
+      "workflow input",
+      "step output",
+      "owner id",
+      "blocked reason message",
+      "stored error message"
+    ]
+  },
+  "journal": {
+    "phase": "blocked",
+    "run": {
+      "runId": "charge-run",
+      "workflowName": "charge-once",
+      "workflowVersion": 1,
+      "status": "BLOCKED",
+      "protocolVersion": 1,
+      "dataPolicy": "device-only",
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000070,
+      "cancelRequested": false,
+      "ownershipEpoch": 3,
+      "ownerPresent": false,
+      "errorCode": null,
+      "errorRetryable": null,
+      "blockedReasonCode": "unknown_operation_outcome"
+    },
+    "steps": [
+      {
+        "runId": "charge-run",
+        "stepKey": "charge",
+        "stepOrder": 0,
+        "status": "UNKNOWN_OUTCOME",
+        "executionTarget": "local",
+        "selectedTarget": "local",
+        "effectType": "non-idempotent",
+        "attemptCount": 1,
+        "operationId": "00000000-0000-4000-8000-000000005101",
+        "descriptor": {
+          "effects": "non-idempotent",
+          "execution": "local",
+          "timeoutMs": null
+        },
+        "nextAttemptAt": null,
+        "errorCode": "unknown_operation_outcome",
+        "errorRetryable": false,
+        "createdAt": 1700000000003,
+        "updatedAt": 1700000000069
+      }
+    ],
+    "attempts": [
+      {
+        "attemptId": "00000000-0000-4000-8000-000000005201",
+        "runId": "charge-run",
+        "stepKey": "charge",
+        "attemptNumber": 1,
+        "executionTarget": "local",
+        "status": "INTERRUPTED",
+        "startedAt": 1700000000003,
+        "completedAt": 1700000000069,
+        "errorCode": "unknown_operation_outcome",
+        "errorRetryable": false
+      }
+    ],
+    "events": [
+      {
+        "eventId": "00000000-0000-4000-8000-000000005001",
+        "runId": "charge-run",
+        "sequence": 1,
+        "type": "WORKFLOW_CREATED",
+        "payload": {
+          "workflowName": "charge-once",
+          "workflowVersion": 1,
+          "protocolVersion": 1,
+          "dataPolicy": "device-only"
+        },
+        "createdAt": 1700000000000
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000005002",
+        "runId": "charge-run",
+        "sequence": 2,
+        "type": "WORKFLOW_STARTED",
+        "payload": {
+          "workflowName": "charge-once",
+          "workflowVersion": 1
+        },
+        "createdAt": 1700000000002
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000005003",
+        "runId": "charge-run",
+        "sequence": 3,
+        "type": "STEP_STARTED",
+        "payload": {
+          "effects": "non-idempotent",
+          "execution": "local",
+          "operationId": "00000000-0000-4000-8000-000000005101",
+          "stepKey": "charge"
+        },
+        "createdAt": 1700000000003
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000005004",
+        "runId": "charge-run",
+        "sequence": 4,
+        "type": "WORKFLOW_RECOVERED",
+        "payload": {
+          "from": "RUNNING"
+        },
+        "createdAt": 1700000000068
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000005005",
+        "runId": "charge-run",
+        "sequence": 5,
+        "type": "WORKFLOW_STARTED",
+        "payload": {
+          "resumed": true
+        },
+        "createdAt": 1700000000068
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000005006",
+        "runId": "charge-run",
+        "sequence": 6,
+        "type": "STEP_OUTCOME_UNKNOWN",
+        "payload": {
+          "effects": "non-idempotent",
+          "reason": "interrupted",
+          "stepKey": "charge"
+        },
+        "createdAt": 1700000000069
+      },
+      {
+        "eventId": "00000000-0000-4000-8000-000000005007",
+        "runId": "charge-run",
+        "sequence": 7,
+        "type": "WORKFLOW_BLOCKED",
+        "payload": {
+          "code": "unknown_operation_outcome",
+          "stepKey": "charge"
+        },
+        "createdAt": 1700000000069
+      }
+    ]
+  },
+  "telemetryBatches": [
+    {
+      "purpose": "committed-before-recovery",
+      "body": {
+        "telemetryVersion": 1,
+        "protocolVersion": 1,
+        "storageSchemaVersion": 1,
+        "batchId": "00000000-0000-4000-8000-00000000b501",
+        "exportedAt": 1700000000003,
+        "mode": "metadata-only",
+        "source": {
+          "installationId": "installation-example",
+          "appId": "example-app",
+          "runtime": "node"
+        },
+        "runs": [
+          {
+            "runId": "charge-run",
+            "workflowName": "charge-once",
+            "workflowVersion": 1,
+            "status": "RUNNING",
+            "protocolVersion": 1,
+            "dataPolicy": "device-only",
+            "createdAt": 1700000000000,
+            "updatedAt": 1700000000003,
+            "cancelRequested": false,
+            "ownershipEpoch": 1,
+            "ownerPresent": true,
+            "errorCode": null,
+            "errorRetryable": null,
+            "blockedReasonCode": null,
+            "fromSequence": 1,
+            "throughSequence": 3,
+            "steps": [
+              {
+                "runId": "charge-run",
+                "stepKey": "charge",
+                "stepOrder": 0,
+                "status": "RUNNING",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "non-idempotent",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000005101",
+                "descriptor": {
+                  "effects": "non-idempotent",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": null,
+                "errorRetryable": null,
+                "createdAt": 1700000000003,
+                "updatedAt": 1700000000003
+              }
+            ],
+            "attempts": [
+              {
+                "attemptId": "00000000-0000-4000-8000-000000005201",
+                "runId": "charge-run",
+                "stepKey": "charge",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "STARTED",
+                "startedAt": 1700000000003,
+                "completedAt": null,
+                "errorCode": null,
+                "errorRetryable": null
+              }
+            ],
+            "events": [
+              {
+                "eventId": "00000000-0000-4000-8000-000000005001",
+                "runId": "charge-run",
+                "sequence": 1,
+                "type": "WORKFLOW_CREATED",
+                "payload": {
+                  "workflowName": "charge-once",
+                  "workflowVersion": 1,
+                  "protocolVersion": 1,
+                  "dataPolicy": "device-only"
+                },
+                "createdAt": 1700000000000
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005002",
+                "runId": "charge-run",
+                "sequence": 2,
+                "type": "WORKFLOW_STARTED",
+                "payload": {
+                  "workflowName": "charge-once",
+                  "workflowVersion": 1
+                },
+                "createdAt": 1700000000002
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005003",
+                "runId": "charge-run",
+                "sequence": 3,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "non-idempotent",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000005101",
+                  "stepKey": "charge"
+                },
+                "createdAt": 1700000000003
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "purpose": "full-resync",
+      "body": {
+        "telemetryVersion": 1,
+        "protocolVersion": 1,
+        "storageSchemaVersion": 1,
+        "batchId": "00000000-0000-4000-8000-00000000b502",
+        "exportedAt": 1700000000070,
+        "mode": "metadata-only",
+        "source": {
+          "installationId": "installation-example",
+          "appId": "example-app",
+          "runtime": "node"
+        },
+        "runs": [
+          {
+            "runId": "charge-run",
+            "workflowName": "charge-once",
+            "workflowVersion": 1,
+            "status": "BLOCKED",
+            "protocolVersion": 1,
+            "dataPolicy": "device-only",
+            "createdAt": 1700000000000,
+            "updatedAt": 1700000000070,
+            "cancelRequested": false,
+            "ownershipEpoch": 3,
+            "ownerPresent": false,
+            "errorCode": null,
+            "errorRetryable": null,
+            "blockedReasonCode": "unknown_operation_outcome",
+            "fromSequence": 1,
+            "throughSequence": 7,
+            "steps": [
+              {
+                "runId": "charge-run",
+                "stepKey": "charge",
+                "stepOrder": 0,
+                "status": "UNKNOWN_OUTCOME",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "non-idempotent",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000005101",
+                "descriptor": {
+                  "effects": "non-idempotent",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": "unknown_operation_outcome",
+                "errorRetryable": false,
+                "createdAt": 1700000000003,
+                "updatedAt": 1700000000069
+              }
+            ],
+            "attempts": [
+              {
+                "attemptId": "00000000-0000-4000-8000-000000005201",
+                "runId": "charge-run",
+                "stepKey": "charge",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "INTERRUPTED",
+                "startedAt": 1700000000003,
+                "completedAt": 1700000000069,
+                "errorCode": "unknown_operation_outcome",
+                "errorRetryable": false
+              }
+            ],
+            "events": [
+              {
+                "eventId": "00000000-0000-4000-8000-000000005001",
+                "runId": "charge-run",
+                "sequence": 1,
+                "type": "WORKFLOW_CREATED",
+                "payload": {
+                  "workflowName": "charge-once",
+                  "workflowVersion": 1,
+                  "protocolVersion": 1,
+                  "dataPolicy": "device-only"
+                },
+                "createdAt": 1700000000000
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005002",
+                "runId": "charge-run",
+                "sequence": 2,
+                "type": "WORKFLOW_STARTED",
+                "payload": {
+                  "workflowName": "charge-once",
+                  "workflowVersion": 1
+                },
+                "createdAt": 1700000000002
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005003",
+                "runId": "charge-run",
+                "sequence": 3,
+                "type": "STEP_STARTED",
+                "payload": {
+                  "effects": "non-idempotent",
+                  "execution": "local",
+                  "operationId": "00000000-0000-4000-8000-000000005101",
+                  "stepKey": "charge"
+                },
+                "createdAt": 1700000000003
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005004",
+                "runId": "charge-run",
+                "sequence": 4,
+                "type": "WORKFLOW_RECOVERED",
+                "payload": {
+                  "from": "RUNNING"
+                },
+                "createdAt": 1700000000068
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005005",
+                "runId": "charge-run",
+                "sequence": 5,
+                "type": "WORKFLOW_STARTED",
+                "payload": {
+                  "resumed": true
+                },
+                "createdAt": 1700000000068
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005006",
+                "runId": "charge-run",
+                "sequence": 6,
+                "type": "STEP_OUTCOME_UNKNOWN",
+                "payload": {
+                  "effects": "non-idempotent",
+                  "reason": "interrupted",
+                  "stepKey": "charge"
+                },
+                "createdAt": 1700000000069
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005007",
+                "runId": "charge-run",
+                "sequence": 7,
+                "type": "WORKFLOW_BLOCKED",
+                "payload": {
+                  "code": "unknown_operation_outcome",
+                  "stepKey": "charge"
+                },
+                "createdAt": 1700000000069
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "purpose": "checkpoint-suffix",
+      "body": {
+        "telemetryVersion": 1,
+        "protocolVersion": 1,
+        "storageSchemaVersion": 1,
+        "batchId": "00000000-0000-4000-8000-00000000b503",
+        "exportedAt": 1700000000070,
+        "mode": "metadata-only",
+        "source": {
+          "installationId": "installation-example",
+          "appId": "example-app",
+          "runtime": "node"
+        },
+        "runs": [
+          {
+            "runId": "charge-run",
+            "workflowName": "charge-once",
+            "workflowVersion": 1,
+            "status": "BLOCKED",
+            "protocolVersion": 1,
+            "dataPolicy": "device-only",
+            "createdAt": 1700000000000,
+            "updatedAt": 1700000000070,
+            "cancelRequested": false,
+            "ownershipEpoch": 3,
+            "ownerPresent": false,
+            "errorCode": null,
+            "errorRetryable": null,
+            "blockedReasonCode": "unknown_operation_outcome",
+            "fromSequence": 4,
+            "throughSequence": 7,
+            "steps": [
+              {
+                "runId": "charge-run",
+                "stepKey": "charge",
+                "stepOrder": 0,
+                "status": "UNKNOWN_OUTCOME",
+                "executionTarget": "local",
+                "selectedTarget": "local",
+                "effectType": "non-idempotent",
+                "attemptCount": 1,
+                "operationId": "00000000-0000-4000-8000-000000005101",
+                "descriptor": {
+                  "effects": "non-idempotent",
+                  "execution": "local",
+                  "timeoutMs": null
+                },
+                "nextAttemptAt": null,
+                "errorCode": "unknown_operation_outcome",
+                "errorRetryable": false,
+                "createdAt": 1700000000003,
+                "updatedAt": 1700000000069
+              }
+            ],
+            "attempts": [
+              {
+                "attemptId": "00000000-0000-4000-8000-000000005201",
+                "runId": "charge-run",
+                "stepKey": "charge",
+                "attemptNumber": 1,
+                "executionTarget": "local",
+                "status": "INTERRUPTED",
+                "startedAt": 1700000000003,
+                "completedAt": 1700000000069,
+                "errorCode": "unknown_operation_outcome",
+                "errorRetryable": false
+              }
+            ],
+            "events": [
+              {
+                "eventId": "00000000-0000-4000-8000-000000005004",
+                "runId": "charge-run",
+                "sequence": 4,
+                "type": "WORKFLOW_RECOVERED",
+                "payload": {
+                  "from": "RUNNING"
+                },
+                "createdAt": 1700000000068
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005005",
+                "runId": "charge-run",
+                "sequence": 5,
+                "type": "WORKFLOW_STARTED",
+                "payload": {
+                  "resumed": true
+                },
+                "createdAt": 1700000000068
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005006",
+                "runId": "charge-run",
+                "sequence": 6,
+                "type": "STEP_OUTCOME_UNKNOWN",
+                "payload": {
+                  "effects": "non-idempotent",
+                  "reason": "interrupted",
+                  "stepKey": "charge"
+                },
+                "createdAt": 1700000000069
+              },
+              {
+                "eventId": "00000000-0000-4000-8000-000000005007",
+                "runId": "charge-run",
+                "sequence": 7,
+                "type": "WORKFLOW_BLOCKED",
+                "payload": {
+                  "code": "unknown_operation_outcome",
+                  "stepKey": "charge"
+                },
+                "createdAt": 1700000000069
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
