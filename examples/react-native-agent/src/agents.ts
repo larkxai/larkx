@@ -2,7 +2,7 @@ import { createAgent, createScriptedModel, type Agent, type ModelResponse } from
 import { cactusAdapter, createCactusModel, type CactusLanguageModel } from "@larkx/cactus";
 import type { Engine } from "@larkx/core";
 
-import { renovationTools } from "./tools.js";
+import { renovationTools } from "./tools";
 
 const CACHE = "__larkxRenovationAgents";
 const MODEL = "__larkxCactusModel";
