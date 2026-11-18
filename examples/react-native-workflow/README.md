@@ -4,8 +4,8 @@ A local Expo demo of the LarkX engine. The handlers are deterministic and do not
 
 The demo has two workflows:
 
-- **Notes** — `intake`, `count`, `pause` (about four seconds), and idempotent `record`.
-- **Charge** — one non-idempotent `charge` step that waits about three seconds.
+- **Notes** — `intake` (8 seconds), `count` (8 seconds), `pause` (15 seconds), and idempotent `record` (8 seconds).
+- **Charge** — one non-idempotent `charge` step that waits 15 seconds.
 
 `pause` and `charge` are the steps to interrupt.
 
