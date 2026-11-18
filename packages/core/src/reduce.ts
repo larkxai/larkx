@@ -35,6 +35,13 @@ export interface ClaimInput {
   nowMs: number;
   leaseMs: number;
   maySteal: boolean;
+  /**
+   * When true, a different owner can take the run only if `maySteal` is true.
+   * Lease expiry is not evidence that the previous executor stopped.
+   * The same owner refreshes the lease and keeps its epoch, so an in-flight
+   * handler can still commit after the app was suspended.
+   */
+  exclusive?: boolean;
 }
 
 export interface ClaimOutcome {
@@ -145,7 +152,8 @@ export function reduceClaim(state: ExecutionState, input: ClaimInput): ClaimOutc
     };
   }
   const active = leaseActive(run, input.nowMs);
-  if (run.ownerId === input.ownerId && active) {
+  const sameOwner = run.ownerId !== null && run.ownerId === input.ownerId;
+  if (sameOwner && (active || input.exclusive === true)) {
     const leaseExpiresAt = expiry(input.nowMs, input.leaseMs);
     return {
       state: {
@@ -158,12 +166,13 @@ export function reduceClaim(state: ExecutionState, input: ClaimInput): ClaimOutc
       leaseExpiresAt,
     };
   }
-  if (run.ownerId !== null && run.ownerId !== input.ownerId && active && !input.maySteal) {
+  const otherOwner = run.ownerId !== null && run.ownerId !== input.ownerId;
+  if (otherOwner && !input.maySteal && (active || input.exclusive === true)) {
     return {
       state,
       acquired: false,
       epoch: run.ownershipEpoch,
-      ownerId: run.ownerId,
+      ownerId: run.ownerId ?? input.ownerId,
       leaseExpiresAt: run.leaseExpiresAt,
       reason: "owned_by_other",
     };

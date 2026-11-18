@@ -8,7 +8,7 @@ On-device agents need a recovery boundary that works without a remote orchestrat
 
 ## Decision
 
-LarkX is a TypeScript monorepo. The platform-independent core depends on a storage interface and on `@larkx/protocol`. Node and, later, React Native are adapters. Model providers are adapters above the engine, not dependencies of it.
+LarkX is a TypeScript monorepo. The platform-independent core depends on a storage interface and on `@larkx/protocol`. Node and React Native are adapters. Model providers are adapters above the engine, not dependencies of it.
 
 Three product layers:
 

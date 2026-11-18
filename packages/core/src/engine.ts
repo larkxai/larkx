@@ -802,6 +802,8 @@ class LocalEngine implements Engine {
     void loop();
     return () => {
       stopped = true;
+      // The sleep otherwise keeps the runtime alive until the next interval.
+      controller.abort();
     };
   }
 

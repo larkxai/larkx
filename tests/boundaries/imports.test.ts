@@ -28,6 +28,19 @@ describe("package boundaries", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("keeps the testable React Native modules free of native imports", () => {
+    const files = [
+      "packages/react-native/src/storage.ts",
+      "packages/react-native/src/ownership.ts",
+      "packages/react-native/src/artifacts.ts",
+      "packages/react-native/src/lifecycle.ts",
+    ];
+    const offenders = files.filter((file) =>
+      /from\s+["'](expo|react-native|node:)/.test(readFileSync(file, "utf8")),
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it("does not import a model provider into the core", () => {
     const source = readFileSync("packages/core/src/engine.ts", "utf8");
     expect(source).not.toMatch(/cactus|ollama|openai|anthropic/i);

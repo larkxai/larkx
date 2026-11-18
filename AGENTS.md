@@ -13,8 +13,10 @@ LarkX is an independent durable execution engine for on-device and hybrid AI age
 - `@larkx/storage-memory` — process-local storage.
 - `@larkx/storage-sqlite` — schema version 1 and a driver-agnostic SQLite adapter.
 - `@larkx/node` — `node:sqlite` driver, pid-file ownership reclaim, `createNodeEngine`.
+- `@larkx/react-native` — Expo SQLite driver, mobile ownership, lifecycle binding, local artifact copy, and a display hook.
 - `@larkx/testing` — fake clocks and storage conformance cases.
-- `examples/node-workflow` — the process-death demo.
+- `examples/node-workflow` — the Node process-death demo.
+- `examples/react-native-workflow` — the Expo demo. Node tests do not prove it ran on a device.
 
 Do not add a package that only re-exports types or throws "not implemented" and then document it as shipped. Planned packages stay in [ROADMAP.md](ROADMAP.md) until they have behavior and tests.
 
@@ -39,7 +41,7 @@ Do not add a package that only re-exports types or throws "not implemented" and 
 - Crash tests spawn `examples/node-workflow/dist/main.js` and send `SIGKILL`. Do not replace them with a thrown exception.
 - Tests that use `createAutoClock` must set `leaseMs: 0`. The auto clock is not safe with heartbeats.
 - Node may print `ExperimentalWarning: SQLite is an experimental feature`. That is expected with `node:sqlite`.
-- A green Node suite is not mobile validation. Do not claim React Native, emulator, or device coverage.
+- A green Node suite is not mobile validation. The React Native package has Node tests for its ownership policy, artifact copy, and lifecycle binding, including `SIGKILL` against the mobile storage adapter backed by `node:sqlite`. Do not describe that as an emulator or device run.
 
 ## Local commands
 

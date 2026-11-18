@@ -22,6 +22,7 @@
     "@larkx/core": "workspace:*",
     "@larkx/node": "workspace:*",
     "@larkx/protocol": "workspace:*",
+    "@larkx/react-native": "workspace:*",
     "@larkx/storage-memory": "workspace:*",
     "@larkx/storage-sqlite": "workspace:*",
     "@larkx/testing": "workspace:*",

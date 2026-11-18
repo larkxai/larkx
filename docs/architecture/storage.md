@@ -14,6 +14,8 @@
 
 `apply` is atomic. Related run, step, attempt, and event changes commit together or not at all. Adapters must not write those rows as independent autocommit statements.
 
+`exclusiveOwnership` changes one claim rule. A different owner cannot take the run merely because `leaseExpiresAt` is in the past. The adapter must pass `maySteal: true` for that takeover, which the React Native adapter does only when the previous owner is gone from the current JavaScript realm. Node storage leaves the flag off, so an expired lease can still be taken there.
+
 ## Schema version 1
 
 SQLite tables:
