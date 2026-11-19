@@ -85,7 +85,7 @@ export function App() {
   const driverRef = useRef<CloudConnection["driver"]>(null);
   const observation = useLarkxRun(engine, runId);
   const report = savedReport(observation.steps);
-  const rows = activityRows(observation.steps);
+  const rows = activityRows(observation.steps, observation.run?.status);
   const stats = recoveryStats(observation.steps, observation.history);
   const cloud = cloudLabel(cloudPhase, online, pendingEvents, syncedAt);
 
@@ -544,10 +544,11 @@ function RowMark({ state }: { state: string }) {
   }
   const done = state === "completed" || state === "recovered";
   const bad = state === "blocked" || state === "interrupted";
+  const skipped = state === "skipped";
   return (
     <View style={[styles.mark, done ? styles.markDone : bad ? styles.markBad : styles.markIdle]}>
       <Text style={done || bad ? styles.markGlyphOn : styles.markGlyphIdle}>
-        {done ? "✓" : bad ? "!" : ""}
+        {done ? "✓" : bad ? "!" : skipped ? "–" : ""}
       </Text>
     </View>
   );
@@ -577,6 +578,7 @@ function labelFor(state: string): string {
   if (state === "recovered") return "Recovered";
   if (state === "interrupted") return "Interrupted";
   if (state === "blocked") return "Blocked";
+  if (state === "skipped") return "Skipped";
   return "Pending";
 }
 

@@ -6,7 +6,7 @@ export interface ObservedStep {
 }
 
 export type ActivityState =
-  "pending" | "running" | "completed" | "recovered" | "interrupted" | "blocked";
+  "pending" | "running" | "completed" | "recovered" | "interrupted" | "blocked" | "skipped";
 
 export interface ActivityRow {
   readonly label: string;
@@ -20,13 +20,17 @@ const READS = [
   "get_equipment_history",
 ] as const;
 
-export function activityRows(steps: readonly ObservedStep[]): ActivityRow[] {
+export function activityRows(
+  steps: readonly ObservedStep[],
+  runStatus?: string | null,
+): ActivityRow[] {
+  const finished = isFinished(runStatus);
   return [
-    toolRow("Read inspection notes", "get_inspection_notes", steps),
-    toolRow("Check maintenance requirements", "get_maintenance_checklist", steps),
-    toolRow("Review equipment history", "get_equipment_history", steps),
-    generateRow(steps),
-    toolRow("Save report", "save_report", steps),
+    toolRow("Read inspection notes", "get_inspection_notes", steps, finished),
+    toolRow("Check maintenance requirements", "get_maintenance_checklist", steps, finished),
+    toolRow("Review equipment history", "get_equipment_history", steps, finished),
+    generateRow(steps, finished),
+    toolRow("Save report", "save_report", steps, finished),
   ];
 }
 
@@ -41,12 +45,17 @@ export function recoveryStats(
   };
 }
 
-function toolRow(label: string, name: string, steps: readonly ObservedStep[]): ActivityRow {
+function toolRow(
+  label: string,
+  name: string,
+  steps: readonly ObservedStep[],
+  finished: boolean,
+): ActivityRow {
   const step = [...steps].reverse().find((item) => toolName(item) === name);
-  return { label, state: step ? stateOf(step) : "pending", where: "LOCAL" };
+  return { label, state: step ? stateOf(step) : unfinished(finished), where: "LOCAL" };
 }
 
-function generateRow(steps: readonly ObservedStep[]): ActivityRow {
+function generateRow(steps: readonly ObservedStep[], finished: boolean): ActivityRow {
   const models = steps.filter((step) => step.stepKey.startsWith("model-"));
   const readsDone = READS.every((name) =>
     steps.some((step) => toolName(step) === name && step.status === "COMPLETED"),
@@ -57,12 +66,23 @@ function generateRow(steps: readonly ObservedStep[]): ActivityRow {
   }
   const produced = [...models].reverse().find((step) => {
     const output = record(step.output);
-    return output?.finish === "stop" || callsNamed(output).includes("save_report");
+    const askedToSave = callsNamed(output).includes("save_report");
+    return askedToSave || (output?.finish === "stop" && readsDone);
   });
   if (produced && produced.status === "COMPLETED") {
     return { label: "Generate report", state: stateOf(produced), where: "LOCAL" };
   }
-  return { label: "Generate report", state: "pending", where: "LOCAL" };
+  return { label: "Generate report", state: unfinished(finished), where: "LOCAL" };
+}
+
+function unfinished(finished: boolean): ActivityState {
+  return finished ? "skipped" : "pending";
+}
+
+function isFinished(status: string | null | undefined): boolean {
+  return (
+    status === "COMPLETED" || status === "FAILED" || status === "CANCELLED" || status === "BLOCKED"
+  );
 }
 
 function stateOf(step: ObservedStep): ActivityState {

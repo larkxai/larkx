@@ -50,7 +50,7 @@ That waits inside `get_equipment_history` and observes cancellation. Leave it un
 ## What to tap
 
 1. Send `Review today's inspection notes, identify priority maintenance issues, and create a report.`
-2. The activity card follows persisted steps. A row stays Pending until that step commits. Every row is LOCAL. Cloud sync does not turn a step into CLOUD execution.
+2. The activity card follows persisted steps. A row stays Pending until that step commits. After the run finishes, a step the model never called says Skipped. Every row is LOCAL. Cloud sync does not turn a step into CLOUD execution.
 3. The report lists only notes from the bundle. Severity comes from the checklist for that note, not from a severity word the model typed.
 4. Turn on airplane mode. Local tools and inference still run. The cloud pill says Offline.
 5. Force-quit while a row says Running. Swipe the app away. Pressing Home leaves it in the background.

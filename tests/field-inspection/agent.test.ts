@@ -159,6 +159,39 @@ describe("field inspection agent", () => {
     expect(rows.every((row) => row.where === "LOCAL")).toBe(true);
   });
 
+  it("marks tools the finished model never called as skipped", () => {
+    const rows = activityRows(
+      [
+        {
+          stepKey: "model-0",
+          status: "COMPLETED",
+          attemptCount: 1,
+          output: { finish: "tool_calls", calls: [{ name: "get_inspection_notes" }] },
+        },
+        {
+          stepKey: "tool-0-0",
+          status: "COMPLETED",
+          attemptCount: 1,
+          output: { ok: true, name: "get_inspection_notes", output: { notes: [] } },
+        },
+        {
+          stepKey: "model-1",
+          status: "COMPLETED",
+          attemptCount: 1,
+          output: { finish: "stop", message: "Done.", calls: [] },
+        },
+      ],
+      "COMPLETED",
+    );
+    expect(rows.map((row) => [row.label, row.state])).toEqual([
+      ["Read inspection notes", "completed"],
+      ["Check maintenance requirements", "skipped"],
+      ["Review equipment history", "skipped"],
+      ["Generate report", "skipped"],
+      ["Save report", "skipped"],
+    ]);
+  });
+
   it("drops priorities that are not in the bundled notes", () => {
     expect(() =>
       groundReport(
