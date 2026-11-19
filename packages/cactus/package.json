@@ -9,15 +9,24 @@
     "dist",
     "README.md"
   ],
+  "main": "./dist/index.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "react-native": "./dist/index.js",
+      "ios": "./dist/index.js",
+      "android": "./dist/index.js",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./adapter": {
       "types": "./dist/adapter.d.ts",
       "react-native": "./dist/adapter.js",
+      "ios": "./dist/adapter.js",
+      "android": "./dist/adapter.js",
       "import": "./dist/adapter.js",
+      "require": "./dist/adapter.js",
       "default": "./dist/adapter.js"
     }
   },
