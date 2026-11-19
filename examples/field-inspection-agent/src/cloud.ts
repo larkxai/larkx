@@ -10,7 +10,7 @@ import {
 } from "@larkx/telemetry";
 import type { SqliteDriver } from "@larkx/storage-sqlite";
 
-export const TELEMETRY_DATABASE = "larkx-field-telemetry.db";
+export const TELEMETRY_DATABASE = "larkx-inspection-telemetry.db";
 
 export interface CloudConnection {
   readonly telemetry: CloudTelemetry | null;

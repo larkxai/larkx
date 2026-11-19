@@ -1,22 +1,21 @@
 # Field Assistant
 
-Offline inspection assistant for a phone. It uses the existing Larkx agent, the Cactus adapter, SQLite, and the Cloud telemetry exporter. It does not add another execution engine.
+A phone workflow for inspection notes. You type what you saw. Four local model stages run in a fixed order. Each stage receives the committed output of the previous stage.
 
-The screen is a chat. The model reads bundled inspection notes, a maintenance checklist, and equipment history through registered tools, then saves a report on the device. Cloud receives the journal metadata. It does not receive the notes, the prompt, or the report, and it does not run the agent.
+1. Extract issues from the notes.
+2. Classify those issues with the bundled maintenance rules.
+3. Write follow-up actions.
+4. Write the inspection report.
 
-The records are illustrative. The report is not a certified safety assessment.
+The rules are a rubric, not a set of notes. The notes come from the message you send. Device mode calls Cactus for every stage. Scripted test mode is labeled and does not call Cactus. It still reads the text you entered.
 
-## Modes
+Cloud receives journal metadata only. It does not receive the notes, the stage text, or the report, and it does not run the stages. A proposal for an opt-in input and output trace is in `docs/cloud-io-tracing-proposal.md`.
 
-Device mode calls Cactus. The default model is `qwen3-0.6b`. Set `EXPO_PUBLIC_LARKX_CACTUS_MODEL` before Metro starts to request another Cactus slug. Qwen3-0.6B sometimes writes a tool call as text instead of a native function call. This example accepts a JSON object in that text when its `name` is one of the four tools. It does not invent a tool the model did not name.
-
-Scripted test mode is labeled in the setup screen and in Developer details. It replays a fixed tool order for tests and for a repeatable interruption. It does not run Cactus.
+The report is an illustrative maintenance summary, not a certified safety assessment.
 
 ## Run it
 
-Requirements: Node.js 22.13 or newer, pnpm 10.33.4, and Xcode or the Android SDK. Expo Go cannot load Cactus. Use a development build.
-
-React Native 0.88 needs the Nitro patch already in this repository. `pnpm install` applies it. A Metro reload does not recompile that native file.
+Requirements: Node.js 22.13 or newer, pnpm 10.33.4, and Xcode or the Android SDK. Expo Go cannot load Cactus. Use a development build. This bundle id is `ai.larkx.field.demo`.
 
 ```bash
 pnpm install
@@ -25,9 +24,9 @@ cd examples/field-inspection-agent
 pnpm exec expo run:ios --device
 ```
 
-Use `expo run:android` for a phone whose ABI includes the Cactus library (`arm64-v8a`). An Intel Mac simulator cannot load the current Cactus iOS binaries.
+An Intel Mac simulator cannot load the current Cactus iOS binaries.
 
-On first launch, tap **Download**, then **Initialize**. After that, a cold start calls `init()` again. The model file stays on the phone.
+On first launch, tap **Download**, then **Initialize**. After that, a cold start calls `init()` again.
 
 Optional Cloud, in the shell that starts Metro:
 
@@ -37,52 +36,31 @@ export EXPO_PUBLIC_LARKX_INGESTION_KEY=lkx_ing_...
 export EXPO_PUBLIC_LARKX_CLOUD_DASHBOARD='https://cloud.example/runs/{runId}'
 ```
 
-Leave the endpoint or the key empty and the footer stays **Disabled**. The dashboard variable is optional. **View run in Cloud** appears only when it contains `{runId}`. There is no invented dashboard link.
+Leave the endpoint or the key empty and the footer stays **Disabled**. **View run in Cloud** appears only when the dashboard value contains `{runId}`.
 
-Optional interruption window, also before Metro starts:
+Optional pause before the planning stage calls the model:
 
 ```bash
 export EXPO_PUBLIC_LARKX_DEMO_DELAY_MS=8000
 ```
 
-That waits inside `get_equipment_history` and observes cancellation. Leave it unset for the normal app. Report generation is the natural window: force-quit while **Generate report** says Running.
+Leave it unset for the normal app. Report generation is the natural interruption window.
+
+`EXPO_PUBLIC_LARKX_CACTUS_MODEL` selects another Cactus slug. The default is `qwen3-0.6b`. Each stage uses a short prompt so that model has one job.
 
 ## What to tap
 
-1. Send `Review today's inspection notes, identify priority maintenance issues, and create a report.`
-2. The activity card follows persisted steps. A row stays Pending until that step commits. Every row is LOCAL. Cloud sync does not turn a step into CLOUD execution.
-3. The report lists only notes from the bundle. Severity comes from the checklist for that note, not from a severity word the model typed.
-4. Turn on airplane mode. Local tools and inference still run. The cloud pill says Offline.
-5. Force-quit while a row says Running. Swipe the app away. Pressing Home leaves it in the background.
-6. Open the app again. The same run returns. The banner says execution recovered, with the restored step count, the repeated step count, and the recovery count taken from the journal. Completed steps stay on attempt 1.
-7. Restore the network. The pill moves to Sync pending, then Synced. Open that run id in LarkX Cloud. The journal should include `WORKFLOW_RECOVERED` and should not include the prompt or the report text.
+1. Enter notes, or tap the example sentence. One message is enough. It can include the request to create a report.
+2. The card shows Extract, Classify, Create action plan, and Generate report. A stage stays Waiting until it starts. Its detail line comes from the committed output. Every stage is LOCAL.
+3. Turn on airplane mode. The stages still run. The footer says Working offline.
+4. Force-quit while a stage says it is running. Swipe the app away. Pressing Home leaves it in the background.
+5. Open the app again. The same run returns. Completed stages keep their output and are not called again. The banner says the workflow resumed from its last saved checkpoint.
+6. Restore the network. The footer moves through Sync pending to Synced. The Cloud page for that run id shows the stage keys, attempts, and `WORKFLOW_RECOVERED`. It does not show the notes or the report.
 
-Developer details shows the run id, step keys, attempts, operation ids, handlers invoked in this process, and sync state. Reset clears the conversation databases and leaves the downloaded model in place. A force-quit clears the in-memory handler list. That list is not the durable attempt count.
+Developer details shows the run id, `inspection-workflow` v1, step keys, attempts, and operation ids. Reset clears the conversation databases and leaves the model file in place.
 
-## Recording
-
-About a minute on a phone:
-
-1. Send the inspection prompt and show the local steps.
-2. If Cloud is configured, show the run id.
-3. Enable airplane mode.
-4. Force-quit during an unfinished step.
-5. Reopen. Show the recovered conversation and the preserved steps.
-6. Let the report finish offline.
-7. Restore the network, then open the same run in LarkX Cloud.
-
-Closing line: "AI agents. Beyond the cloud."
+For a full report without waiting on Cactus, tap **Scripted test**, then **Reset**, then send the notes. The header says **Scripted test**.
 
 ## Tests
 
-`tests/field-inspection/agent.test.ts` runs the scripted agent, checks that a committed tool is not called again after recovery, checks the text tool-call parser, and checks that pending rows are not marked completed.
-
-## Limitations
-
-This environment did not install the app on a phone and did not record the demo. The React Native renovation example is the device path that already ran Cactus and uploaded a journal. This bundle id is `ai.larkx.field.demo`, so it needs its own `expo run:ios --device` build.
-
-Cloud batches are metadata. They include step keys, statuses, attempts, and operation ids. They do not include tool names, prompts, notes, model text, or the report. A LOCAL badge means the step ran on the device. Uploading the journal does not make the step a CLOUD execution.
-
-Force-quit stops the process. The agent does not keep inferring while the app is gone, and a model call does not resume mid-token. Reopen continues from the last committed step. A completed step stays on its first attempt.
-
-`EXPO_PUBLIC_LARKX_DEMO_DELAY_MS` is off unless you set it. A larger Cactus model was not measured here. Set `EXPO_PUBLIC_LARKX_CACTUS_MODEL` only if you already know that slug works on the phone.
+`tests/field-inspection/agent.test.ts` checks that two different notes produce different reports, that a committed stage is not called again after recovery, and that a finished run marks uncalled stages as skipped.

@@ -1,7 +1,5 @@
-import type { ModelAdapter, ModelResponse } from "@larkx/agent";
+import type { ModelAdapter } from "@larkx/agent";
 import { cactusAdapter } from "@larkx/cactus/adapter";
-
-import { textToolCalls } from "./text-tool.js";
 
 export const DEFAULT_MODEL = "qwen3-0.6b";
 
@@ -36,22 +34,10 @@ export function fieldDeviceModel(name = DEFAULT_MODEL): ModelAdapter {
     get model() {
       return inner?.model ?? name;
     },
-    capabilities: { toolCalling: true, structuredOutput: false, cancellation: true },
+    capabilities: { toolCalling: false, structuredOutput: false, cancellation: true },
     async complete(request, context) {
       inner ??= cactusAdapter(cactusModel(name));
-      const response = await inner.complete(request, context);
-      return withTextCalls(response);
+      return inner.complete(request, context);
     },
   };
-}
-
-export function withTextCalls(response: ModelResponse): ModelResponse {
-  if (response.calls.length > 0) {
-    return response;
-  }
-  const calls = textToolCalls(response.message);
-  if (calls.length === 0) {
-    return response;
-  }
-  return { ...response, message: null, finish: "tool_calls", calls };
 }
