@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  react-native-nitro-modules@0.33.9:
+    hash: d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966
+    path: patches/react-native-nitro-modules@0.33.9.patch
+
 importers:
 
   .:
@@ -115,7 +120,7 @@ importers:
         version: link:../../packages/telemetry
       cactus-react-native:
         specifier: 1.13.1
-        version: 1.13.1(react-native-nitro-modules@0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+        version: 1.13.1(react-native-nitro-modules@0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
       expo:
         specifier: 58.0.26
         version: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
@@ -142,7 +147,7 @@ importers:
         version: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
       react-native-nitro-modules:
         specifier: 0.33.9
-        version: 0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+        version: 0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
     devDependencies:
       '@types/react':
         specifier: 19.2.18
@@ -220,10 +225,10 @@ importers:
     devDependencies:
       cactus-react-native:
         specifier: 1.13.1
-        version: 1.13.1(react-native-nitro-modules@0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+        version: 1.13.1(react-native-nitro-modules@0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
       react-native-nitro-modules:
         specifier: 0.33.9
-        version: 0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+        version: 0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
 
   packages/core:
     dependencies:
@@ -5081,11 +5086,11 @@ snapshots:
 
   bytes@3.1.2: {}
 
-  cactus-react-native@1.13.1(react-native-nitro-modules@0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0):
+  cactus-react-native@1.13.1(react-native-nitro-modules@0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0):
     dependencies:
       react: 19.3.0
       react-native: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
-      react-native-nitro-modules: 0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
+      react-native-nitro-modules: 0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
 
   callsites@3.1.0: {}
 
@@ -6436,7 +6441,7 @@ snapshots:
 
   react-is@18.3.1: {}
 
-  react-native-nitro-modules@0.33.9(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0):
+  react-native-nitro-modules@0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0):
     dependencies:
       react: 19.3.0
       react-native: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
