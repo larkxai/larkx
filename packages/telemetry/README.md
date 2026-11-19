@@ -73,7 +73,7 @@ A corrupt telemetry document is treated as an empty store: a new installation id
 
 ## React Native
 
-Use the same functions with `createExpoSqliteDriver` from `@larkx/react-native` and `runtime: "react-native"`. Flush after startup, after `recover()`, when connectivity returns, and from a Sync control. Call `setActive(false)` when `AppState` is not `active`. Do not assume the timer runs while the operating system has suspended the app.
+Use the same functions with `createExpoSqliteDriver` from `@larkx/react-native` and `runtime: "react-native"`. Hermes does not provide `crypto.subtle` or `crypto.randomUUID`. Pass `createId` and `sha256` from `expo-crypto`. Without `sha256`, the exporter uses its own SHA-256. Without `createId`, it uses `crypto.getRandomValues` when that exists. Flush after startup, after `recover()`, when connectivity returns, and from a Sync control. Call `setActive(false)` when `AppState` is not `active`. Do not assume the timer runs while the operating system has suspended the app.
 
 Local inference does not read the ingestion key.
 
