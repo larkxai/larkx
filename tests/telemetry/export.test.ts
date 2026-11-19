@@ -20,9 +20,25 @@ const ENDPOINT = "https://cloud.larkx.test";
 const API_KEY = "lkx_ing_test_secret";
 const SECRET = "secret-prompt-do-not-upload";
 
+function restoreCrypto(host: { crypto?: HostCrypto }, previous: HostCrypto | undefined): void {
+  if (previous === undefined) {
+    Reflect.deleteProperty(host, "crypto");
+    return;
+  }
+  host.crypto = previous;
+}
+
+interface HostCrypto {
+  subtle?: {
+    digest(algorithm: "SHA-256", data: Uint8Array): Promise<ArrayBuffer>;
+  };
+  randomUUID?: () => string;
+  getRandomValues?: (bytes: Uint8Array) => Uint8Array;
+}
+
 describe("cloud telemetry export", () => {
   it("creates a destination without Web Crypto", async () => {
-    const host = globalThis as { crypto?: Crypto };
+    const host = globalThis as { crypto?: HostCrypto };
     const previous = host.crypto;
     const saved: Array<{ installationId: string; destinations: Record<string, unknown> }> = [];
     Reflect.deleteProperty(host, "crypto");
@@ -67,15 +83,13 @@ describe("cloud telemetry export", () => {
       expect(stored?.destinations).toHaveProperty(`expo:${String(expected)}`);
       await telemetry.stop();
     } finally {
-      host.crypto = previous;
+      restoreCrypto(host, previous);
     }
   });
 
   it("matches Web Crypto SHA-256 when subtle is missing", async () => {
     const expected = await sha256(`${ENDPOINT}\n${API_KEY}`);
-    const host = globalThis as {
-      crypto?: { getRandomValues?: Crypto["getRandomValues"] };
-    };
+    const host = globalThis as { crypto?: HostCrypto };
     const previous = host.crypto;
     if (!previous?.getRandomValues) {
       throw new Error("test runtime has no crypto");
@@ -113,7 +127,7 @@ describe("cloud telemetry export", () => {
       expect(Object.keys(saved.at(-1)?.destinations ?? {})).toEqual([expected]);
       await telemetry.stop();
     } finally {
-      host.crypto = previous;
+      restoreCrypto(host, previous);
     }
   });
 
