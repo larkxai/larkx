@@ -19,6 +19,8 @@ This tree has not been installed on an emulator or a physical device. The steps 
 
 Requirements: Node.js 22.13 or newer, pnpm 10.33.4, a current Android SDK or Xcode, and a development build.
 
+React Native 0.88 calls `installJSIBindingsWithRuntime:callInvoker:`. Nitro 0.33.9 only implemented the one-argument method, so Cactus fails with `installJSIBindingsWithRuntime: was not called` until the patch in `patches/` is applied. Run `pnpm install`, then `expo run:ios --device` again. Reloading Metro does not recompile that native method.
+
 ```bash
 pnpm install
 pnpm build

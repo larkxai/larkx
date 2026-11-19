@@ -1,3 +1,5 @@
 packages:
   - "packages/*"
   - "examples/*"
+patchedDependencies:
+  react-native-nitro-modules@0.33.9: patches/react-native-nitro-modules@0.33.9.patch
