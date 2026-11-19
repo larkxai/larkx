@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { deleteDatabaseSync } from "expo-sqlite";
 import * as Clipboard from "expo-clipboard";
+import type { ModelAdapter } from "@larkx/agent";
+import type { WorkflowDefinition } from "@larkx/core";
 import {
   bindReactNativeLifecycle,
   openReactNativeEngine,
   useLarkxRun,
   type ReactNativeEngine,
 } from "@larkx/react-native";
-import type { ModelAdapter } from "@larkx/agent";
 import type { TelemetryPhase } from "@larkx/telemetry";
 import {
   AppState,
@@ -24,7 +25,7 @@ import {
   View,
 } from "react-native";
 
-import { activityRows, recoveryStats } from "./src/activity.js";
+import { activityRows, recoveryStats, reportFromSteps } from "./src/activity.js";
 import {
   cloudLabel,
   dashboardUrl,
@@ -34,13 +35,12 @@ import {
   type CloudConnection,
 } from "./src/cloud.js";
 import { cactusModel, DEFAULT_MODEL, fieldDeviceModel } from "./src/device.js";
-import { formatReport, readReport, type InspectionReport } from "./src/report.js";
-import { SUGGESTED_PROMPT } from "./src/records.js";
-import { createInspectionAgent, scriptedInspectionModel } from "./src/script.js";
-import { clearSessionCalls, sessionCalls } from "./src/tools.js";
+import { scriptedInspectionModel } from "./src/scripted.js";
+import { EXAMPLE_NOTES, type ReportOutput } from "./src/stages.js";
+import { createInspectionWorkflow, type InspectionInput } from "./src/workflow.js";
 import { Mark, RunningMark } from "./src/ui/Mark.js";
 
-const DATABASE = "larkx-field.db";
+const DATABASE = "larkx-inspection-workflow.db";
 const MODEL_NAME = process.env.EXPO_PUBLIC_LARKX_CACTUS_MODEL?.trim() || DEFAULT_MODEL;
 const DEMO_DELAY_MS = delayFromEnv(process.env.EXPO_PUBLIC_LARKX_DEMO_DELAY_MS);
 
@@ -57,20 +57,20 @@ export function App() {
     get model() {
       return modeRef.current === "test" ? scriptedRef.current.model : deviceRef.current.model;
     },
-    capabilities: { toolCalling: true, structuredOutput: false, cancellation: true },
+    capabilities: { toolCalling: false, structuredOutput: false, cancellation: true },
     complete(request, context) {
       const selected = modeRef.current === "test" ? scriptedRef.current : deviceRef.current;
       return selected.complete(request, context);
     },
   });
-  const agentRef = useRef<ReturnType<typeof createInspectionAgent> | null>(null);
+  const workflowRef = useRef<WorkflowDefinition<InspectionInput, ReportOutput> | null>(null);
   const [engine, setEngine] = useState<ReactNativeEngine | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("device");
   const [setup, setSetup] = useState<SetupPhase>("checking");
   const [progress, setProgress] = useState<number | null>(null);
   const [modelLabel, setModelLabel] = useState(MODEL_NAME);
-  const [draft, setDraft] = useState(SUGGESTED_PROMPT);
+  const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState("Preparing the on-device model.");
   const [online, setOnline] = useState<boolean | null>(null);
   const [cloudPhase, setCloudPhase] = useState<TelemetryPhase | "disabled">(
@@ -84,8 +84,8 @@ export function App() {
   const telemetryRef = useRef<CloudConnection["telemetry"]>(null);
   const driverRef = useRef<CloudConnection["driver"]>(null);
   const observation = useLarkxRun(engine, runId);
-  const report = savedReport(observation.steps);
-  const rows = activityRows(observation.steps);
+  const report = reportFromSteps(observation.steps);
+  const rows = activityRows(observation.steps, observation.run?.status);
   const stats = recoveryStats(observation.steps, observation.history);
   const cloud = cloudLabel(cloudPhase, online, pendingEvents, syncedAt);
 
@@ -94,9 +94,10 @@ export function App() {
   }, [mode]);
 
   useEffect(() => {
-    const runtime = openReactNativeEngine({ database: DATABASE, workflows: [] });
+    const workflow = createInspectionWorkflow(modelRef.current, { delayMs: DEMO_DELAY_MS });
+    workflowRef.current = workflow;
+    const runtime = openReactNativeEngine({ database: DATABASE, workflows: [workflow] });
     engineRef.current = runtime;
-    agentRef.current = createInspectionAgent(runtime, modelRef.current, { delayMs: DEMO_DELAY_MS });
     setEngine(runtime);
     const connection = openCloud(runtime);
     driverRef.current = connection.driver;
@@ -126,7 +127,7 @@ export function App() {
       if (newest) {
         setRunId(newest.runId);
       }
-      setNotice(newest ? "Conversation restored." : "Ready.");
+      setNotice(newest ? "Conversation restored." : "Enter notes from the inspection.");
       void telemetryRef.current?.flush().then(rememberCloud);
     });
     void prepareModel();
@@ -174,9 +175,9 @@ export function App() {
   }
 
   async function send(text: string): Promise<void> {
-    const message = text.trim();
-    const agent = agentRef.current;
-    if (!engine || !agent || message.length === 0 || busy) {
+    const notes = text.trim();
+    const workflow = workflowRef.current;
+    if (!engine || !workflow || notes.length === 0 || busy) {
       return;
     }
     if (mode === "device" && setup !== "ready") {
@@ -185,11 +186,11 @@ export function App() {
     }
     setBusy(true);
     setReportOpen(true);
-    const id = `field-inspection-${String(Date.now())}`;
+    const id = `inspection-${String(Date.now())}`;
     setRunId(id);
     setNotice(mode === "test" ? "Running the scripted test." : "Running on-device inference.");
     try {
-      const handle = await agent.start({ id, input: { message } });
+      const handle = await engine.start(workflow, { id, input: { notes } });
       await handle.result();
       setNotice("Report ready.");
     } catch (error) {
@@ -215,7 +216,8 @@ export function App() {
 
   async function reset(): Promise<void> {
     const active = engineRef.current;
-    if (!active) {
+    const workflow = workflowRef.current;
+    if (!active || !workflow) {
       return;
     }
     await telemetryRef.current?.stop();
@@ -225,20 +227,19 @@ export function App() {
     await active.close();
     deleteDatabaseSync(DATABASE);
     deleteDatabaseSync(TELEMETRY_DATABASE);
-    clearSessionCalls();
-    const runtime = openReactNativeEngine({ database: DATABASE, workflows: [] });
+    const runtime = openReactNativeEngine({ database: DATABASE, workflows: [workflow] });
     engineRef.current = runtime;
-    agentRef.current = createInspectionAgent(runtime, modelRef.current, { delayMs: DEMO_DELAY_MS });
     const connection = openCloud(runtime);
     driverRef.current = connection.driver;
     telemetryRef.current = connection.telemetry;
     setEngine(runtime);
     setRunId(null);
+    setDraft("");
     setNotice("Local conversation cleared. The model file is still on this phone.");
     rememberCloud();
   }
 
-  const userText = readMessage(observation.run?.input);
+  const notes = readNotes(observation.run?.input);
   const showSetup = mode === "device" && setup === "needs-download";
   const link = runId ? dashboardUrl(readCloudConfig()?.dashboard ?? null, runId) : null;
 
@@ -268,7 +269,6 @@ export function App() {
           notice={notice}
           progress={progress}
           model={MODEL_NAME}
-          saved={runId !== null}
           onDownload={() => void download()}
           onInitialize={() => void initialize()}
           onTest={() => {
@@ -278,22 +278,22 @@ export function App() {
         />
       ) : (
         <ScrollView style={styles.thread} contentContainerStyle={styles.threadContent}>
-          {userText ? (
+          {notes ? (
             <View style={styles.userBubble}>
-              <Text style={styles.userText}>{userText}</Text>
+              <Text style={styles.userText}>{notes}</Text>
             </View>
           ) : (
-            <Pressable style={styles.suggest} onPress={() => void send(SUGGESTED_PROMPT)}>
-              <Text style={styles.suggestText}>{SUGGESTED_PROMPT}</Text>
+            <Pressable style={styles.suggest} onPress={() => void send(EXAMPLE_NOTES)}>
+              <Text style={styles.suggestText}>{EXAMPLE_NOTES}</Text>
             </Pressable>
           )}
           {runId ? (
             <View style={styles.card}>
               {stats.recoveries > 0 ? (
                 <View style={styles.recovered}>
-                  <Text style={styles.recoveredTitle}>↻ Execution recovered</Text>
+                  <Text style={styles.recoveredTitle}>Execution recovered</Text>
                   <Text style={styles.recoveredBody}>
-                    Your agent resumed from its last saved checkpoint.
+                    Your workflow resumed from its last saved checkpoint.
                   </Text>
                   <Text style={styles.recoveredMeta}>
                     {String(stats.restored)} restored · {String(stats.repeated)} committed steps
@@ -303,15 +303,22 @@ export function App() {
                   </Text>
                 </View>
               ) : null}
-              <Text style={styles.cardTitle}>Preparing your report</Text>
+              <Text style={styles.cardTitle}>Processing your inspection</Text>
               {rows.map((row) => (
-                <View key={row.label} style={styles.row}>
-                  <RowMark state={row.state} />
-                  <View style={styles.rowText}>
-                    <Text style={styles.rowLabel}>{row.label}</Text>
-                    <Text style={styles.rowState}>{labelFor(row.state)}</Text>
+                <View key={row.key} style={styles.stage}>
+                  <View style={styles.row}>
+                    <RowMark state={row.state} />
+                    <View style={styles.rowText}>
+                      <Text style={styles.rowLabel}>{row.label}</Text>
+                      <Text style={styles.rowState}>{row.detail}</Text>
+                    </View>
+                    <Text style={styles.local}>{row.where}</Text>
                   </View>
-                  <Text style={styles.local}>{row.where}</Text>
+                  {row.lines.slice(0, 3).map((line) => (
+                    <Text key={line} style={styles.line}>
+                      {line}
+                    </Text>
+                  ))}
                 </View>
               ))}
               <Pressable onPress={() => setDeveloper((open) => !open)}>
@@ -324,14 +331,14 @@ export function App() {
                   runId={runId}
                   status={observation.run?.status ?? "unknown"}
                   steps={observation.steps}
-                  calls={sessionCalls()}
                   stats={stats}
                   cloud={cloud}
                   pending={pendingEvents}
                   started={observation.run?.createdAt ?? null}
                   updated={observation.run?.updatedAt ?? null}
-                  onReset={() => void reset()}
                   mode={mode}
+                  link={link}
+                  onReset={() => void reset()}
                   onMode={(next) => {
                     setMode(next);
                     setNotice(
@@ -340,7 +347,6 @@ export function App() {
                         : "Device mode uses Cactus.",
                     );
                   }}
-                  link={link}
                 />
               ) : null}
             </View>
@@ -350,8 +356,8 @@ export function App() {
               report={report}
               open={reportOpen}
               onToggle={() => setReportOpen((open) => !open)}
-              onCopy={() => void Clipboard.setStringAsync(formatReport(report))}
-              onShare={() => void Share.share({ message: formatReport(report) })}
+              onCopy={() => void Clipboard.setStringAsync(report.body)}
+              onShare={() => void Share.share({ message: report.body })}
             />
           ) : null}
           {notice.length > 0 ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -363,7 +369,7 @@ export function App() {
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Ask about your inspection..."
+            placeholder="Enter inspection notes..."
             placeholderTextColor="#7f9086"
             style={styles.input}
             multiline
@@ -381,7 +387,6 @@ function Setup(props: {
   notice: string;
   progress: number | null;
   model: string;
-  saved: boolean;
   onDownload: () => void;
   onInitialize: () => void;
   onTest: () => void;
@@ -393,11 +398,6 @@ function Setup(props: {
       <Text style={styles.body}>{props.notice}</Text>
       {props.progress !== null ? (
         <Text style={styles.body}>Download {String(Math.round(props.progress * 100))}%</Text>
-      ) : null}
-      {props.saved ? (
-        <Text style={styles.body}>
-          The conversation is saved. The model has to be ready before it can continue.
-        </Text>
       ) : null}
       <View style={styles.setupActions}>
         <Pressable style={styles.secondary} onPress={props.onDownload}>
@@ -415,51 +415,36 @@ function Setup(props: {
 }
 
 function ReportCard(props: {
-  report: InspectionReport;
+  report: ReportOutput;
   open: boolean;
   onToggle: () => void;
   onCopy: () => void;
   onShare: () => void;
 }) {
-  const high = props.report.priorities.filter((item) => item.severity === "high");
-  const rest = props.report.priorities.filter((item) => item.severity !== "high");
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{props.report.title}</Text>
       <Text style={styles.section}>Summary</Text>
       <Text style={styles.body}>{props.report.summary}</Text>
-      <Text style={styles.section}>Priority maintenance issues</Text>
-      {high.map((item) => (
-        <Text key={item.sourceNoteId} style={styles.body}>
-          {item.severity.toUpperCase()} · {item.issue}
-        </Text>
-      ))}
-      {rest.map((item) => (
-        <Text key={item.sourceNoteId} style={styles.body}>
-          {item.severity.toUpperCase()} · {item.issue}
-        </Text>
-      ))}
       {props.open ? (
         <>
-          {props.report.followUp.length > 0 ? (
-            <Text style={styles.section}>Recommended follow-up</Text>
-          ) : null}
-          {props.report.followUp.map((item) => (
-            <Text key={item} style={styles.body}>
-              {item}
+          <Text style={styles.section}>Priority issues</Text>
+          {props.report.issues.map((issue) => (
+            <Text key={`${issue.severity}-${issue.text}`} style={styles.body}>
+              {issue.severity.toUpperCase()} · {issue.text}
             </Text>
           ))}
-          {props.report.routine.length > 0 ? (
-            <Text style={styles.section}>Routine maintenance</Text>
-          ) : null}
-          {props.report.routine.map((item) => (
-            <Text key={item} style={styles.body}>
-              {item}
+          <Text style={styles.section}>Follow-up</Text>
+          {props.report.actions.map((action) => (
+            <Text key={action} style={styles.body}>
+              {action}
             </Text>
           ))}
+          <Text style={styles.section}>Report</Text>
+          <Text style={styles.body}>{props.report.body}</Text>
         </>
       ) : null}
-      <Text style={styles.meta}>Report saved locally · {props.report.id}</Text>
+      <Text style={styles.meta}>Saved on this phone · {props.report.model}</Text>
       <View style={styles.setupActions}>
         <Pressable style={styles.secondary} onPress={props.onToggle}>
           <Text style={styles.secondaryLabel}>
@@ -481,7 +466,6 @@ function Developer(props: {
   runId: string;
   status: string;
   steps: readonly { stepKey: string; status: string; attemptCount: number; operationId: string }[];
-  calls: readonly string[];
   stats: { restored: number; repeated: number; recoveries: number };
   cloud: string;
   pending: number;
@@ -499,7 +483,7 @@ function Developer(props: {
   return (
     <View style={styles.developer}>
       <Fact label="Run" value={props.runId} />
-      <Fact label="Workflow" value="field-inspection v1" />
+      <Fact label="Workflow" value="inspection-workflow v1" />
       <Fact label="Status" value={props.status} />
       <Fact label="Current step" value={current} />
       <Fact label="Recoveries" value={String(props.stats.recoveries)} />
@@ -507,10 +491,6 @@ function Developer(props: {
       <Fact label="Repeated steps" value={String(props.stats.repeated)} />
       <Fact label="Sync" value={`${props.cloud} · pending ${String(props.pending)}`} />
       <Fact label="Duration" value={duration === null ? "unknown" : `${String(duration)} ms`} />
-      <Fact
-        label="Handlers this process"
-        value={props.calls.length === 0 ? "none" : props.calls.join(" → ")}
-      />
       {props.steps.map((step) => (
         <Text key={step.stepKey} style={styles.mono}>
           {step.stepKey} · {step.status} · attempts {String(step.attemptCount)} · {step.operationId}
@@ -544,10 +524,11 @@ function RowMark({ state }: { state: string }) {
   }
   const done = state === "completed" || state === "recovered";
   const bad = state === "blocked" || state === "interrupted";
+  const skipped = state === "skipped";
   return (
     <View style={[styles.mark, done ? styles.markDone : bad ? styles.markBad : styles.markIdle]}>
       <Text style={done || bad ? styles.markGlyphOn : styles.markGlyphIdle}>
-        {done ? "✓" : bad ? "!" : ""}
+        {done ? "✓" : bad ? "!" : skipped ? "–" : ""}
       </Text>
     </View>
   );
@@ -571,31 +552,12 @@ function presence(online: boolean | null, cloud: string): string {
   return cloud;
 }
 
-function labelFor(state: string): string {
-  if (state === "completed") return "Completed";
-  if (state === "running") return "Running";
-  if (state === "recovered") return "Recovered";
-  if (state === "interrupted") return "Interrupted";
-  if (state === "blocked") return "Blocked";
-  return "Pending";
-}
-
-function savedReport(steps: readonly { output: unknown }[]): InspectionReport | null {
-  for (let index = steps.length - 1; index >= 0; index -= 1) {
-    const report = readReport(steps[index]?.output);
-    if (report) {
-      return report;
-    }
-  }
-  return null;
-}
-
-function readMessage(input: unknown): string | null {
-  if (typeof input !== "object" || input === null || !("message" in input)) {
+function readNotes(input: unknown): string | null {
+  if (typeof input !== "object" || input === null || !("notes" in input)) {
     return null;
   }
-  const message = (input as { message?: unknown }).message;
-  return typeof message === "string" ? message : null;
+  const notes = (input as { notes?: unknown }).notes;
+  return typeof notes === "string" && notes.length > 0 ? notes : null;
 }
 
 function shortModel(name: string): string {
@@ -632,13 +594,7 @@ const styles = StyleSheet.create({
   model: { color: "#c5d0c8", fontSize: 12, textAlign: "right" },
   statusRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 14 },
   pill: { color: "#d6f56a", fontSize: 13 },
-  mark: {
-    height: 18,
-    width: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  mark: { height: 18, width: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   markDone: { backgroundColor: "#d6f56a" },
   markBad: { backgroundColor: "#8a4a3a" },
   markIdle: { backgroundColor: "#3a4740" },
@@ -665,12 +621,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   suggestText: { color: "#d6f56a", fontSize: 15, lineHeight: 21 },
-  card: {
-    backgroundColor: "#1b221e",
-    borderRadius: 16,
-    padding: 14,
-    gap: 8,
-  },
+  card: { backgroundColor: "#1b221e", borderRadius: 16, padding: 14, gap: 8 },
   cardTitle: { color: "#f4f7f2", fontSize: 16, fontWeight: "700" },
   recoveredTitle: { color: "#d6f56a", fontSize: 15, fontWeight: "700" },
   recoveredBody: { color: "#d5e0d8", fontSize: 14, marginTop: 4 },
@@ -681,10 +632,12 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     marginBottom: 4,
   },
+  stage: { gap: 4 },
   row: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
   rowText: { flex: 1 },
   rowLabel: { color: "#f4f7f2", fontSize: 15 },
   rowState: { color: "#93a39a", fontSize: 12, marginTop: 2 },
+  line: { color: "#d5e0d8", fontSize: 13, marginLeft: 28 },
   local: { color: "#93a39a", fontSize: 11, letterSpacing: 0.6 },
   developerToggle: { color: "#d6f56a", fontSize: 13, marginTop: 6 },
   developer: { gap: 4, marginTop: 4 },
