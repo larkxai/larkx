@@ -1,5 +1,6 @@
 import type { ReactNativeEngine } from "@larkx/react-native";
 import { createExpoSqliteDriver } from "@larkx/react-native";
+import * as Crypto from "expo-crypto";
 import {
   createCloudTelemetry,
   createSqliteTelemetryStore,
@@ -39,9 +40,18 @@ export function openCloud(engine: ReactNativeEngine): CloudConnection {
     appId: "react-native-agent",
     runtime: "react-native",
     intervalMs: 15_000,
+    createId: () => Crypto.randomUUID(),
+    sha256: sha256Hex,
   });
   telemetry.start();
   return { telemetry, driver };
+}
+
+async function sha256Hex(data: Uint8Array): Promise<string> {
+  const copy = new Uint8Array(data.byteLength);
+  copy.set(data);
+  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, copy);
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
 export function cloudLabel(phase: TelemetryPhase | "disabled"): string {

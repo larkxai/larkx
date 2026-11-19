@@ -20,7 +20,117 @@ const ENDPOINT = "https://cloud.larkx.test";
 const API_KEY = "lkx_ing_test_secret";
 const SECRET = "secret-prompt-do-not-upload";
 
+function restoreCrypto(host: { crypto?: HostCrypto }, previous: HostCrypto | undefined): void {
+  if (previous === undefined) {
+    Reflect.deleteProperty(host, "crypto");
+    return;
+  }
+  host.crypto = previous;
+}
+
+interface HostCrypto {
+  subtle?: {
+    digest(algorithm: "SHA-256", data: Uint8Array): Promise<ArrayBuffer>;
+  };
+  randomUUID?: () => string;
+  getRandomValues?: (bytes: Uint8Array) => Uint8Array;
+}
+
 describe("cloud telemetry export", () => {
+  it("creates a destination without Web Crypto", async () => {
+    const host = globalThis as { crypto?: HostCrypto };
+    const previous = host.crypto;
+    const saved: Array<{ installationId: string; destinations: Record<string, unknown> }> = [];
+    Reflect.deleteProperty(host, "crypto");
+    try {
+      const telemetry = createCloudTelemetry({
+        endpoint: ENDPOINT,
+        apiKey: API_KEY,
+        journal: {
+          async listRuns() {
+            return [];
+          },
+          async readJournal() {
+            return null;
+          },
+        },
+        state: {
+          async load() {
+            return null;
+          },
+          async save(document) {
+            saved.push({
+              installationId: document.installationId,
+              destinations: document.destinations,
+            });
+          },
+        },
+        appId: "example-app",
+        runtime: "react-native",
+        intervalMs: 0,
+        createId: () => "device-installation-1",
+        sha256: async (data) => `expo:${data.byteLength}`,
+        fetch: async () => {
+          throw new Error("fetch should not run");
+        },
+      });
+      const flushed = await telemetry.flush();
+      expect(flushed.phase).toBe("idle");
+      expect(flushed.delivered).toBe(false);
+      const stored = saved.at(-1);
+      expect(stored?.installationId).toBe("device-installation-1");
+      const expected = new TextEncoder().encode(`${ENDPOINT}\n${API_KEY}`).byteLength;
+      expect(stored?.destinations).toHaveProperty(`expo:${String(expected)}`);
+      await telemetry.stop();
+    } finally {
+      restoreCrypto(host, previous);
+    }
+  });
+
+  it("matches Web Crypto SHA-256 when subtle is missing", async () => {
+    const expected = await sha256(`${ENDPOINT}\n${API_KEY}`);
+    const host = globalThis as { crypto?: HostCrypto };
+    const previous = host.crypto;
+    if (!previous?.getRandomValues) {
+      throw new Error("test runtime has no crypto");
+    }
+    const saved: Array<{ destinations: Record<string, unknown> }> = [];
+    host.crypto = { getRandomValues: previous.getRandomValues.bind(previous) };
+    try {
+      const telemetry = createCloudTelemetry({
+        endpoint: ENDPOINT,
+        apiKey: API_KEY,
+        journal: {
+          async listRuns() {
+            return [];
+          },
+          async readJournal() {
+            return null;
+          },
+        },
+        state: {
+          async load() {
+            return null;
+          },
+          async save(document) {
+            saved.push({ destinations: document.destinations });
+          },
+        },
+        appId: "example-app",
+        runtime: "react-native",
+        intervalMs: 0,
+        fetch: async () => {
+          throw new Error("fetch should not run");
+        },
+      });
+      expect((await telemetry.flush()).phase).toBe("idle");
+      expect(Object.keys(saved.at(-1)?.destinations ?? {})).toEqual([expected]);
+      await telemetry.stop();
+    } finally {
+      restoreCrypto(host, previous);
+    }
+  });
+
   it("exports a completed workflow and then stops", async () => {
     const seen: Recorded[] = [];
     const { engine, telemetry, defined } = await harness(async (_url, init) => {
