@@ -11,7 +11,12 @@ import {
 import { deleteDatabaseSync } from "expo-sqlite";
 import type { CloudTelemetry } from "@larkx/telemetry";
 
-import { cactusModel, clearRenovationAgents, renovationAgents } from "./src/agents";
+import {
+  cactusModel,
+  cactusModelLabel,
+  clearRenovationAgents,
+  renovationAgents,
+} from "./src/agents";
 import { REQUEST } from "./src/catalog";
 import { TELEMETRY_DATABASE, cloudLabel, openCloud } from "./src/cloud";
 import { clearSessionCalls, sessionCalls } from "./src/tools";
@@ -57,7 +62,11 @@ export function App() {
   useEffect(() => {
     const runtime = openReactNativeEngine({ database: DATABASE, workflows: [] });
     engineRef.current = runtime;
-    renovationAgents(runtime);
+    try {
+      renovationAgents(runtime);
+    } catch (error) {
+      setBanner(messageFrom(error));
+    }
     setEngine(runtime);
     const connection = openCloud(runtime);
     driverRef.current = connection.driver;
@@ -412,11 +421,7 @@ function markFor(status: string): string {
 }
 
 function safeModelName(): string {
-  try {
-    return cactusModel().getModelName();
-  } catch {
-    return "qwen3-0.6b";
-  }
+  return cactusModelLabel();
 }
 
 function messageFrom(error: unknown): string {
