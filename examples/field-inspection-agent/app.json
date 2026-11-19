@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Field Assistant",
+    "slug": "larkx-field",
+    "scheme": "larkx-field",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.larkx.field.demo"
+    },
+    "android": {
+      "package": "ai.larkx.field.demo"
+    },
+    "plugins": ["expo-sqlite"]
+  }
+}
