@@ -1,5 +1,6 @@
 import type { Engine, JournalDocument } from "@larkx/core";
 
+import { sanitizeInstallationMetadata, type InstallationMetadata } from "./metadata.js";
 import {
   MAX_BATCH_BYTES,
   MAX_BATCH_EVENTS,
@@ -86,6 +87,14 @@ export interface CloudTelemetryOptions {
   readonly state: TelemetryStateStore;
   readonly appId: string;
   readonly runtime: "node" | "react-native";
+  /**
+   * Optional technical metadata for this app installation.
+   * Omit a field the platform did not report. Do not pass a serial number,
+   * advertising id, or other permanent hardware identifier. A thrown provider
+   * is ignored so the journal can still be exported.
+   */
+  readonly metadata?:
+    InstallationMetadata | (() => InstallationMetadata | Promise<InstallationMetadata>);
   /** Used only when this store does not already have an installation id. */
   readonly installationId?: string;
   readonly clock?: { now(): number };
@@ -128,6 +137,7 @@ class CloudExporter implements CloudTelemetry {
   private readonly journal: JournalSource;
   private readonly state: TelemetryStateStore;
   private readonly sourceBase: Pick<TelemetrySource, "appId" | "runtime">;
+  private readonly metadata: CloudTelemetryOptions["metadata"];
   private readonly requestedInstallationId: string | null;
   private readonly clock: { now(): number };
   private readonly createId: () => string;
@@ -154,6 +164,7 @@ class CloudExporter implements CloudTelemetry {
     this.journal = options.journal;
     this.state = options.state;
     this.sourceBase = { appId: options.appId, runtime: options.runtime };
+    this.metadata = options.metadata;
     this.requestedInstallationId = options.installationId ?? null;
     this.clock = options.clock ?? { now: () => Date.now() };
     this.createId = options.createId ?? randomUuid;
@@ -403,6 +414,7 @@ class CloudExporter implements CloudTelemetry {
     destination: DestinationState,
   ): Promise<PendingBatch | "idle" | "too_large" | "unsupported" | "gap"> {
     const runs = [...(await this.journal.listRuns())].sort(compareRuns);
+    const metadata = await this.readMetadata();
     let blocked: "gap" | "unsupported" | null = null;
     for (const listed of runs) {
       const journal = await this.journal.readJournal(listed.runId);
@@ -412,7 +424,7 @@ class CloudExporter implements CloudTelemetry {
       const maxSequence = journal.events.reduce((max, event) => Math.max(max, event.sequence), 0);
       const cursor = destination.cursors[listed.runId] ?? 0;
       const hash = snapshotHash(journal);
-      const source: TelemetrySource = { ...this.sourceBase, installationId };
+      const source: TelemetrySource = { ...this.sourceBase, installationId, ...metadata };
       if (cursor < maxSequence) {
         const fromSequence = cursor + 1;
         const built = buildRunBatch({
@@ -512,6 +524,16 @@ class CloudExporter implements CloudTelemetry {
       count += Math.max(0, maxSequence - cursor);
     }
     return count;
+  }
+
+  private async readMetadata(): Promise<InstallationMetadata> {
+    try {
+      const raw =
+        typeof this.metadata === "function" ? await this.metadata() : (this.metadata ?? {});
+      return sanitizeInstallationMetadata(raw);
+    } catch {
+      return {};
+    }
   }
 
   private async ensureDocument(): Promise<TelemetryDocument> {

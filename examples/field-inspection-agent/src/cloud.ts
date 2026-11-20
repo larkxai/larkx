@@ -5,9 +5,11 @@ import {
   createCloudTelemetry,
   createSqliteTelemetryStore,
   journalFromEngine,
+  reactNativeInstallationMetadata,
   type CloudTelemetry,
   type TelemetryPhase,
 } from "@larkx/telemetry";
+import { Platform } from "react-native";
 import type { SqliteDriver } from "@larkx/storage-sqlite";
 
 export const TELEMETRY_DATABASE = "larkx-inspection-telemetry.db";
@@ -51,6 +53,13 @@ export function openCloud(engine: ReactNativeEngine): CloudConnection {
     state: createSqliteTelemetryStore(driver),
     appId: "field-inspection-agent",
     runtime: "react-native",
+    metadata: () =>
+      reactNativeInstallationMetadata({
+        os: Platform.OS,
+        version: Platform.Version,
+        appName: "Field inspection",
+        appVersion: "0.1.0",
+      }),
     intervalMs: 15_000,
     createId: () => Crypto.randomUUID(),
     sha256: sha256Hex,

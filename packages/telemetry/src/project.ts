@@ -9,6 +9,8 @@ import {
 import { STORAGE_SCHEMA_VERSION } from "@larkx/storage-sqlite";
 
 export const TELEMETRY_VERSION = 1 as const;
+/** Reported as source.sdkVersion when the caller does not pass one. */
+export const SDK_VERSION = "0.1.0";
 export const MAX_BATCH_EVENTS = 500;
 export const MAX_BATCH_BYTES = 256 * 1024;
 
@@ -44,6 +46,13 @@ export interface TelemetrySource {
   readonly installationId: string;
   readonly appId: string;
   readonly runtime: "node" | "react-native";
+  readonly appName?: string;
+  readonly appVersion?: string;
+  readonly platform?: string;
+  readonly osName?: string;
+  readonly osVersion?: string;
+  readonly deviceModel?: string;
+  readonly sdkVersion?: string;
 }
 
 export interface BuiltBatch {
@@ -133,11 +142,7 @@ export function buildRunBatch(input: {
       batchId: input.batchId,
       exportedAt: input.exportedAt,
       mode: "metadata-only",
-      source: {
-        installationId: input.source.installationId,
-        appId: input.source.appId,
-        runtime: input.source.runtime,
-      },
+      source: installationSource(input.source),
       runs: [
         {
           ...run,
@@ -213,6 +218,35 @@ function sortValue(value: unknown): unknown {
     sorted[key] = sortValue(value[key]);
   }
   return sorted;
+}
+
+const SOURCE_METADATA = [
+  "appName",
+  "appVersion",
+  "platform",
+  "osName",
+  "osVersion",
+  "deviceModel",
+  "sdkVersion",
+] as const;
+
+/** Required identity first. Optional fields are copied only when reported. sdkVersion falls back to this package version, which the exporter knows. */
+function installationSource(source: TelemetrySource): Record<string, string> {
+  const body: Record<string, string> = {
+    installationId: source.installationId,
+    appId: source.appId,
+    runtime: source.runtime,
+  };
+  for (const key of SOURCE_METADATA) {
+    const value = source[key];
+    if (value) {
+      body[key] = value;
+    }
+  }
+  if (!body.sdkVersion) {
+    body.sdkVersion = SDK_VERSION;
+  }
+  return body;
 }
 
 function utf8Size(value: string): number {
