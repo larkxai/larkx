@@ -8,6 +8,9 @@ import {
   createMemoryTelemetryStore,
   createSqliteTelemetryStore,
   journalFromEngine,
+  nodeInstallationMetadata,
+  reactNativeInstallationMetadata,
+  sanitizeInstallationMetadata,
   type TelemetryFetch,
 } from "@larkx/telemetry";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -697,6 +700,77 @@ describe("cloud telemetry export", () => {
     expect(body).not.toContain(SECRET);
     expect(body).not.toContain("prompt");
     await telemetry.stop();
+  });
+
+  it("sends reported installation metadata and omits permanent identifiers", async () => {
+    const defined = workflow();
+    const engine = createEngine({
+      storage: createMemoryStorage(),
+      workflows: [defined],
+      heartbeat: false,
+    });
+    let body = "";
+    const telemetry = createCloudTelemetry({
+      endpoint: ENDPOINT,
+      apiKey: API_KEY,
+      journal: journalFromEngine(engine),
+      state: createMemoryTelemetryStore(),
+      appId: "example-app",
+      runtime: "react-native",
+      intervalMs: 0,
+      metadata: () =>
+        reactNativeInstallationMetadata({
+          os: "ios",
+          version: 18.1,
+          modelName: "iPhone 16",
+          appName: "Field inspection",
+          appVersion: "2.4.0",
+        }),
+      fetch: async (_url, init) => {
+        body = init.body;
+        return accept(init.body);
+      },
+    });
+    await engine
+      .start(defined, { id: "letters-meta", input: { text: "hi" } })
+      .then((run) => run.result());
+    expect((await telemetry.flush()).phase).toBe("idle");
+    const parsed = JSON.parse(body) as { source: Record<string, string> };
+    expect(parsed.source).toMatchObject({
+      appId: "example-app",
+      runtime: "react-native",
+      appName: "Field inspection",
+      appVersion: "2.4.0",
+      platform: "ios",
+      osVersion: "18.1",
+      deviceModel: "iPhone 16",
+      sdkVersion: "0.1.0",
+    });
+    expect(parsed.source).not.toHaveProperty("deviceId");
+    expect(body).not.toContain("idfa");
+    expect(
+      sanitizeInstallationMetadata({
+        appName: "Notes",
+        platform: "android",
+        deviceModel: "11111111-1111-4111-8111-111111111111",
+        idfa: "tracking",
+        deviceId: "serial",
+      }),
+    ).toEqual({ appName: "Notes", platform: "android" });
+    const nodeMetadata = nodeInstallationMetadata({
+      appName: "Notes",
+      osName: "linux",
+      osVersion: "6.12.0",
+    });
+    expect(nodeMetadata).toEqual({
+      appName: "Notes",
+      platform: "node",
+      osName: "linux",
+      osVersion: "6.12.0",
+    });
+    expect(nodeInstallationMetadata({ appName: "Notes" }).deviceModel).toBeUndefined();
+    await telemetry.stop();
+    await engine.close();
   });
 });
 

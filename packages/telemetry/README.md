@@ -12,7 +12,9 @@ import {
   createCloudTelemetry,
   createSqliteTelemetryStore,
   journalFromEngine,
+  nodeInstallationMetadata,
 } from "@larkx/telemetry";
+import { platform, release } from "node:os";
 
 const engine = createNodeEngine({ database: "/tmp/larkx.db", workflows: [] });
 const driver = createNodeSqliteDriver("/tmp/larkx.telemetry");
@@ -23,6 +25,13 @@ const telemetry = createCloudTelemetry({
   state: createSqliteTelemetryStore(driver),
   appId: "my-app",
   runtime: "node",
+  metadata: nodeInstallationMetadata({
+    appName: "Notes",
+    appVersion: "1.4.0",
+    sdkVersion: "0.1.0",
+    osName: platform(),
+    osVersion: release(),
+  }),
 });
 
 telemetry.start();
@@ -42,6 +51,24 @@ driver.close();
 `flush({ manual: false })` is what the timer uses. After a `401`, a conflict, or another held batch error, that path does not call the network again. A manual `flush()` tries once more.
 
 `current()` reports `idle` (connected, nothing pending), `pending`, `offline`, or `unauthorized`. An app that never constructs an exporter is disabled.
+
+## Installation metadata
+
+`metadata` is optional. Pass an object, or a function that returns one, with only values the platform reported:
+
+- `appName`
+- `appVersion`
+- `platform` (`ios`, `android`, or `node`)
+- `osName`
+- `osVersion`
+- `deviceModel` (a marketing name such as `iPhone 16`)
+- `sdkVersion`
+
+Omitted fields are left out of the batch. Cloud shows those as unavailable. The exporter fills `sdkVersion` with this package's version when the caller does not pass one. It does not invent a platform, OS, or device model from the runtime name. Do not send a serial number, advertising identifier, IDFA, IDFV, or Android id. The installation id stays the id in the telemetry store. Metadata does not replace it and does not identify a physical device.
+
+`nodeInstallationMetadata` sets `platform` to `node`. Pass `os.platform()` and `os.release()` from `node:os` as `osName` and `osVersion`. It does not set a device model, and it does not read a hostname. On React Native, read `Platform.OS` and `Platform.Version` and pass them through `reactNativeInstallationMetadata`. `modelName` from a device-info library is the marketing name. Do not pass a hardware identifier. An `os` other than `ios` or `android` is omitted.
+
+A metadata function that throws is ignored. The journal is still exported.
 
 ## What is sent
 

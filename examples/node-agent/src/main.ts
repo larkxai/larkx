@@ -6,8 +6,10 @@ import {
   createMemoryTelemetryStore,
   createSqliteTelemetryStore,
   journalFromEngine,
+  nodeInstallationMetadata,
   type CloudTelemetry,
 } from "@larkx/telemetry";
+import { platform, release } from "node:os";
 
 const room = defineTool({
   name: "get_room_info",
@@ -137,6 +139,12 @@ function openTelemetry(
     state: driver ? createSqliteTelemetryStore(driver) : createMemoryTelemetryStore(),
     appId: process.env.LARKX_APP_ID?.trim() || "node-agent",
     runtime: "node",
+    metadata: nodeInstallationMetadata({
+      appName: "Node agent",
+      appVersion: "0.1.0",
+      osName: platform(),
+      osVersion: release(),
+    }),
     intervalMs: 0,
   });
   return { telemetry, driver };

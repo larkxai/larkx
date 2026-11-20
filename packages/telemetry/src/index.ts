@@ -19,3 +19,10 @@ export {
 
 export { createMemoryTelemetryStore, createSqliteTelemetryStore } from "./state.js";
 export type { TelemetryDocument, TelemetryStateStore } from "./state.js";
+
+export {
+  nodeInstallationMetadata,
+  reactNativeInstallationMetadata,
+  sanitizeInstallationMetadata,
+} from "./metadata.js";
+export type { InstallationMetadata } from "./metadata.js";
