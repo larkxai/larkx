@@ -1,5 +1,5 @@
 ---
-"@larkxai/react-native": minor
+"@larkxai/react-native": patch
 "@larkxai/core": patch
 "@larkxai/storage-memory": patch
 "@larkxai/storage-sqlite": patch
