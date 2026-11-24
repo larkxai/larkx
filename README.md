@@ -1,5 +1,11 @@
 # LarkX
 
+[![Build](https://github.com/larkxai/larkx/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/larkxai/larkx/actions/workflows/ci.yml)
+[![Release](https://github.com/larkxai/larkx/actions/workflows/release.yml/badge.svg)](https://github.com/larkxai/larkx/actions/workflows/release.yml)
+[![@larkxai/core](https://img.shields.io/npm/v/@larkxai/core?label=%40larkxai%2Fcore)](https://www.npmjs.com/package/@larkxai/core)
+[![@larkxai/react-native](https://img.shields.io/npm/v/@larkxai/react-native?label=%40larkxai%2Freact-native)](https://www.npmjs.com/package/@larkxai/react-native)
+[![Apache-2.0](https://img.shields.io/github/license/larkxai/larkx)](./LICENSE)
+
 Durable execution for on-device AI agents.
 
 Build AI agents that recover from interruptions, continue offline, and coordinate execution between edge devices and the cloud.
