@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/react-native",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "React Native adapter for the LarkX durable workflow engine.",
   "license": "Apache-2.0",
   "type": "module",
