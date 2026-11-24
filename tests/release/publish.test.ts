@@ -1,6 +1,14 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { basename, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+
+const { isAlreadyPublished, libraryPackageDirs } = createRequire(import.meta.url)(
+  "../../scripts/publish-github-packages.mjs",
+) as {
+  isAlreadyPublished: (output: string) => boolean;
+  libraryPackageDirs: (root: string) => string[];
+};
 
 import { describe, expect, it } from "vitest";
 
@@ -97,12 +105,36 @@ describe("npm publish layout", () => {
     expect(source).toContain(`export const SDK_VERSION = "${telemetry.pkg.version}";`);
   });
 
-  it("releases from main after the check job", () => {
-    const workflow = readFileSync(join(root, ".github/workflows/ci.yml"), "utf8");
-    expect(workflow).toContain("changesets/action@v1");
-    expect(workflow).toContain("publish: pnpm release");
-    expect(workflow).toContain("version: pnpm version-packages");
-    expect(workflow).toContain("NPM_TOKEN:");
-    expect(workflow).toContain("needs: check");
+  it("publishes the public libraries to GitHub Packages", () => {
+    const names = libraryPackageDirs(root).map((dir) => basename(dir));
+    expect(names).toContain("react-native");
+    expect(names).toContain("core");
+    expect(names).not.toContain("example-node-workflow");
+    expect(isAlreadyPublished("You cannot publish over the previously published versions")).toBe(
+      true,
+    );
+    expect(isAlreadyPublished("npm error code EPUBLISHCONFLICT")).toBe(true);
+    expect(isAlreadyPublished("npm error code ENEEDAUTH")).toBe(false);
+    expect(readFileSync(join(root, "package.json"), "utf8")).toContain(
+      "node scripts/publish-github-packages.mjs",
+    );
+  });
+
+  it("keeps the build status separate from publishing", () => {
+    const build = readFileSync(join(root, ".github/workflows/ci.yml"), "utf8");
+    const release = readFileSync(join(root, ".github/workflows/release.yml"), "utf8");
+    const readme = readFileSync(join(root, "README.md"), "utf8");
+    expect(build).toContain("name: CI");
+    expect(build).not.toContain("changesets/action");
+    expect(release).toContain('workflows: ["CI"]');
+    expect(release).toContain("changesets/action@v1");
+    expect(release).toContain("publish: pnpm release");
+    expect(release).toContain("version: pnpm version-packages");
+    expect(release).toContain("createGithubReleases: true");
+    expect(release).toContain("packages: write");
+    expect(release).toContain("NPM_TOKEN:");
+    expect(readme).toContain(
+      "https://github.com/larkxai/larkx/actions/workflows/ci.yml/badge.svg?branch=main",
+    );
   });
 });

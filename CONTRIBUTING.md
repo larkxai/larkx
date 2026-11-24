@@ -56,7 +56,7 @@ Packages under `packages/` are the public SDK. The root package and everything i
 
 Library packages in this repository publish together to npm as `@larkxai/*`. Changesets is configured with `access: public` and a fixed version group. Add a changeset for a user-visible package change. On the `0.1` line, mark it `patch`: the next release is `0.1.1`, then `0.1.2`. A `minor` changeset moves the whole group to `0.2.0`. A push to `main` that still has changesets opens a "Version packages" pull request. Merging that pull request publishes every library package at the new version.
 
-The job is `release` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It runs only after `check` succeeds on `main`. It builds `dist`, then runs `changeset publish`. npm provenance is requested from GitHub Actions. The root package stays private because the unscoped name `larkx` belongs to an unrelated project.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) is the build status. [`.github/workflows/release.yml`](.github/workflows/release.yml) runs after that build succeeds on `main`. It builds `dist`, publishes to npm, publishes the same versions to GitHub Packages, and opens a GitHub Release for each package. npm provenance is requested from GitHub Actions. The root package stays private because the unscoped name `larkx` belongs to an unrelated project.
 
 The same npm scope is shared across the LarkX repositories. One token covers every current and future `@larkxai` package. Android and iOS do not use it.
 
