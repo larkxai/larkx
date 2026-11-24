@@ -114,6 +114,11 @@ describe("npm publish layout", () => {
       true,
     );
     expect(isAlreadyPublished("npm error code EPUBLISHCONFLICT")).toBe(true);
+    expect(
+      isAlreadyPublished(
+        "npm error code E409\nnpm error 409 Conflict - PUT https://npm.pkg.github.com/@larkxai%2fagent - Cannot publish over existing version",
+      ),
+    ).toBe(true);
     expect(isAlreadyPublished("npm error code ENEEDAUTH")).toBe(false);
     expect(readFileSync(join(root, "package.json"), "utf8")).toContain(
       "node scripts/publish-github-packages.mjs",

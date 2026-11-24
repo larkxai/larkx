@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 const registry = "https://npm.pkg.github.com";
 
 export function isAlreadyPublished(output) {
-  return /cannot publish over the previously published versions|EPUBLISHCONFLICT|previously published version/i.test(
+  return /cannot publish over the previously published versions|cannot publish over existing version|EPUBLISHCONFLICT|previously published version|\bE409\b/i.test(
     output,
   );
 }
