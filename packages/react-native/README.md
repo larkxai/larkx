@@ -1,5 +1,9 @@
 # @larkx/react-native
 
+```bash
+npm install @larkx/react-native
+```
+
 React Native adapter for the LarkX engine. It uses `@larkx/core` and the SQLite schema in `@larkx/storage-sqlite`. It does not implement a second execution engine.
 
 ## Driver

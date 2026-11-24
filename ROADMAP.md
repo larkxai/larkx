@@ -7,7 +7,7 @@ LarkX is built in milestones. A milestone is done when the behavior exists in th
 Done in this tree.
 
 - pnpm workspace, Turborepo, TypeScript strict mode, ESLint, Prettier, Vitest, Changesets.
-- GitHub Actions runs install, build, typecheck, lint, format, and tests. It does not publish packages.
+- GitHub Actions runs install, build, typecheck, lint, format, and tests. The `release` job then versions and publishes the public packages.
 - `@larkx/protocol` version 1: identifiers, states, transitions, effects, events, errors, payload rules, dispatch types, capabilities.
 - Architecture and execution RFCs, plus the architecture notes under `docs/`.
 
@@ -74,7 +74,7 @@ Not part of M3:
 Not started.
 
 - More examples, clearer errors, and subscription samples.
-- A documented release process once the `@larkx` npm scope is confirmed and credentials exist.
+- Release process: Changesets publishes `@larkx/*` from `main` once `NPM_TOKEN` is set. The first successful publish confirms the scope.
 - Further model providers after their SDKs are checked. Ollama is the first candidate for Node. Nothing here implies RunAnywhere or LangGraph.
 - Performance measurements. `benchmarks/` currently records that no numbers have been taken.
 

@@ -1,5 +1,9 @@
 # @larkx/telemetry
 
+```bash
+npm install @larkx/telemetry
+```
+
 Optional exporter that copies committed LarkX journal metadata to LarkX Cloud.
 
 The workflow engine does not import this package. A run finishes, fails, or blocks whether or not a batch is acknowledged. Cloud does not retry steps, reconcile unknown outcomes, or cancel runs.

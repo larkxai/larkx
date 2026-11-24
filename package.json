@@ -16,7 +16,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "changeset": "changeset"
+    "changeset": "changeset",
+    "version-packages": "pnpm exec changeset version && node scripts/sync-sdk-version.mjs && pnpm install --lockfile-only",
+    "release": "pnpm build && pnpm exec changeset publish"
   },
   "devDependencies": {
     "@larkx/agent": "workspace:*",

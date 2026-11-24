@@ -7,7 +7,8 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -23,5 +24,20 @@
     "@larkx/core": "workspace:*",
     "@larkx/protocol": "workspace:*",
     "@larkx/storage-sqlite": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/larkxai/larkx.git",
+    "directory": "packages/node"
+  },
+  "homepage": "https://github.com/larkxai/larkx/tree/main/packages/node#readme",
+  "bugs": {
+    "url": "https://github.com/larkxai/larkx/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }

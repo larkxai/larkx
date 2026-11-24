@@ -6,7 +6,7 @@ Build AI agents that recover from interruptions, continue offline, and coordinat
 
 Cactus runs your models. LarkX runs your workflows.
 
-**Status:** early implementation. Milestones M0 and M1 are covered by automated tests, including real Node.js process termination. M2 adds the React Native adapter. M3 adds durable agents and a Cactus adapter on that same engine. M4 adds an optional metadata-only exporter to LarkX Cloud. Packages are not published to npm. The agent tests run on Node.js. The Cactus screen has not been executed on an emulator or a device in CI. Hybrid dispatch is specified and not implemented. The Cloud service stays in a private repository.
+**Status:** early implementation. Milestones M0 and M1 are covered by automated tests, including real Node.js process termination. M2 adds the React Native adapter. M3 adds durable agents and a Cactus adapter on that same engine. M4 adds an optional metadata-only exporter to LarkX Cloud. Public packages release to the `@larkx` scope from `main`. The agent tests run on Node.js. The Cactus screen has not been executed on an emulator or a device in CI. Hybrid dispatch is specified and not implemented. The Cloud service stays in a private repository.
 
 Website: [https://larkx.ai](https://larkx.ai)
 
@@ -28,7 +28,7 @@ License: Apache-2.0
 | HTTP transport, worker SDK, reference coordinator      | Not implemented                                                                     |
 | Managed LarkX Cloud                                    | Ingestion lives in `larkxai/cloud`. This tree only sends the batch                  |
 
-The unscoped npm name `larkx` belongs to an unrelated project. The intended scope is `@larkx`. Those packages were not on the registry when this tree was created, and this repository does not publish them.
+The unscoped npm name `larkx` belongs to an unrelated project. Publishable packages use the `@larkx` scope. Examples are not published. The first release needs the npm organization and the `NPM_TOKEN` secret described in [Contributing](CONTRIBUTING.md).
 
 ## Problem
 
@@ -50,9 +50,19 @@ Agent progress is a sequence of decisions and tool results. If that sequence liv
 
 LarkX makes the step the recovery boundary. It does not restore a JavaScript stack, an operating-system thread, or a live inference session. It also does not promise exactly-once execution of arbitrary external effects. Effect classes say which retries are safe.
 
+## Install
+
+Node.js 22.13 or newer. These commands work after the first npm release. Until that release, build the packages from this repository.
+
+```bash
+npm install @larkx/core @larkx/node
+```
+
+`@larkx/agent` is the durable agent loop. `@larkx/react-native` is the Expo adapter. `@larkx/cactus` and `@larkx/telemetry` are optional. Packages in `examples/` are demos and are not on npm.
+
 ## Quick start
 
-These packages are used from a checkout. They are not installed from npm.
+The crash demo runs from a checkout of this repository.
 
 Requirements: Node.js 22.13 or newer, and pnpm 10.33.4 (`corepack enable` is enough on a recent Node).
 

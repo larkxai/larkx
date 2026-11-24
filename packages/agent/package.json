@@ -7,7 +7,8 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -22,5 +23,17 @@
   "dependencies": {
     "@larkx/core": "workspace:*",
     "@larkx/protocol": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/larkxai/larkx.git",
+    "directory": "packages/agent"
+  },
+  "homepage": "https://github.com/larkxai/larkx/tree/main/packages/agent#readme",
+  "bugs": {
+    "url": "https://github.com/larkxai/larkx/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

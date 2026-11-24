@@ -7,7 +7,8 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -18,5 +19,17 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/larkxai/larkx.git",
+    "directory": "packages/protocol"
+  },
+  "homepage": "https://github.com/larkxai/larkx/tree/main/packages/protocol#readme",
+  "bugs": {
+    "url": "https://github.com/larkxai/larkx/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

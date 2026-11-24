@@ -1,5 +1,9 @@
 # @larkx/node
 
+```bash
+npm install @larkx/node
+```
+
 Node.js adapter for the LarkX runtime.
 
 `createNodeEngine({ database, workflows })` opens a SQLite file, migrates it, and returns a core engine. The driver is Node's built-in `node:sqlite` module. Node 22 still marks that module experimental and may print a warning when the process loads it.

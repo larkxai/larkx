@@ -1,5 +1,9 @@
 # @larkx/agent
 
+```bash
+npm install @larkx/agent
+```
+
 Durable agents on the existing LarkX workflow engine.
 
 This package does not import React Native, Expo, Node.js, or a model provider. A model is a `ModelAdapter`. A tool is a normal local step. Recovery uses the same workflow version and the same step keys.

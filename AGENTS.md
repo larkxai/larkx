@@ -65,4 +65,4 @@ Node.js must be 22.13 or newer. The lockfile is pinned to pnpm 10.33.4.
 
 ## Publishing
 
-Do not configure public npm publish. Changesets are set to restricted access. There is no registry token in this repository.
+The `release` job in `.github/workflows/ci.yml` publishes public packages from `main` after `check`. Changesets `access` is `public`. Do not commit a registry token. Do not publish the root package or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. `@larkx/node` requires Node.js 22.13 or newer. The telemetry exporter's default `sdkVersion` is the `@larkx/telemetry` package version; `pnpm version-packages` keeps that constant aligned.

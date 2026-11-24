@@ -13,11 +13,17 @@ import {
   sanitizeInstallationMetadata,
   type TelemetryFetch,
 } from "@larkx/telemetry";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
+
+const telemetryVersion = (
+  JSON.parse(
+    readFileSync(new URL("../../packages/telemetry/package.json", import.meta.url), "utf8"),
+  ) as { version: string }
+).version;
 
 const ENDPOINT = "https://cloud.larkx.test";
 const API_KEY = "lkx_ing_test_secret";
@@ -744,7 +750,7 @@ describe("cloud telemetry export", () => {
       platform: "ios",
       osVersion: "18.1",
       deviceModel: "iPhone 16",
-      sdkVersion: "0.1.0",
+      sdkVersion: telemetryVersion,
     });
     expect(parsed.source).not.toHaveProperty("deviceId");
     expect(body).not.toContain("idfa");

@@ -1,5 +1,9 @@
 # @larkx/storage-sqlite
 
+```bash
+npm install @larkx/storage-sqlite
+```
+
 SQLite schema, migrations, and the shared storage behavior for LarkX.
 
 The package does not open a database itself. Callers inject a `SqliteDriver`. `@larkx/node` provides the Node.js driver backed by `node:sqlite`. A React Native driver can implement the same interface later without copying the SQL.

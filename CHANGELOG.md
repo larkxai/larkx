@@ -1,6 +1,6 @@
 # Changelog
 
-This file summarizes user-visible changes. Packages are versioned at 0.1.0 and are not published.
+This file summarizes user-visible changes. Public packages share one version and publish to npm from `main`.
 
 ## Unreleased
 

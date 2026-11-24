@@ -30,25 +30,42 @@ Prefer a small change that preserves a guarantee over a wide feature. Read [AGEN
 
 ## Packages
 
-| Package                 | Role                                    |
-| ----------------------- | --------------------------------------- |
-| `@larkx/protocol`       | Contracts. No runtime dependency        |
-| `@larkx/core`           | Durable workflow engine                 |
-| `@larkx/storage-memory` | In-memory adapter for tests             |
-| `@larkx/storage-sqlite` | Schema, migrations, shared SQL behavior |
-| `@larkx/node`           | Node driver and `createNodeEngine`      |
-| `@larkx/testing`        | Clocks and conformance helpers          |
+| Package                 | Role                                     |
+| ----------------------- | ---------------------------------------- |
+| `@larkx/protocol`       | Contracts. No runtime dependency         |
+| `@larkx/core`           | Durable workflow engine                  |
+| `@larkx/storage-memory` | In-memory adapter for tests              |
+| `@larkx/storage-sqlite` | Schema, migrations, shared SQL behavior  |
+| `@larkx/node`           | Node driver and `createNodeEngine`       |
+| `@larkx/react-native`   | Expo SQLite adapter and mobile lifecycle |
+| `@larkx/agent`          | Durable agent loop                       |
+| `@larkx/cactus`         | Optional Cactus model adapter            |
+| `@larkx/telemetry`      | Optional metadata-only Cloud exporter    |
+| `@larkx/testing`        | Clocks and conformance helpers           |
 
-The example `@larkx/example-node-workflow` is private and is not a library.
+Packages under `packages/` are the public SDK. The root package and everything in `examples/` are private.
 
 ## Pull requests
 
 - Explain which guarantee the change protects or which limitation it removes.
 - Show the commands you ran. If a crash or storage test did not run, say so.
 - Do not claim device, emulator, or provider coverage that the diff does not exercise.
-- Do not add publish credentials or a public `release` workflow.
+- Do not add a registry token, an `.npmrc` auth line, or a second publish workflow.
 
-Changesets is installed with `access: restricted`. Use it to note a user-visible package change. It will not publish.
+## Publishing
+
+Library packages publish together to the public npm registry as `@larkx/*`. Changesets is configured with `access: public` and a fixed version group. Add a changeset for a user-visible package change. A push to `main` that still has changesets opens a "Version packages" pull request. Merging that pull request publishes every library package at the new version.
+
+The job is `release` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It runs only after `check` succeeds on `main`. It builds `dist`, then runs `changeset publish`. npm provenance is requested from GitHub Actions. The root package stays private because the unscoped name `larkx` belongs to an unrelated project.
+
+Before the first publish:
+
+1. On npm, create the `larkx` organization with the account that should own the scope, or confirm that account already owns `@larkx`.
+2. Create an access token that can publish new and existing packages in that scope. Automation cannot complete a 2FA prompt, so the token has to be allowed to publish without an interactive prompt.
+3. Store the token as the Actions secret `NPM_TOKEN` in `larkxai/larkx`. Do not commit it.
+4. In the repository's Actions settings, allow GitHub Actions to create pull requests. The version pull request needs that.
+
+`pnpm version-packages` is what the workflow runs to bump versions, refresh the lockfile, and copy the `@larkx/telemetry` version into `SDK_VERSION`. `pnpm release` builds and publishes. Use those from a laptop only to recover a failed release.
 
 ## Code style
 

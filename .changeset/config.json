@@ -4,13 +4,14 @@
   "commit": false,
   "fixed": [["@larkx/*"]],
   "linked": [],
-  "access": "restricted",
+  "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
     "@larkx/example-node-workflow",
     "@larkx/example-node-agent",
     "@larkx/example-react-native-workflow",
-    "@larkx/example-react-native-agent"
+    "@larkx/example-react-native-agent",
+    "@larkx/example-field-inspection"
   ]
 }

@@ -1,5 +1,9 @@
 # @larkx/protocol
 
+```bash
+npm install @larkx/protocol
+```
+
 Language-independent execution contracts for LarkX.
 
 This package defines workflow and step states, the legal transition tables, effect classes, event names, error codes, payload types, and the remote dispatch request shape. It has no dependency on the runtime or on a platform adapter.

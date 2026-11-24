@@ -1,5 +1,9 @@
 # @larkx/cactus
 
+```bash
+npm install @larkx/cactus
+```
+
 Optional Cactus adapter for `@larkx/agent`. The agent package does not import this package.
 
 The adapter is written against `cactus-react-native` 1.13.1:

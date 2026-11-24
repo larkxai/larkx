@@ -1,5 +1,9 @@
 # @larkx/testing
 
+```bash
+npm install @larkx/testing
+```
+
 Test utilities for LarkX adapters.
 
 `createFakeClock` records sleepers until a test advances time. `createAutoClock` moves time forward when something sleeps, which keeps retry tests deterministic. Do not combine the auto clock with lease heartbeats: the heartbeat would advance time as fast as the event loop allows.
