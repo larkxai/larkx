@@ -58,7 +58,7 @@ LarkX makes the step the recovery boundary. It does not restore a JavaScript sta
 
 ## Install
 
-Node.js 22.13 or newer. These commands work after the first npm release. Until that release, build the packages from this repository.
+Node.js 22.13 or newer. `@larkxai/core` and `@larkxai/node` are published.
 
 ```bash
 npm install @larkxai/core @larkxai/node
@@ -86,58 +86,153 @@ pnpm --filter @larkxai/example-node-workflow start -- \
 
 The second process prints a completed result. The invocation log lists `normalize` once. Node may print an experimental warning for `node:sqlite`. That warning comes from Node.
 
-The example README describes the other crash points, including a non-idempotent step that recovery refuses to retry.
+The example README describes the other crash points, including a non-idempotent step that recovery refuses to retry. That demo is the small crash test. A document agent is the workflow below.
 
-## Workflow SDK
+## Workflow
 
-This is the API that exists today. Steps in this release must use `execution: "local"`.
+An inspector finishes a visit and types one note: "Inspected the roof. Three tiles are loose above the north gutter." The app starts run `brief-1`. The workflow function begins at the top.
+
+The first step is named `summarize`. The on-device model reads the note and returns one paragraph. LarkX writes that paragraph to SQLite before the next step is allowed to start. The summary now belongs to the run.
+
+The inspector locks the phone. The operating system kills the app. The paragraph is still in the database. The action list does not exist yet.
+
+They open the app later. `recover()` finds `brief-1` and starts the function from the top again. `summarize` sees the stored paragraph and returns it. The model is not called. The next step, `actions`, sends that paragraph to the model and asks for the next actions, one line each. Those lines are stored before `record` runs. `record` saves the summary and the action list together. It also stores one `operationId`. A retry of `record` keeps that same id.
+
+A model step is `idempotent`. If the app dies while `actions` is still running, and nothing has been stored for that step, the model call may run again with the same `operationId`. `summarize` still does not run again. A `non-idempotent` step that dies in the middle becomes `UNKNOWN_OUTCOME`, and the run stays `BLOCKED` until `reconcileStep`. This release only runs local steps, so every step sets `execution: "local"`. The step name is the identity you choose. It is not a source location.
+
+The model is a `ModelAdapter` passed into `reviewDocument`. On a phone that adapter is `@larkxai/cactus`. Tests use `createScriptedModel`. The model is not part of `@larkxai/core`. The longer version of this story is `examples/field-inspection-agent`: extract the issues, classify them, plan the actions, then write the report.
 
 ```typescript
-import { defineWorkflow } from "@larkxai/core";
+import type { ModelAdapter } from "@larkxai/agent";
+import { defineWorkflow, LarkxError } from "@larkxai/core";
+
+function reviewDocument(model: ModelAdapter) {
+  return defineWorkflow({
+    name: "review-document",
+    version: 1,
+    async run(ctx, input: { document: string }) {
+      const summary = await ctx.step("summarize", {
+        execution: "local",
+        effects: "idempotent",
+        run: async ({ signal }) => {
+          const response = await model.complete(
+            {
+              messages: [
+                { role: "system", content: "Summarize the document in one paragraph." },
+                { role: "user", content: input.document },
+              ],
+              tools: [],
+            },
+            { signal },
+          );
+          const text = (response.message ?? "").trim();
+          if (text.length === 0) {
+            throw new LarkxError({
+              code: "permanent_execution_failure",
+              message: "The model returned an empty summary.",
+              retryable: false,
+            });
+          }
+          return { text };
+        },
+      });
+
+      const actions = await ctx.step("actions", {
+        execution: "local",
+        effects: "idempotent",
+        run: async ({ signal }) => {
+          const response = await model.complete(
+            {
+              messages: [
+                {
+                  role: "system",
+                  content: "List the next actions, one per line. Do not repeat the summary.",
+                },
+                { role: "user", content: summary.text },
+              ],
+              tools: [],
+            },
+            { signal },
+          );
+          const lines = (response.message ?? "")
+            .split("\n")
+            .map((line) => line.replace(/^[-*\d.\s]+/, "").trim())
+            .filter((line) => line.length > 0);
+          if (lines.length === 0) {
+            throw new LarkxError({
+              code: "permanent_execution_failure",
+              message: "The model returned no actions.",
+              retryable: false,
+            });
+          }
+          return { lines };
+        },
+      });
+
+      return ctx.step("record", {
+        execution: "local",
+        effects: "idempotent",
+        run: ({ operationId }) => ({
+          operationId,
+          summary: summary.text,
+          actions: actions.lines,
+        }),
+      });
+    },
+  });
+}
+```
+
+On Node, register that workflow and start one run. The id `brief-1` is the run id. Starting it again with the same workflow version and the same document returns the existing run. A different version or a different document is rejected.
+
+```typescript
 import { createNodeEngine } from "@larkxai/node";
 
-const countLetters = defineWorkflow({
-  name: "count-letters",
-  version: 1,
-  async run(ctx, input: { text: string }) {
-    const normalized = await ctx.step("normalize", {
-      execution: "local",
-      effects: "pure",
-      run: () => input.text.trim().toLowerCase(),
-    });
-    const total = await ctx.step("count", {
-      execution: "local",
-      effects: "pure",
-      run: () => normalized.length,
-    });
-    return ctx.step("summarize", {
-      execution: "local",
-      effects: "idempotent",
-      run: ({ operationId }) => ({ operationId, total, normalized }),
-    });
-  },
-});
-
+// `model` is the ModelAdapter passed into `reviewDocument` above.
+const workflow = reviewDocument(model);
 const engine = createNodeEngine({
   database: "larkx.db",
-  workflows: [countLetters],
+  workflows: [workflow],
 });
 
-const run = await engine.start(countLetters, {
-  id: "letters-1",
-  input: { text: "Hello LarkX" },
+const run = await engine.start(workflow, {
+  id: "brief-1",
+  input: { document: "Inspected the roof. Three tiles are loose above the north gutter." },
 });
 const result = await run.result();
 await engine.close();
 ```
 
-`engine.recover()` resumes every unfinished recoverable run. A caller does not need the original in-memory handle. Starting the same id again with the same workflow version and the same canonical input returns the existing run. A different version or input is rejected.
+On React Native, open the same workflow in Expo SQLite. `recover()` continues unfinished runs, including when the app becomes active again. `remove()` stops listening. It does not release ownership, and it does not keep the app running after the operating system has killed it.
+
+```typescript
+import { bindReactNativeLifecycle, openReactNativeEngine } from "@larkxai/react-native";
+
+// Same workflow and the same `model` as the Node example.
+const workflow = reviewDocument(model);
+const engine = openReactNativeEngine({
+  database: "larkx.db",
+  workflows: [workflow],
+});
+const lifecycle = bindReactNativeLifecycle(engine);
+await engine.recover();
+
+const run = await engine.start(workflow, {
+  id: "brief-1",
+  input: { document: "Inspected the roof. Three tiles are loose above the north gutter." },
+});
+const result = await run.result();
+lifecycle.remove();
+await engine.close();
+```
+
+`engine.recover()` resumes every unfinished recoverable run. A caller does not need the original in-memory handle.
 
 `ctx.now(key)` and `ctx.random(key)` are themselves durable local steps. Do not call `Date.now()` or `Math.random()` in workflow code outside a step.
 
 ## Agents
 
-An agent is a workflow. `createAgent` registers it. Each model call is `model-<n>`. Each tool call is `tool-<n>-<m>`. Replay returns committed decisions and does not call the model or the tool again. The package README has the full example. The Node script is `examples/node-agent`. The engineering phone demo is `examples/react-native-agent`. The field inspection showcase is `examples/field-inspection-agent`, a four-stage on-device workflow.
+`reviewDocument` fixes the order: summary, then actions. `createAgent` is the other shape. The model decides which tool to call, and each decision is still one durable step. `createAgent` registers the workflow. Each model call is `model-<n>`. Each tool call is `tool-<n>-<m>`. Replay returns committed decisions and does not call the model or the tool again. The package README has the full example. The Node script is `examples/node-agent`. The engineering phone demo is `examples/react-native-agent`. The field inspection showcase is `examples/field-inspection-agent`, a four-stage on-device workflow.
 
 Calling cloud or hybrid steps today fails with `permission_denied` under the default `device-only` policy, or with `unsupported_capability` when the policy is `cloud-allowed`. There is no remote dispatcher.
 
