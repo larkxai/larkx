@@ -5,10 +5,11 @@ export interface ObservedStep {
   readonly status: string;
   readonly attemptCount: number;
   readonly output: unknown;
+  readonly error?: { readonly message: string } | null;
 }
 
 export type ActivityState =
-  "waiting" | "running" | "completed" | "recovered" | "interrupted" | "blocked" | "skipped";
+  "waiting" | "running" | "completed" | "recovered" | "interrupted" | "failed" | "skipped";
 
 export interface ActivityRow {
   readonly key: string;
@@ -34,7 +35,7 @@ export function activityRows(
   return STAGES.map((stage) => {
     const step = [...steps].reverse().find((item) => item.stepKey === stage.key);
     const state: ActivityState = step ? stateOf(step) : finished ? "skipped" : "waiting";
-    const shown = describe(stage.key, state, step?.output);
+    const shown = describe(stage.key, state, step?.output, step?.error?.message);
     return {
       key: stage.key,
       label: stage.label,
@@ -71,12 +72,18 @@ function describe(
   key: string,
   state: ActivityState,
   output: unknown,
+  errorMessage?: string,
 ): { detail: string; lines: readonly string[] } {
   if (state === "waiting") return { detail: "Waiting", lines: [] };
   if (state === "skipped") return { detail: "Skipped", lines: [] };
   if (state === "running") return { detail: runningDetail(key), lines: [] };
   if (state === "interrupted") return { detail: "Interrupted", lines: [] };
-  if (state === "blocked") return { detail: "Blocked", lines: [] };
+  if (state === "failed") {
+    return {
+      detail: errorMessage && errorMessage.length > 0 ? errorMessage : "Failed",
+      lines: [],
+    };
+  }
   if (key === "extract") {
     const issues = issuesOf(output);
     return { detail: count(issues.length, "issue extracted", "issues extracted"), lines: issues };
@@ -107,7 +114,7 @@ function stateOf(step: ObservedStep): ActivityState {
   if (step.status === "COMPLETED" && step.attemptCount > 1) return "recovered";
   if (step.status === "COMPLETED") return "completed";
   if (step.status === "UNKNOWN_OUTCOME" || step.status === "CANCELLED") return "interrupted";
-  if (step.status === "FAILED") return "blocked";
+  if (step.status === "FAILED") return "failed";
   if (
     step.status === "RUNNING" ||
     step.status === "PENDING" ||

@@ -34,7 +34,7 @@ import {
   TELEMETRY_DATABASE,
   type CloudConnection,
 } from "./src/cloud.js";
-import { cactusModel, DEFAULT_MODEL, fieldDeviceModel } from "./src/device.js";
+import { cactusModel, DEFAULT_MODEL, fieldDeviceModel, prepareCactus } from "./src/device.js";
 import { scriptedInspectionModel } from "./src/scripted.js";
 import { EXAMPLE_NOTES, type ReportOutput } from "./src/stages.js";
 import { createInspectionWorkflow, type InspectionInput } from "./src/workflow.js";
@@ -83,6 +83,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const telemetryRef = useRef<CloudConnection["telemetry"]>(null);
   const driverRef = useRef<CloudConnection["driver"]>(null);
+  const resumeTaskRef = useRef<Promise<void> | null>(null);
   const observation = useLarkxRun(engine, runId);
   const report = reportFromSteps(observation.steps);
   const rows = activityRows(observation.steps, observation.run?.status);
@@ -104,7 +105,7 @@ export function App() {
     telemetryRef.current = connection.telemetry;
     rememberCloud();
     const lifecycle = bindReactNativeLifecycle(
-      { recover: () => engineRef.current?.recover() ?? Promise.resolve([]) },
+      { recover: () => resumeWhenReady(runtime) },
       (next) => {
         setOnline(next);
         if (next) {
@@ -120,17 +121,7 @@ export function App() {
         void telemetryRef.current?.flush().then(rememberCloud);
       }
     });
-    void runtime.recover().then(async (handles) => {
-      await Promise.allSettled(handles.map((handle) => handle.result()));
-      const runs = await runtime.listRuns();
-      const newest = [...runs].sort((left, right) => right.updatedAt - left.updatedAt)[0];
-      if (newest) {
-        setRunId(newest.runId);
-      }
-      setNotice(newest ? "Conversation restored." : "Enter notes from the inspection.");
-      void telemetryRef.current?.flush().then(rememberCloud);
-    });
-    void prepareModel();
+    void resumeWhenReady(runtime);
     return () => {
       appState.remove();
       lifecycle.remove();
@@ -139,16 +130,56 @@ export function App() {
     };
   }, []);
 
-  async function prepareModel(): Promise<void> {
+  function resumeWhenReady(runtime: ReactNativeEngine): Promise<void> {
+    const current = resumeTaskRef.current;
+    if (current) {
+      return current;
+    }
+    const task = executeResume(runtime).finally(() => {
+      if (resumeTaskRef.current === task) {
+        resumeTaskRef.current = null;
+      }
+    });
+    resumeTaskRef.current = task;
+    return task;
+  }
+
+  async function executeResume(runtime: ReactNativeEngine): Promise<void> {
+    if (modeRef.current === "test") {
+      return;
+    }
     try {
-      await cactusModel(MODEL_NAME).init();
+      await prepareCactus(MODEL_NAME);
       setModelLabel(safeModelName());
       setSetup("ready");
-      setNotice("On-device model ready.");
     } catch {
       setSetup("needs-download");
-      setNotice("Download the model to run on this phone.");
+      const newest = await selectLatest(runtime);
+      setNotice(
+        newest
+          ? "Initialize the on-device model to resume this inspection."
+          : "Download the model to run on this phone.",
+      );
+      return;
     }
+    const handles = await runtime.recover();
+    await Promise.allSettled(handles.map((handle) => handle.result()));
+    const newest = await selectLatest(runtime);
+    if (newest?.status === "FAILED") {
+      setNotice(`${newest.error?.message ?? "This inspection failed."} Reset to start again.`);
+    } else {
+      setNotice(newest ? "Conversation restored." : "Enter notes from the inspection.");
+    }
+    void telemetryRef.current?.flush().then(rememberCloud);
+  }
+
+  async function selectLatest(runtime: ReactNativeEngine) {
+    const runs = await runtime.listRuns();
+    const newest = [...runs].sort((left, right) => right.updatedAt - left.updatedAt)[0];
+    if (newest) {
+      setRunId(newest.runId);
+    }
+    return newest ?? null;
   }
 
   async function download(): Promise<void> {
@@ -164,14 +195,11 @@ export function App() {
 
   async function initialize(): Promise<void> {
     setNotice("Initializing the model.");
-    try {
-      await cactusModel(MODEL_NAME).init();
-      setModelLabel(safeModelName());
-      setSetup("ready");
-      setNotice("Ready for offline use.");
-    } catch (error) {
-      setNotice(messageFrom(error));
+    const runtime = engineRef.current;
+    if (!runtime) {
+      return;
     }
+    await resumeWhenReady(runtime);
   }
 
   async function send(text: string): Promise<void> {
@@ -272,8 +300,13 @@ export function App() {
           onDownload={() => void download()}
           onInitialize={() => void initialize()}
           onTest={() => {
+            modeRef.current = "test";
             setMode("test");
             setNotice("Scripted test mode. This does not run Cactus.");
+            const runtime = engineRef.current;
+            if (runtime) {
+              void selectLatest(runtime);
+            }
           }}
         />
       ) : (
@@ -340,12 +373,17 @@ export function App() {
                   link={link}
                   onReset={() => void reset()}
                   onMode={(next) => {
+                    modeRef.current = next;
                     setMode(next);
                     setNotice(
                       next === "test"
                         ? "Scripted test mode. This does not run Cactus."
                         : "Device mode uses Cactus.",
                     );
+                    const runtime = engineRef.current;
+                    if (next === "device" && runtime) {
+                      void resumeWhenReady(runtime);
+                    }
                   }}
                 />
               ) : null}
@@ -523,7 +561,7 @@ function RowMark({ state }: { state: string }) {
     return <RunningMark />;
   }
   const done = state === "completed" || state === "recovered";
-  const bad = state === "blocked" || state === "interrupted";
+  const bad = state === "failed" || state === "interrupted";
   const skipped = state === "skipped";
   return (
     <View style={[styles.mark, done ? styles.markDone : bad ? styles.markBad : styles.markIdle]}>

@@ -10,9 +10,11 @@ declare const require: (id: string) => {
 };
 
 const MODEL = "__larkxFieldModel";
+const READY = "__larkxFieldModelReady";
 
 interface Cache {
   [MODEL]?: CactusLanguageModel;
+  [READY]?: Promise<void>;
 }
 
 export function cactusModel(name = DEFAULT_MODEL): CactusLanguageModel {
@@ -25,6 +27,26 @@ export function cactusModel(name = DEFAULT_MODEL): CactusLanguageModel {
   const created = createCactusModel({ model: name });
   global[MODEL] = created;
   return created;
+}
+
+/** Load the on-device model once. A second caller waits for the same `init()`. */
+export function prepareCactus(name = DEFAULT_MODEL): Promise<void> {
+  const global = globalThis as Cache;
+  const existing = global[READY];
+  if (existing) {
+    return existing;
+  }
+  const pending = cactusModel(name)
+    .init()
+    .then(() => undefined)
+    .catch((error: unknown) => {
+      if (global[READY] === pending) {
+        delete global[READY];
+      }
+      throw error;
+    });
+  global[READY] = pending;
+  return pending;
 }
 
 export function fieldDeviceModel(name = DEFAULT_MODEL): ModelAdapter {

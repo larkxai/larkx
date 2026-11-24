@@ -140,6 +140,42 @@ describe("inspection workflow", () => {
     ]);
   });
 
+  it("labels a failed plan with the stored error", () => {
+    const rows = activityRows(
+      [
+        {
+          stepKey: "extract",
+          status: "COMPLETED",
+          attemptCount: 1,
+          output: { issues: [{ text: "Water near the pump" }], model: "scripted" },
+        },
+        {
+          stepKey: "classify",
+          status: "COMPLETED",
+          attemptCount: 1,
+          output: {
+            issues: [{ text: "Water near the pump", severity: "high", rule: null }],
+            model: "scripted",
+          },
+        },
+        {
+          stepKey: "plan",
+          status: "FAILED",
+          attemptCount: 2,
+          output: null,
+          error: { message: "Cactus completion failed." },
+        },
+      ],
+      "FAILED",
+    );
+    expect(rows.map((row) => [row.label, row.state, row.detail])).toEqual([
+      ["Extract issues", "completed", "1 issue extracted"],
+      ["Classify priorities", "completed", "1 issue classified"],
+      ["Create action plan", "failed", "Cactus completion failed."],
+      ["Generate report", "skipped", "Skipped"],
+    ]);
+  });
+
   it("reads issue lines from a chatty model reply", () => {
     expect(
       parseIssues("Sure, here are the issues:\n- Water near the pump\n- Exit B is blocked"),
