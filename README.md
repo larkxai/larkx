@@ -58,7 +58,7 @@ LarkX makes the step the recovery boundary. It does not restore a JavaScript sta
 
 ## Install
 
-Node.js 22.13 or newer. These commands work after the first npm release. Until that release, build the packages from this repository.
+Node.js 22.13 or newer. `@larkxai/core` and `@larkxai/node` are published.
 
 ```bash
 npm install @larkxai/core @larkxai/node
@@ -88,13 +88,24 @@ The second process prints a completed result. The invocation log lists `normaliz
 
 The example README describes the other crash points, including a non-idempotent step that recovery refuses to retry.
 
-## Workflow SDK
+## Workflow
 
-This is the API that exists today. Steps in this release must use `execution: "local"`.
+The same workflow definition runs on Node and on React Native. The function starts from the top whenever a run starts or resumes. A step whose result is already stored returns that result and does not call its handler again. The step name, such as `"normalize"`, is the identity. You choose it. It is not a source location.
+
+This release runs local steps only, so every step sets `execution: "local"`.
+
+The workflow below counts the characters in `Hello LarkX`. Each step stores its result before the next step starts:
+
+| Step        | Effect       | Stored result                                           |
+| ----------- | ------------ | ------------------------------------------------------- |
+| `normalize` | `pure`       | `"hello larkx"`                                         |
+| `count`     | `pure`       | `11`                                                    |
+| `summarize` | `idempotent` | `{ operationId, total: 11, normalized: "hello larkx" }` |
+
+`pure` and `idempotent` may run again when the process dies before that result is stored. An idempotent retry keeps the same `operationId`. A `non-idempotent` step that is interrupted becomes `UNKNOWN_OUTCOME`, and the run becomes `BLOCKED` until `reconcileStep`. The quick start kills the demo after `normalize` is stored. The next process returns `"hello larkx"` without calling that handler, then runs `count` and `summarize`.
 
 ```typescript
 import { defineWorkflow } from "@larkxai/core";
-import { createNodeEngine } from "@larkxai/node";
 
 const countLetters = defineWorkflow({
   name: "count-letters",
@@ -117,6 +128,12 @@ const countLetters = defineWorkflow({
     });
   },
 });
+```
+
+On Node, register that workflow and start one run. The id `letters-1` is the run id. Starting it again with the same workflow version and the same input returns the existing run. A different version or a different input is rejected.
+
+```typescript
+import { createNodeEngine } from "@larkxai/node";
 
 const engine = createNodeEngine({
   database: "larkx.db",
@@ -131,7 +148,28 @@ const result = await run.result();
 await engine.close();
 ```
 
-`engine.recover()` resumes every unfinished recoverable run. A caller does not need the original in-memory handle. Starting the same id again with the same workflow version and the same canonical input returns the existing run. A different version or input is rejected.
+On React Native, open the same workflow in Expo SQLite. `recover()` continues unfinished runs, including when the app becomes active again. `remove()` stops listening. It does not release ownership, and it does not keep the app running after the operating system has killed it.
+
+```typescript
+import { bindReactNativeLifecycle, openReactNativeEngine } from "@larkxai/react-native";
+
+const engine = openReactNativeEngine({
+  database: "larkx.db",
+  workflows: [countLetters],
+});
+const lifecycle = bindReactNativeLifecycle(engine);
+await engine.recover();
+
+const run = await engine.start(countLetters, {
+  id: "letters-1",
+  input: { text: "Hello LarkX" },
+});
+const result = await run.result();
+lifecycle.remove();
+await engine.close();
+```
+
+`engine.recover()` resumes every unfinished recoverable run. A caller does not need the original in-memory handle.
 
 `ctx.now(key)` and `ctx.random(key)` are themselves durable local steps. Do not call `Date.now()` or `Math.random()` in workflow code outside a step.
 
