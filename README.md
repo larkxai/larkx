@@ -86,63 +86,120 @@ pnpm --filter @larkxai/example-node-workflow start -- \
 
 The second process prints a completed result. The invocation log lists `normalize` once. Node may print an experimental warning for `node:sqlite`. That warning comes from Node.
 
-The example README describes the other crash points, including a non-idempotent step that recovery refuses to retry.
+The example README describes the other crash points, including a non-idempotent step that recovery refuses to retry. That demo is the small crash test. A document agent is the workflow below.
 
 ## Workflow
 
-The same workflow definition runs on Node and on React Native. The function starts from the top whenever a run starts or resumes. A step whose result is already stored returns that result and does not call its handler again. The step name, such as `"normalize"`, is the identity. You choose it. It is not a source location.
+A document agent is a sequence of durable steps. The function starts from the top whenever a run starts or resumes. A step whose result is already stored returns that result and does not call the model again. The step name, such as `"summarize"`, is the identity. You choose it. It is not a source location.
 
-This release runs local steps only, so every step sets `execution: "local"`.
+This release runs local steps only, so every step sets `execution: "local"`. Model calls are `idempotent`: a retry after an interrupt keeps the same `operationId`. A `non-idempotent` step that is interrupted becomes `UNKNOWN_OUTCOME`, and the run becomes `BLOCKED` until `reconcileStep`.
 
-The workflow below counts the characters in `Hello LarkX`. Each step stores its result before the next step starts:
+`reviewDocument` takes any `ModelAdapter`. On a phone that adapter is `@larkxai/cactus`. Tests use `createScriptedModel`. The model is not part of `@larkxai/core`.
 
-| Step        | Effect       | Stored result                                           |
-| ----------- | ------------ | ------------------------------------------------------- |
-| `normalize` | `pure`       | `"hello larkx"`                                         |
-| `count`     | `pure`       | `11`                                                    |
-| `summarize` | `idempotent` | `{ operationId, total: 11, normalized: "hello larkx" }` |
+| Step        | The model sees | Stored before the next step         |
+| ----------- | -------------- | ----------------------------------- |
+| `summarize` | the document   | one summary paragraph               |
+| `actions`   | that summary   | the action lines                    |
+| `record`    | nothing        | `{ operationId, summary, actions }` |
 
-`pure` and `idempotent` may run again when the process dies before that result is stored. An idempotent retry keeps the same `operationId`. A `non-idempotent` step that is interrupted becomes `UNKNOWN_OUTCOME`, and the run becomes `BLOCKED` until `reconcileStep`. The quick start kills the demo after `normalize` is stored. The next process returns `"hello larkx"` without calling that handler, then runs `count` and `summarize`.
+If the app is killed after `summarize` is stored, the next launch returns that paragraph and does not summarize again. `actions` and `record` still run. The longer version of this pipeline is `examples/field-inspection-agent`: extract, classify, plan actions, then write the report.
 
 ```typescript
-import { defineWorkflow } from "@larkxai/core";
+import type { ModelAdapter } from "@larkxai/agent";
+import { defineWorkflow, LarkxError } from "@larkxai/core";
 
-const countLetters = defineWorkflow({
-  name: "count-letters",
-  version: 1,
-  async run(ctx, input: { text: string }) {
-    const normalized = await ctx.step("normalize", {
-      execution: "local",
-      effects: "pure",
-      run: () => input.text.trim().toLowerCase(),
-    });
-    const total = await ctx.step("count", {
-      execution: "local",
-      effects: "pure",
-      run: () => normalized.length,
-    });
-    return ctx.step("summarize", {
-      execution: "local",
-      effects: "idempotent",
-      run: ({ operationId }) => ({ operationId, total, normalized }),
-    });
-  },
-});
+function reviewDocument(model: ModelAdapter) {
+  return defineWorkflow({
+    name: "review-document",
+    version: 1,
+    async run(ctx, input: { document: string }) {
+      const summary = await ctx.step("summarize", {
+        execution: "local",
+        effects: "idempotent",
+        run: async ({ signal }) => {
+          const response = await model.complete(
+            {
+              messages: [
+                { role: "system", content: "Summarize the document in one paragraph." },
+                { role: "user", content: input.document },
+              ],
+              tools: [],
+            },
+            { signal },
+          );
+          const text = (response.message ?? "").trim();
+          if (text.length === 0) {
+            throw new LarkxError({
+              code: "permanent_execution_failure",
+              message: "The model returned an empty summary.",
+              retryable: false,
+            });
+          }
+          return { text };
+        },
+      });
+
+      const actions = await ctx.step("actions", {
+        execution: "local",
+        effects: "idempotent",
+        run: async ({ signal }) => {
+          const response = await model.complete(
+            {
+              messages: [
+                {
+                  role: "system",
+                  content: "List the next actions, one per line. Do not repeat the summary.",
+                },
+                { role: "user", content: summary.text },
+              ],
+              tools: [],
+            },
+            { signal },
+          );
+          const lines = (response.message ?? "")
+            .split("\n")
+            .map((line) => line.replace(/^[-*\d.\s]+/, "").trim())
+            .filter((line) => line.length > 0);
+          if (lines.length === 0) {
+            throw new LarkxError({
+              code: "permanent_execution_failure",
+              message: "The model returned no actions.",
+              retryable: false,
+            });
+          }
+          return { lines };
+        },
+      });
+
+      return ctx.step("record", {
+        execution: "local",
+        effects: "idempotent",
+        run: ({ operationId }) => ({
+          operationId,
+          summary: summary.text,
+          actions: actions.lines,
+        }),
+      });
+    },
+  });
+}
 ```
 
-On Node, register that workflow and start one run. The id `letters-1` is the run id. Starting it again with the same workflow version and the same input returns the existing run. A different version or a different input is rejected.
+On Node, register that workflow and start one run. The id `brief-1` is the run id. Starting it again with the same workflow version and the same document returns the existing run. A different version or a different document is rejected.
 
 ```typescript
 import { createNodeEngine } from "@larkxai/node";
 
+// `model` is the ModelAdapter passed into `reviewDocument` above.
+const workflow = reviewDocument(model);
 const engine = createNodeEngine({
   database: "larkx.db",
-  workflows: [countLetters],
+  workflows: [workflow],
 });
 
-const run = await engine.start(countLetters, {
-  id: "letters-1",
-  input: { text: "Hello LarkX" },
+const run = await engine.start(workflow, {
+  id: "brief-1",
+  input: { document: "Inspected the roof. Three tiles are loose above the north gutter." },
 });
 const result = await run.result();
 await engine.close();
@@ -153,16 +210,18 @@ On React Native, open the same workflow in Expo SQLite. `recover()` continues un
 ```typescript
 import { bindReactNativeLifecycle, openReactNativeEngine } from "@larkxai/react-native";
 
+// Same workflow and the same `model` as the Node example.
+const workflow = reviewDocument(model);
 const engine = openReactNativeEngine({
   database: "larkx.db",
-  workflows: [countLetters],
+  workflows: [workflow],
 });
 const lifecycle = bindReactNativeLifecycle(engine);
 await engine.recover();
 
-const run = await engine.start(countLetters, {
-  id: "letters-1",
-  input: { text: "Hello LarkX" },
+const run = await engine.start(workflow, {
+  id: "brief-1",
+  input: { document: "Inspected the roof. Three tiles are loose above the north gutter." },
 });
 const result = await run.result();
 lifecycle.remove();
@@ -175,7 +234,7 @@ await engine.close();
 
 ## Agents
 
-An agent is a workflow. `createAgent` registers it. Each model call is `model-<n>`. Each tool call is `tool-<n>-<m>`. Replay returns committed decisions and does not call the model or the tool again. The package README has the full example. The Node script is `examples/node-agent`. The engineering phone demo is `examples/react-native-agent`. The field inspection showcase is `examples/field-inspection-agent`, a four-stage on-device workflow.
+`reviewDocument` fixes the order: summary, then actions. `createAgent` is the other shape. The model decides which tool to call, and each decision is still one durable step. `createAgent` registers the workflow. Each model call is `model-<n>`. Each tool call is `tool-<n>-<m>`. Replay returns committed decisions and does not call the model or the tool again. The package README has the full example. The Node script is `examples/node-agent`. The engineering phone demo is `examples/react-native-agent`. The field inspection showcase is `examples/field-inspection-agent`, a four-stage on-device workflow.
 
 Calling cloud or hybrid steps today fails with `permission_denied` under the default `device-only` policy, or with `unsupported_capability` when the policy is `cloud-allowed`. There is no remote dispatcher.
 
