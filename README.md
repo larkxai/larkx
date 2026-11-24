@@ -90,19 +90,17 @@ The example README describes the other crash points, including a non-idempotent 
 
 ## Workflow
 
-A document agent is a sequence of durable steps. The function starts from the top whenever a run starts or resumes. A step whose result is already stored returns that result and does not call the model again. The step name, such as `"summarize"`, is the identity. You choose it. It is not a source location.
+An inspector finishes a visit and types one note: "Inspected the roof. Three tiles are loose above the north gutter." The app starts run `brief-1`. The workflow function begins at the top.
 
-This release runs local steps only, so every step sets `execution: "local"`. Model calls are `idempotent`: a retry after an interrupt keeps the same `operationId`. A `non-idempotent` step that is interrupted becomes `UNKNOWN_OUTCOME`, and the run becomes `BLOCKED` until `reconcileStep`.
+The first step is named `summarize`. The on-device model reads the note and returns one paragraph. LarkX writes that paragraph to SQLite before the next step is allowed to start. The summary now belongs to the run.
 
-`reviewDocument` takes any `ModelAdapter`. On a phone that adapter is `@larkxai/cactus`. Tests use `createScriptedModel`. The model is not part of `@larkxai/core`.
+The inspector locks the phone. The operating system kills the app. The paragraph is still in the database. The action list does not exist yet.
 
-| Step        | The model sees | Stored before the next step         |
-| ----------- | -------------- | ----------------------------------- |
-| `summarize` | the document   | one summary paragraph               |
-| `actions`   | that summary   | the action lines                    |
-| `record`    | nothing        | `{ operationId, summary, actions }` |
+They open the app later. `recover()` finds `brief-1` and starts the function from the top again. `summarize` sees the stored paragraph and returns it. The model is not called. The next step, `actions`, sends that paragraph to the model and asks for the next actions, one line each. Those lines are stored before `record` runs. `record` saves the summary and the action list together. It also stores one `operationId`. A retry of `record` keeps that same id.
 
-If the app is killed after `summarize` is stored, the next launch returns that paragraph and does not summarize again. `actions` and `record` still run. The longer version of this pipeline is `examples/field-inspection-agent`: extract, classify, plan actions, then write the report.
+A model step is `idempotent`. If the app dies while `actions` is still running, and nothing has been stored for that step, the model call may run again with the same `operationId`. `summarize` still does not run again. A `non-idempotent` step that dies in the middle becomes `UNKNOWN_OUTCOME`, and the run stays `BLOCKED` until `reconcileStep`. This release only runs local steps, so every step sets `execution: "local"`. The step name is the identity you choose. It is not a source location.
+
+The model is a `ModelAdapter` passed into `reviewDocument`. On a phone that adapter is `@larkxai/cactus`. Tests use `createScriptedModel`. The model is not part of `@larkxai/core`. The longer version of this story is `examples/field-inspection-agent`: extract the issues, classify them, plan the actions, then write the report.
 
 ```typescript
 import type { ModelAdapter } from "@larkxai/agent";
