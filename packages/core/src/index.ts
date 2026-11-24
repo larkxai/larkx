@@ -14,8 +14,8 @@ export type {
   StepSnapshot,
 } from "./engine.js";
 
-export { LarkxError } from "@larkx/protocol";
-export type { ErrorCode } from "@larkx/protocol";
+export { LarkxError } from "@larkxai/protocol";
+export type { ErrorCode } from "@larkxai/protocol";
 
 export { decodeJson, encodeJson } from "./json.js";
 

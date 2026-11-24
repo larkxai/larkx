@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppState, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { LarkxError } from "@larkx/core";
+import { LarkxError } from "@larkxai/core";
 import {
   bindReactNativeLifecycle,
   openReactNativeEngine,
   useLarkxRun,
   type ReactNativeEngine,
-} from "@larkx/react-native";
+} from "@larkxai/react-native";
 import { deleteDatabaseSync } from "expo-sqlite";
-import type { CloudTelemetry } from "@larkx/telemetry";
+import type { CloudTelemetry } from "@larkxai/telemetry";
 
 import { TELEMETRY_DATABASE, cloudLabel, openCloud } from "./src/cloud";
 import { clearSessionCalls, demoWorkflows, sessionCalls } from "./src/workflow";

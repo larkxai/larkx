@@ -3,8 +3,8 @@
 A scripted renovation agent on `createNodeEngine`. It does not download a model and it does not use the network. The model returns the same tool calls for the same committed tool count, which is what the process-death tests rely on.
 
 ```bash
-pnpm --filter @larkx/example-node-agent build
-pnpm --filter @larkx/example-node-agent start
+pnpm --filter @larkxai/example-node-agent build
+pnpm --filter @larkxai/example-node-agent start
 ```
 
 Pass a database path to keep the run:

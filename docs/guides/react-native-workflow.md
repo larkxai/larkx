@@ -7,7 +7,7 @@ The app uses `openReactNativeEngine` and the same `defineWorkflow` functions as 
 ```bash
 pnpm install
 pnpm build
-pnpm --filter @larkx/example-react-native-workflow start
+pnpm --filter @larkxai/example-react-native-workflow start
 ```
 
 CI does not boot an emulator. The Node tests under `tests/react-native` are the automated half of M2. They are not an Expo SQLite run.

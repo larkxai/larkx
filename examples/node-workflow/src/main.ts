@@ -1,6 +1,6 @@
 import { closeSync, fsyncSync, openSync, readFileSync, writeSync } from "node:fs";
 
-import { createNodeEngine } from "@larkx/node";
+import { createNodeEngine } from "@larkxai/node";
 
 import { chargeOnce, countLetters, setStepTracer } from "./workflow.js";
 

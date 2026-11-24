@@ -5,7 +5,7 @@ import {
   type JsonSchema,
   type ModelResponse,
   type Tool,
-} from "@larkx/agent";
+} from "@larkxai/agent";
 import {
   createEngine,
   EngineTermination,
@@ -13,10 +13,10 @@ import {
   type Engine,
   type EngineHooks,
   type WorkflowStorage,
-} from "@larkx/core";
-import type { JsonObject, JsonValue } from "@larkx/protocol";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { createAutoClock } from "@larkx/testing";
+} from "@larkxai/core";
+import type { JsonObject, JsonValue } from "@larkxai/protocol";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { createAutoClock } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 function testEngine(storage: WorkflowStorage = createMemoryStorage(), hooks?: EngineHooks): Engine {

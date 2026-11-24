@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { Engine, ExecutionEventRecord, RunSnapshot, StepSnapshot } from "@larkx/core";
+import type { Engine, ExecutionEventRecord, RunSnapshot, StepSnapshot } from "@larkxai/core";
 
 export interface WorkflowObservation {
   readonly run: RunSnapshot | null;

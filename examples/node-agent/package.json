@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/example-node-agent",
+  "name": "@larkxai/example-node-agent",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,9 +9,9 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
-    "@larkx/agent": "workspace:*",
-    "@larkx/core": "workspace:*",
-    "@larkx/node": "workspace:*",
-    "@larkx/telemetry": "workspace:*"
+    "@larkxai/agent": "workspace:*",
+    "@larkxai/core": "workspace:*",
+    "@larkxai/node": "workspace:*",
+    "@larkxai/telemetry": "workspace:*"
   }
 }

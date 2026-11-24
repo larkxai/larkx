@@ -1,5 +1,5 @@
-import type { ModelAdapter } from "@larkx/agent";
-import { cactusAdapter } from "@larkx/cactus/adapter";
+import type { ModelAdapter } from "@larkxai/agent";
+import { cactusAdapter } from "@larkxai/cactus/adapter";
 
 export const DEFAULT_MODEL = "qwen3-0.6b";
 
@@ -23,7 +23,7 @@ export function cactusModel(name = DEFAULT_MODEL): CactusLanguageModel {
   if (existing) {
     return existing;
   }
-  const { createCactusModel } = require("@larkx/cactus");
+  const { createCactusModel } = require("@larkxai/cactus");
   const created = createCactusModel({ model: name });
   global[MODEL] = created;
   return created;

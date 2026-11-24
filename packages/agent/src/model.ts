@@ -1,5 +1,5 @@
-import { LarkxError } from "@larkx/core";
-import type { JsonObject, JsonValue } from "@larkx/protocol";
+import { LarkxError } from "@larkxai/core";
+import type { JsonObject, JsonValue } from "@larkxai/protocol";
 
 import type { JsonSchema } from "./schema.js";
 

@@ -1,6 +1,6 @@
 # Agents
 
-`@larkx/agent` is a workflow written with `defineWorkflow`. It is not a second engine, a second log, or a second ownership system.
+`@larkxai/agent` is a workflow written with `defineWorkflow`. It is not a second engine, a second log, or a second ownership system.
 
 `createAgent` builds that workflow and registers it with `engine.register`. The same definition object can be registered again. A different object for the same name and version is rejected. `start` still requires the registered object, which is the one `createAgent` holds.
 
@@ -43,4 +43,4 @@ The loop stops with `permanent_execution_failure` when it passes `maxIterations`
 
 ## Providers
 
-`ModelAdapter` is the only inference surface. Capabilities are `toolCalling`, `structuredOutput`, and `cancellation`. The loop does not read provider-specific fields. `@larkx/cactus` is one adapter. `createScriptedModel` is the deterministic adapter used by tests and the React Native test mode.
+`ModelAdapter` is the only inference surface. Capabilities are `toolCalling`, `structuredOutput`, and `cancellation`. The loop does not read provider-specific fields. `@larkxai/cactus` is one adapter. `createScriptedModel` is the deterministic adapter used by tests and the React Native test mode.

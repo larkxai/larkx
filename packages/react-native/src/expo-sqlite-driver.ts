@@ -1,6 +1,6 @@
 import { openDatabaseSync } from "expo-sqlite";
 
-import type { SqliteDriver, SqliteValue } from "@larkx/storage-sqlite";
+import type { SqliteDriver, SqliteValue } from "@larkxai/storage-sqlite";
 
 /**
  * Expo SQLite synchronous driver.

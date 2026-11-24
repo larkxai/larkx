@@ -11,7 +11,7 @@ import {
   type ErrorCode,
   type JsonValue,
   type RuntimeCapabilities,
-} from "@larkx/protocol";
+} from "@larkxai/protocol";
 
 import { createSystemClock, type Clock } from "./clock.js";
 import { projectJournal, type JournalDocument } from "./journal.js";

@@ -1,6 +1,6 @@
-import type { StorageCommand, WorkflowStorage } from "@larkx/core";
-import { encodeJson } from "@larkx/core";
-import { LarkxError, PROTOCOL_VERSION } from "@larkx/protocol";
+import type { StorageCommand, WorkflowStorage } from "@larkxai/core";
+import { encodeJson } from "@larkxai/core";
+import { LarkxError, PROTOCOL_VERSION } from "@larkxai/protocol";
 
 export interface StorageConformanceCase {
   readonly name: string;

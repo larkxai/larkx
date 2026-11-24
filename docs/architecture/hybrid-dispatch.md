@@ -12,7 +12,7 @@ This document is a design note. The 0.1.0 runtime does not dispatch remote work.
 
 ## Request
 
-A remote request carries the protocol version, tenant, application id, run id, workflow name and version, step key, operation id, handler name and version, attempt, input, and data policy. `@larkx/protocol` validates that shape. `device-only` is rejected.
+A remote request carries the protocol version, tenant, application id, run id, workflow name and version, step key, operation id, handler name and version, attempt, input, and data policy. `@larkxai/protocol` validates that shape. `device-only` is rejected.
 
 The operation id stays stable across transport retries.
 

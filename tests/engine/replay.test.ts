@@ -4,9 +4,9 @@ import {
   EngineTermination,
   type AnyWorkflow,
   type WorkflowDefinition,
-} from "@larkx/core";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { createAutoClock } from "@larkx/testing";
+} from "@larkxai/core";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { createAutoClock } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 function letters(

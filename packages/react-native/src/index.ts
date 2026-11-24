@@ -27,7 +27,7 @@ export interface ReactNativeSqliteOptions {
 }
 
 /**
- * Storage for `createEngine` from `@larkx/core`.
+ * Storage for `createEngine` from `@larkxai/core`.
  * Register the engine owner with `registerLiveOwner` before starting work,
  * or use `openReactNativeEngine`, which does that itself.
  */

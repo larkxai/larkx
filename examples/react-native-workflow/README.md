@@ -16,7 +16,7 @@ From the repository root:
 ```bash
 pnpm install
 pnpm build
-pnpm --filter @larkx/example-react-native-workflow start
+pnpm --filter @larkxai/example-react-native-workflow start
 ```
 
 Open the project in Expo Go on SDK 58, or in an Android or iOS emulator. This repository's CI does not launch either. A passing Node test suite is not a mobile run.

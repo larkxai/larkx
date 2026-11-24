@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/core",
+  "name": "@larkxai/core",
   "version": "0.1.0",
   "description": "Platform-independent durable workflow engine for LarkX.",
   "license": "Apache-2.0",
@@ -7,7 +7,8 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -20,6 +21,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkx/protocol": "workspace:*"
+    "@larkxai/protocol": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/larkxai/larkx.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/larkxai/larkx/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/larkxai/larkx/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

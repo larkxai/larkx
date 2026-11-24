@@ -1,4 +1,8 @@
-# @larkx/core
+# @larkxai/core
+
+```bash
+npm install @larkxai/core
+```
 
 Platform-independent durable workflow engine.
 
@@ -6,6 +10,6 @@ Platform-independent durable workflow engine.
 
 Local steps are implemented. Cloud and hybrid steps are part of the public type surface and fail with a stable error until a dispatcher exists. The default data policy is `device-only`.
 
-`readJournal(runId)` returns the metadata projection used by `@larkx/telemetry`: statuses, names, versions, step keys, attempts, and journal events. It does not return workflow input, step input, step output, error text, or the owner id.
+`readJournal(runId)` returns the metadata projection used by `@larkxai/telemetry`: statuses, names, versions, step keys, attempts, and journal events. It does not return workflow input, step input, step output, error text, or the owner id.
 
 This package does not import Node.js, a database driver, or a model provider.

@@ -1,17 +1,21 @@
-# @larkx/react-native
+# @larkxai/react-native
 
-React Native adapter for the LarkX engine. It uses `@larkx/core` and the SQLite schema in `@larkx/storage-sqlite`. It does not implement a second execution engine.
+```bash
+npm install @larkxai/react-native
+```
+
+React Native adapter for the LarkX engine. It uses `@larkxai/core` and the SQLite schema in `@larkxai/storage-sqlite`. It does not implement a second execution engine.
 
 ## Driver
 
 `expo-sqlite` synchronous API on Expo SDK 58. The driver runs `BEGIN IMMEDIATE` itself so a transaction matches the Node driver. OP-SQLite was not used: its transaction API is asynchronous and does not fit `SqliteDriver`.
 
-The package does not add React Native imports to `@larkx/core`.
+The package does not add React Native imports to `@larkxai/core`.
 
 ## Engine
 
 ```typescript
-import { bindReactNativeLifecycle, openReactNativeEngine } from "@larkx/react-native";
+import { bindReactNativeLifecycle, openReactNativeEngine } from "@larkxai/react-native";
 
 const engine = openReactNativeEngine({
   database: "larkx.db",
@@ -34,7 +38,7 @@ An expired lease does not, by itself, let another owner take a run while the ori
 
 `useLarkxRun(engine, runId)` subscribes for display. It does not own the run.
 
-`readJournal` is forwarded from the shared engine. `createExpoSqliteDriver` opens a second database for exporter state. Cloud sync itself is `@larkx/telemetry`, not this package. Call `setActive(false)` when the app leaves the foreground. The adapter does not schedule native background uploads.
+`readJournal` is forwarded from the shared engine. `createExpoSqliteDriver` opens a second database for exporter state. Cloud sync itself is `@larkxai/telemetry`, not this package. Call `setActive(false)` when the app leaves the foreground. The adapter does not schedule native background uploads.
 
 ## What this package does not do
 

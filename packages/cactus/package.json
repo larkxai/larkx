@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/cactus",
+  "name": "@larkxai/cactus",
   "version": "0.1.0",
   "description": "Cactus model adapter for LarkX agents. Optional. The agent loop does not import this package.",
   "license": "Apache-2.0",
@@ -7,7 +7,8 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "main": "./dist/index.js",
   "exports": {
@@ -35,9 +36,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkx/agent": "workspace:*",
-    "@larkx/core": "workspace:*",
-    "@larkx/protocol": "workspace:*"
+    "@larkxai/agent": "workspace:*",
+    "@larkxai/core": "workspace:*",
+    "@larkxai/protocol": "workspace:*"
   },
   "peerDependencies": {
     "cactus-react-native": "1.13.1",
@@ -46,5 +47,17 @@
   "devDependencies": {
     "cactus-react-native": "1.13.1",
     "react-native-nitro-modules": "0.33.9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/larkxai/larkx.git",
+    "directory": "packages/cactus"
+  },
+  "homepage": "https://github.com/larkxai/larkx/tree/main/packages/cactus#readme",
+  "bugs": {
+    "url": "https://github.com/larkxai/larkx/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

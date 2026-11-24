@@ -1,6 +1,6 @@
 # Telemetry export
 
-`@larkx/telemetry` is an optional client for the batch contract in [the cloud observability spec](../cloud-observability-spec.md). Ingestion, accounts, and the dashboard live in `larkxai/cloud`. This repository does not implement them.
+`@larkxai/telemetry` is an optional client for the batch contract in [the cloud observability spec](../cloud-observability-spec.md). Ingestion, accounts, and the dashboard live in `larkxai/cloud`. This repository does not implement them.
 
 ## Attachment
 

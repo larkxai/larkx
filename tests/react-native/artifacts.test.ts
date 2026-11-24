@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createEngine, defineWorkflow, EngineTermination } from "@larkx/core";
-import { importDurableArtifact, type DurableFileSystem } from "@larkx/react-native/artifacts";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { createAutoClock } from "@larkx/testing";
+import { createEngine, defineWorkflow, EngineTermination } from "@larkxai/core";
+import { importDurableArtifact, type DurableFileSystem } from "@larkxai/react-native/artifacts";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { createAutoClock } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 describe("durable artifacts", () => {

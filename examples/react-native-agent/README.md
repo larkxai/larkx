@@ -5,7 +5,7 @@ Offline home-renovation agent on the LarkX React Native runtime.
 Two modes share the screen:
 
 - **Test** uses `createScriptedModel`. `search_furniture` waits 8 seconds and can be cancelled. The tool calls are deterministic. This is the reliable interruption drill.
-- **Device** uses `@larkx/cactus` and `CactusLM`. The model is `qwen3-0.6b` (SDK default `int8`). Tool calls come from `complete()`. They are not scripted. A small model can return an invalid call. That failure is stored as a tool step. The screen does not replace it with a successful plan.
+- **Device** uses `@larkxai/cactus` and `CactusLM`. The model is `qwen3-0.6b` (SDK default `int8`). Tool calls come from `complete()`. They are not scripted. A small model can return an invalid call. That failure is stored as a tool step. The screen does not replace it with a successful plan.
 
 Both modes use local room data, a local budget, a bundled furniture list, and `save_plan`. `save_plan` is idempotent and uses the step `operationId` as the plan id. The tools do not contact a server.
 

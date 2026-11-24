@@ -1,5 +1,5 @@
-import { createAgent, createScriptedModel, defineTool, type ModelResponse } from "@larkx/agent";
-import { createNodeEngine } from "@larkx/node";
+import { createAgent, createScriptedModel, defineTool, type ModelResponse } from "@larkxai/agent";
+import { createNodeEngine } from "@larkxai/node";
 import { closeSync, fsyncSync, mkdirSync, openSync, writeSync } from "node:fs";
 import { dirname } from "node:path";
 

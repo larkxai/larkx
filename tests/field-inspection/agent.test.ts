@@ -4,9 +4,9 @@ import {
   type Engine,
   type EngineHooks,
   type WorkflowStorage,
-} from "@larkx/core";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { createAutoClock } from "@larkx/testing";
+} from "@larkxai/core";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { createAutoClock } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 import {

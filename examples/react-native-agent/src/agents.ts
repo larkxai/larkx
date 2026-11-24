@@ -1,6 +1,6 @@
-import { createAgent, createScriptedModel, type Agent, type ModelResponse } from "@larkx/agent";
-import { cactusAdapter } from "@larkx/cactus/adapter";
-import type { Engine } from "@larkx/core";
+import { createAgent, createScriptedModel, type Agent, type ModelResponse } from "@larkxai/agent";
+import { cactusAdapter } from "@larkxai/cactus/adapter";
+import type { Engine } from "@larkxai/core";
 
 import { renovationTools } from "./tools";
 
@@ -29,8 +29,8 @@ export function cactusModel(): CactusLanguageModel {
   if (existing) {
     return existing;
   }
-  // A static import of @larkx/cactus evaluates CactusLM before Nitro installs JSI.
-  const { createCactusModel } = require("@larkx/cactus");
+  // A static import of @larkxai/cactus evaluates CactusLM before Nitro installs JSI.
+  const { createCactusModel } = require("@larkxai/cactus");
   const created = createCactusModel({ model: "qwen3-0.6b" });
   global[MODEL] = created;
   return created;

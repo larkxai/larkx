@@ -1,6 +1,10 @@
-# @larkx/cactus
+# @larkxai/cactus
 
-Optional Cactus adapter for `@larkx/agent`. The agent package does not import this package.
+```bash
+npm install @larkxai/cactus
+```
+
+Optional Cactus adapter for `@larkxai/agent`. The agent package does not import this package.
 
 The adapter is written against `cactus-react-native` 1.13.1:
 
@@ -27,4 +31,4 @@ Cactus messages are `system`, `user`, and `assistant` only. Tool results are sen
 
 `cactus-react-native` 1.13.1 depends on `react-native-nitro-modules` `^0.33.9`. It does not run in Expo Go. The M2 workflow demo is not evidence that Expo Go can load Cactus. Use a development build (`expo run:android` or `expo run:ios`). This repository has not executed that build on a device or an emulator.
 
-Import `@larkx/cactus/adapter` in Node tests. That entry does not load the native module. The package root loads it.
+Import `@larkxai/cactus/adapter` in Node tests. That entry does not load the native module. The package root loads it.

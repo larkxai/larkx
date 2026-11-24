@@ -1,4 +1,8 @@
-# @larkx/telemetry
+# @larkxai/telemetry
+
+```bash
+npm install @larkxai/telemetry
+```
 
 Optional exporter that copies committed LarkX journal metadata to LarkX Cloud.
 
@@ -7,13 +11,13 @@ The workflow engine does not import this package. A run finishes, fails, or bloc
 ## API
 
 ```typescript
-import { createNodeEngine, createNodeSqliteDriver } from "@larkx/node";
+import { createNodeEngine, createNodeSqliteDriver } from "@larkxai/node";
 import {
   createCloudTelemetry,
   createSqliteTelemetryStore,
   journalFromEngine,
   nodeInstallationMetadata,
-} from "@larkx/telemetry";
+} from "@larkxai/telemetry";
 import { platform, release } from "node:os";
 
 const engine = createNodeEngine({ database: "/tmp/larkx.db", workflows: [] });
@@ -100,7 +104,7 @@ A corrupt telemetry document is treated as an empty store: a new installation id
 
 ## React Native
 
-Use the same functions with `createExpoSqliteDriver` from `@larkx/react-native` and `runtime: "react-native"`. Hermes does not provide `crypto.subtle` or `crypto.randomUUID`. Pass `createId` and `sha256` from `expo-crypto`. Without `sha256`, the exporter uses its own SHA-256. Without `createId`, it uses `crypto.getRandomValues` when that exists. Flush after startup, after `recover()`, when connectivity returns, and from a Sync control. Call `setActive(false)` when `AppState` is not `active`. Do not assume the timer runs while the operating system has suspended the app.
+Use the same functions with `createExpoSqliteDriver` from `@larkxai/react-native` and `runtime: "react-native"`. Hermes does not provide `crypto.subtle` or `crypto.randomUUID`. Pass `createId` and `sha256` from `expo-crypto`. Without `sha256`, the exporter uses its own SHA-256. Without `createId`, it uses `crypto.getRandomValues` when that exists. Flush after startup, after `recover()`, when connectivity returns, and from a Sync control. Call `setActive(false)` when `AppState` is not `active`. Do not assume the timer runs while the operating system has suspended the app.
 
 Local inference does not read the ingestion key.
 

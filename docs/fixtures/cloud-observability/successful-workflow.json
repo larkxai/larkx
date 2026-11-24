@@ -7,7 +7,7 @@
     "telemetryBatches": "proposed"
   },
   "provenance": {
-    "runtime": "@larkx/core 0.1.0",
+    "runtime": "@larkxai/core 0.1.0",
     "protocolVersion": 1,
     "storageSchemaVersion": 1,
     "timeOrigin": 1700000000000,

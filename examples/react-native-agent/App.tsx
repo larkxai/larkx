@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppState, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { LarkxError, type StepSnapshot } from "@larkx/core";
+import { LarkxError, type StepSnapshot } from "@larkxai/core";
 import {
   bindReactNativeLifecycle,
   openReactNativeEngine,
   useLarkxRun,
   type ReactNativeEngine,
-} from "@larkx/react-native";
+} from "@larkxai/react-native";
 import { deleteDatabaseSync } from "expo-sqlite";
-import type { CloudTelemetry } from "@larkx/telemetry";
+import type { CloudTelemetry } from "@larkxai/telemetry";
 
 import {
   cactusModel,

@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/telemetry",
+  "name": "@larkxai/telemetry",
   "version": "0.1.0",
   "description": "Optional metadata-only exporter from a LarkX journal to LarkX Cloud.",
   "license": "Apache-2.0",
@@ -7,7 +7,8 @@
   "sideEffects": false,
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -20,8 +21,20 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkx/core": "workspace:*",
-    "@larkx/protocol": "workspace:*",
-    "@larkx/storage-sqlite": "workspace:*"
+    "@larkxai/core": "workspace:*",
+    "@larkxai/protocol": "workspace:*",
+    "@larkxai/storage-sqlite": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/larkxai/larkx.git",
+    "directory": "packages/telemetry"
+  },
+  "homepage": "https://github.com/larkxai/larkx/tree/main/packages/telemetry#readme",
+  "bugs": {
+    "url": "https://github.com/larkxai/larkx/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

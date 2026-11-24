@@ -1,6 +1,6 @@
 # State machines
 
-The tables in `@larkx/protocol` are the legal transitions. The reducer in `@larkx/core` is the only writer that applies them. Both storage adapters call that reducer inside a transaction or a mutex. An illegal transition throws `invalid_state_transition` and leaves the previous state in place.
+The tables in `@larkxai/protocol` are the legal transitions. The reducer in `@larkxai/core` is the only writer that applies them. Both storage adapters call that reducer inside a transaction or a mutex. An illegal transition throws `invalid_state_transition` and leaves the previous state in place.
 
 ## Workflow
 

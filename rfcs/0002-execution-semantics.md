@@ -99,7 +99,7 @@ These are unresolved. The current code picks the behavior described above until 
 1. A non-idempotent handler that throws a retryable error is treated as `UNKNOWN_OUTCOME`, because the runtime cannot know whether the effect happened. Callers who know the effect did not happen can pass `retryable: false` only on pure or idempotent steps today. A distinct "definitely did not happen" signal for non-idempotent work is not defined.
 2. `node:sqlite` is experimental. A later adapter may use `better-sqlite3` or another driver behind `SqliteDriver` if the experimental module becomes a problem. The schema should stay put.
 3. A 30 second lease is a poor match for a suspended mobile process. M2 needs a lifecycle story before the default lease is treated as a mobile guarantee. The Node pid file does not exist on React Native.
-4. The `@larkx` npm scope was not confirmed as owned by this project. Packages stay unpublished.
+4. The `@larkxai` npm scope is the publish target. Ownership is confirmed by the first successful publish from the `release` job. Until that publish succeeds, treat the scope as unconfirmed.
 5. `FAILED` runs are terminal. The supported recovery is a new run id. It is open whether a future explicit restart should clone history instead.
 6. Artifact rows do not yet copy bytes. A durable image or model file still needs a lifetime rule so a camera cache URI is not stored as if it were permanent.
 7. Blocked runs whose workflow version is missing can be cancelled. A migration that maps an old history onto a new definition is not specified, and it must not be implicit.

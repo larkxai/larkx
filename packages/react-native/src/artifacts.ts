@@ -1,5 +1,5 @@
-import type { ArtifactRecord, WorkflowStorage } from "@larkx/core";
-import { LarkxError } from "@larkx/protocol";
+import type { ArtifactRecord, WorkflowStorage } from "@larkxai/core";
+import { LarkxError } from "@larkxai/protocol";
 
 const ARTIFACT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 

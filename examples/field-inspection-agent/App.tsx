@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { deleteDatabaseSync } from "expo-sqlite";
 import * as Clipboard from "expo-clipboard";
-import type { ModelAdapter } from "@larkx/agent";
-import type { WorkflowDefinition } from "@larkx/core";
+import type { ModelAdapter } from "@larkxai/agent";
+import type { WorkflowDefinition } from "@larkxai/core";
 import {
   bindReactNativeLifecycle,
   openReactNativeEngine,
   useLarkxRun,
   type ReactNativeEngine,
-} from "@larkx/react-native";
-import type { TelemetryPhase } from "@larkx/telemetry";
+} from "@larkxai/react-native";
+import type { TelemetryPhase } from "@larkxai/telemetry";
 import {
   AppState,
   KeyboardAvoidingView,

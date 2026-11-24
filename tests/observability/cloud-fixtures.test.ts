@@ -6,10 +6,10 @@ import {
   EngineTermination,
   LarkxError,
   type ExecutionEventRecord,
-} from "@larkx/core";
-import { EVENT_TYPES, SENSITIVE_EVENT_KEYS } from "@larkx/protocol";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { createAutoClock } from "@larkx/testing";
+} from "@larkxai/core";
+import { EVENT_TYPES, SENSITIVE_EVENT_KEYS } from "@larkxai/protocol";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { createAutoClock } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 interface FixtureEvent {

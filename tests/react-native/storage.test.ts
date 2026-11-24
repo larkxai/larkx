@@ -3,10 +3,10 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createNodeSqliteDriver } from "@larkx/node";
-import { registerLiveOwner } from "@larkx/react-native/ownership";
-import { createMobileSqliteStorage } from "@larkx/react-native/storage";
-import { storageConformanceCases } from "@larkx/testing";
+import { createNodeSqliteDriver } from "@larkxai/node";
+import { registerLiveOwner } from "@larkxai/react-native/ownership";
+import { createMobileSqliteStorage } from "@larkxai/react-native/storage";
+import { storageConformanceCases } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 // These cases describe Node ownership: an active lease blocks every other owner,

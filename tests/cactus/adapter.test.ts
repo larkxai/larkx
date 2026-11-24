@@ -1,5 +1,5 @@
-import { normalizeCactusCompletion, toCactusMessages } from "@larkx/cactus/adapter";
-import { LarkxError } from "@larkx/core";
+import { normalizeCactusCompletion, toCactusMessages } from "@larkxai/cactus/adapter";
+import { LarkxError } from "@larkxai/core";
 import { describe, expect, it } from "vitest";
 
 const completion = {

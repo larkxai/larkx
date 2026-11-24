@@ -8,25 +8,25 @@ On-device agents need a recovery boundary that works without a remote orchestrat
 
 ## Decision
 
-LarkX is a TypeScript monorepo. The platform-independent core depends on a storage interface and on `@larkx/protocol`. Node and React Native are adapters. Model providers are adapters above the engine, not dependencies of it.
+LarkX is a TypeScript monorepo. The platform-independent core depends on a storage interface and on `@larkxai/protocol`. Node and React Native are adapters. Model providers are adapters above the engine, not dependencies of it.
 
 Three product layers:
 
 | Layer         | Where it lives                                                      | 0.1.0                          |
 | ------------- | ------------------------------------------------------------------- | ------------------------------ |
 | LarkX Runtime | This repository: protocol, core, storage, Node adapter              | Local execution is implemented |
-| LarkX Agents  | Planned `@larkx/agent` on top of the same engine                    | Not implemented                |
+| LarkX Agents  | Planned `@larkxai/agent` on top of the same engine                  | Not implemented                |
 | LarkX Cloud   | Private `larkxai/cloud`, plus a future public reference coordinator | Not implemented                |
 
 ## Package boundaries
 
 ```mermaid
 flowchart LR
-  protocol["@larkx/protocol"]
-  core["@larkx/core"]
-  memory["@larkx/storage-memory"]
-  sqlite["@larkx/storage-sqlite"]
-  node["@larkx/node"]
+  protocol["@larkxai/protocol"]
+  core["@larkxai/core"]
+  memory["@larkxai/storage-memory"]
+  sqlite["@larkxai/storage-sqlite"]
+  node["@larkxai/node"]
   core --> protocol
   memory --> core
   sqlite --> core
@@ -34,11 +34,11 @@ flowchart LR
   node --> core
 ```
 
-`@larkx/protocol` has zero dependencies. It owns identifiers, the protocol version, state machines, effect and data-policy enums, event names, error codes, JSON values, and the remote dispatch request type.
+`@larkxai/protocol` has zero dependencies. It owns identifiers, the protocol version, state machines, effect and data-policy enums, event names, error codes, JSON values, and the remote dispatch request type.
 
-`@larkx/core` owns workflow definitions, the execution loop, replay, the reducer, and the storage interface. It does not open files or sockets.
+`@larkxai/core` owns workflow definitions, the execution loop, replay, the reducer, and the storage interface. It does not open files or sockets.
 
-`@larkx/storage-sqlite` owns SQL, migrations, and transactional persistence. It receives a `SqliteDriver`. `@larkx/node` is the only package in this release that imports Node.
+`@larkxai/storage-sqlite` owns SQL, migrations, and transactional persistence. It receives a `SqliteDriver`. `@larkxai/node` is the only package in this release that imports Node.
 
 ## Three version axes
 

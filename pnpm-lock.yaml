@@ -19,34 +19,34 @@ importers:
       '@eslint/js':
         specifier: 9.39.5
         version: 9.39.5
-      '@larkx/agent':
+      '@larkxai/agent':
         specifier: workspace:*
         version: link:packages/agent
-      '@larkx/cactus':
+      '@larkxai/cactus':
         specifier: workspace:*
         version: link:packages/cactus
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:packages/core
-      '@larkx/node':
+      '@larkxai/node':
         specifier: workspace:*
         version: link:packages/node
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:packages/protocol
-      '@larkx/react-native':
+      '@larkxai/react-native':
         specifier: workspace:*
         version: link:packages/react-native
-      '@larkx/storage-memory':
+      '@larkxai/storage-memory':
         specifier: workspace:*
         version: link:packages/storage-memory
-      '@larkx/storage-sqlite':
+      '@larkxai/storage-sqlite':
         specifier: workspace:*
         version: link:packages/storage-sqlite
-      '@larkx/telemetry':
+      '@larkxai/telemetry':
         specifier: workspace:*
         version: link:packages/telemetry
-      '@larkx/testing':
+      '@larkxai/testing':
         specifier: workspace:*
         version: link:packages/testing
       '@types/node':
@@ -76,22 +76,22 @@ importers:
 
   examples/field-inspection-agent:
     dependencies:
-      '@larkx/agent':
+      '@larkxai/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@larkx/cactus':
+      '@larkxai/cactus':
         specifier: workspace:*
         version: link:../../packages/cactus
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@larkx/react-native':
+      '@larkxai/react-native':
         specifier: workspace:*
         version: link:../../packages/react-native
-      '@larkx/storage-sqlite':
+      '@larkxai/storage-sqlite':
         specifier: workspace:*
         version: link:../../packages/storage-sqlite
-      '@larkx/telemetry':
+      '@larkxai/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
       cactus-react-native:
@@ -137,46 +137,46 @@ importers:
 
   examples/node-agent:
     dependencies:
-      '@larkx/agent':
+      '@larkxai/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@larkx/node':
+      '@larkxai/node':
         specifier: workspace:*
         version: link:../../packages/node
-      '@larkx/telemetry':
+      '@larkxai/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
 
   examples/node-workflow:
     dependencies:
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@larkx/node':
+      '@larkxai/node':
         specifier: workspace:*
         version: link:../../packages/node
 
   examples/react-native-agent:
     dependencies:
-      '@larkx/agent':
+      '@larkxai/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@larkx/cactus':
+      '@larkxai/cactus':
         specifier: workspace:*
         version: link:../../packages/cactus
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@larkx/react-native':
+      '@larkxai/react-native':
         specifier: workspace:*
         version: link:../../packages/react-native
-      '@larkx/storage-sqlite':
+      '@larkxai/storage-sqlite':
         specifier: workspace:*
         version: link:../../packages/storage-sqlite
-      '@larkx/telemetry':
+      '@larkxai/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
       cactus-react-native:
@@ -219,16 +219,16 @@ importers:
 
   examples/react-native-workflow:
     dependencies:
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@larkx/react-native':
+      '@larkxai/react-native':
         specifier: workspace:*
         version: link:../../packages/react-native
-      '@larkx/storage-sqlite':
+      '@larkxai/storage-sqlite':
         specifier: workspace:*
         version: link:../../packages/storage-sqlite
-      '@larkx/telemetry':
+      '@larkxai/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
       expo:
@@ -265,22 +265,22 @@ importers:
 
   packages/agent:
     dependencies:
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../core
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
 
   packages/cactus:
     dependencies:
-      '@larkx/agent':
+      '@larkxai/agent':
         specifier: workspace:*
         version: link:../agent
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../core
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
     devDependencies:
@@ -293,19 +293,19 @@ importers:
 
   packages/core:
     dependencies:
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
 
   packages/node:
     dependencies:
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../core
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@larkx/storage-sqlite':
+      '@larkxai/storage-sqlite':
         specifier: workspace:*
         version: link:../storage-sqlite
 
@@ -313,13 +313,13 @@ importers:
 
   packages/react-native:
     dependencies:
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../core
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@larkx/storage-sqlite':
+      '@larkxai/storage-sqlite':
         specifier: workspace:*
         version: link:../storage-sqlite
     devDependencies:
@@ -350,40 +350,40 @@ importers:
 
   packages/storage-memory:
     dependencies:
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../core
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
 
   packages/storage-sqlite:
     dependencies:
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../core
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
 
   packages/telemetry:
     dependencies:
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../core
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@larkx/storage-sqlite':
+      '@larkxai/storage-sqlite':
         specifier: workspace:*
         version: link:../storage-sqlite
 
   packages/testing:
     dependencies:
-      '@larkx/core':
+      '@larkxai/core':
         specifier: workspace:*
         version: link:../core
-      '@larkx/protocol':
+      '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
 

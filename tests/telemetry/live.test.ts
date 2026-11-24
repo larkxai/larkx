@@ -1,10 +1,10 @@
-import { createEngine, defineWorkflow } from "@larkx/core";
-import { createMemoryStorage } from "@larkx/storage-memory";
+import { createEngine, defineWorkflow } from "@larkxai/core";
+import { createMemoryStorage } from "@larkxai/storage-memory";
 import {
   createCloudTelemetry,
   createMemoryTelemetryStore,
   journalFromEngine,
-} from "@larkx/telemetry";
+} from "@larkxai/telemetry";
 
 import { describe, expect, it } from "vitest";
 

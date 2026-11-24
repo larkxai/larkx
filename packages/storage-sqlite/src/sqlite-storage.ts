@@ -15,7 +15,7 @@ import type {
   StorageCommand,
   WorkflowRunRecord,
   WorkflowStorage,
-} from "@larkx/core";
+} from "@larkxai/core";
 import {
   decodeJson,
   reduceApply,
@@ -24,7 +24,7 @@ import {
   reduceRelease,
   reduceRenew,
   reduceRequestCancel,
-} from "@larkx/core";
+} from "@larkxai/core";
 import {
   LarkxError,
   isAttemptStatus,
@@ -38,7 +38,7 @@ import {
   isStepStatus,
   isWorkflowStatus,
   type JsonObject,
-} from "@larkx/protocol";
+} from "@larkxai/protocol";
 
 import type { SqliteDriver, SqliteValue } from "./driver.js";
 

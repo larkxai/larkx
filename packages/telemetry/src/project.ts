@@ -1,12 +1,12 @@
-import type { JournalDocument } from "@larkx/core";
+import type { JournalDocument } from "@larkxai/core";
 import {
   EVENT_TYPES,
   SENSITIVE_EVENT_KEYS,
   type EventType,
   type JsonObject,
   type JsonValue,
-} from "@larkx/protocol";
-import { STORAGE_SCHEMA_VERSION } from "@larkx/storage-sqlite";
+} from "@larkxai/protocol";
+import { STORAGE_SCHEMA_VERSION } from "@larkxai/storage-sqlite";
 
 export const TELEMETRY_VERSION = 1 as const;
 /** Reported as source.sdkVersion when the caller does not pass one. */

@@ -1,4 +1,4 @@
-import { LarkxError } from "@larkx/protocol";
+import { LarkxError } from "@larkxai/protocol";
 
 import type { SqliteDriver } from "./driver.js";
 

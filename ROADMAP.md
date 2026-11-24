@@ -7,8 +7,8 @@ LarkX is built in milestones. A milestone is done when the behavior exists in th
 Done in this tree.
 
 - pnpm workspace, Turborepo, TypeScript strict mode, ESLint, Prettier, Vitest, Changesets.
-- GitHub Actions runs install, build, typecheck, lint, format, and tests. It does not publish packages.
-- `@larkx/protocol` version 1: identifiers, states, transitions, effects, events, errors, payload rules, dispatch types, capabilities.
+- GitHub Actions runs install, build, typecheck, lint, format, and tests. The `release` job then versions and publishes the public packages.
+- `@larkxai/protocol` version 1: identifiers, states, transitions, effects, events, errors, payload rules, dispatch types, capabilities.
 - Architecture and execution RFCs, plus the architecture notes under `docs/`.
 
 ## M1 — Local durable execution
@@ -33,7 +33,7 @@ Not part of M1, even though some types exist:
 
 Implemented in this tree. Automated tests run on Node.js. An emulator or device run is still required before calling the mobile path validated.
 
-- `@larkx/react-native` opens Expo SQLite through the existing `SqliteDriver` interface and the existing schema.
+- `@larkxai/react-native` opens Expo SQLite through the existing `SqliteDriver` interface and the existing schema.
 - `openReactNativeEngine` plus `recover()` on launch and when the app becomes active.
 - Exclusive ownership: a suspended runtime stays the owner after the lease expires. A new JavaScript realm may take the run because the previous owner is no longer registered.
 - Local artifact copy into application storage before the step result is returned.
@@ -45,11 +45,11 @@ The adapter does not promise background execution after the operating system has
 
 Implemented in this tree. Automated tests run on Node.js with a scripted model, including `SIGKILL` against SQLite. The Cactus screen has not been run on an emulator or a device in this change.
 
-- `@larkx/agent`: `ModelAdapter`, `defineTool`, and `createAgent` on the existing engine.
+- `@larkxai/agent`: `ModelAdapter`, `defineTool`, and `createAgent` on the existing engine.
 - One durable step per model decision and per tool call. No second log.
 - Replay of committed decisions and tool results.
 - A deterministic scripted model for tests and for the React Native test mode.
-- `@larkx/cactus` against `cactus-react-native` 1.13.1. Download and `init` stay outside the agent run.
+- `@larkxai/cactus` against `cactus-react-native` 1.13.1. Download and `init` stay outside the agent run.
 - `examples/node-agent` and `examples/react-native-agent`.
 
 Not part of M3:
@@ -61,7 +61,7 @@ Not part of M3:
 
 ## M4 — Cloud observability
 
-`@larkx/telemetry` is the optional client. `larkxai/cloud` remains the private ingestion side. The boundary is [docs/cloud-observability-spec.md](docs/cloud-observability-spec.md) and [docs/architecture/telemetry.md](docs/architecture/telemetry.md). Cloud does not claim ownership, retry steps, or write local workflow state.
+`@larkxai/telemetry` is the optional client. `larkxai/cloud` remains the private ingestion side. The boundary is [docs/cloud-observability-spec.md](docs/cloud-observability-spec.md) and [docs/architecture/telemetry.md](docs/architecture/telemetry.md). Cloud does not claim ownership, retry steps, or write local workflow state.
 
 - Metadata-only export of the existing journal. Agent name and version are the workflow name and version. Step keys distinguish model and tool steps. Attempt timestamps are the durations.
 - Prompts, model responses, tool arguments, tool outputs, and artifacts stay on the device. The exporter uses a payload allowlist.
@@ -74,13 +74,13 @@ Not part of M3:
 Not started.
 
 - More examples, clearer errors, and subscription samples.
-- A documented release process once the `@larkx` npm scope is confirmed and credentials exist.
+- Release process: Changesets publishes `@larkxai/*` from `main` with the organization `NPM_TOKEN`. Android Maven and iOS Swift packages are separate repositories. The first successful npm publish confirms the `@larkxai` scope.
 - Further model providers after their SDKs are checked. Ollama is the first candidate for Node. Nothing here implies RunAnywhere or LangGraph.
 - Performance measurements. `benchmarks/` currently records that no numbers have been taken.
 
 ## M6 — Hybrid execution
 
-Not started. The dispatch types in `@larkx/protocol` are the contract to implement, not a working transport.
+Not started. The dispatch types in `@larkxai/protocol` are the contract to implement, not a working transport.
 
 - Persist the dispatch intent before sending it.
 - Stable operation ids across network retries.

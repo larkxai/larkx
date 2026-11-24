@@ -1,4 +1,8 @@
-# @larkx/testing
+# @larkxai/testing
+
+```bash
+npm install @larkxai/testing
+```
 
 Test utilities for LarkX adapters.
 

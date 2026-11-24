@@ -19,7 +19,7 @@ describe("package boundaries", () => {
       for (const file of walk(root)) {
         const source = readFileSync(file, "utf8");
         if (
-          /from\s+["']node:|from\s+["']react-native|from\s+["']fs["']|from\s+["']path["']|from\s+["']cactus-react-native|from\s+["']@larkx\/cactus|from\s+["']expo/.test(
+          /from\s+["']node:|from\s+["']react-native|from\s+["']fs["']|from\s+["']path["']|from\s+["']cactus-react-native|from\s+["']@larkxai\/cactus|from\s+["']expo/.test(
             source,
           )
         ) {
