@@ -1,6 +1,6 @@
 # Proposal: opt-in input and output tracing
 
-Status: proposal only. `@larkx/telemetry` version 1 stays `metadata-only`. This document does not change the exporter.
+Status: proposal only. `@larkxai/telemetry` version 1 stays `metadata-only`. This document does not change the exporter.
 
 ## Why
 

@@ -1,7 +1,7 @@
-import { createAgent, createScriptedModel, defineTool, type ModelResponse } from "@larkx/agent";
-import { createEngine, defineWorkflow, type JournalDocument } from "@larkx/core";
-import { createNodeSqliteDriver } from "@larkx/node";
-import { createMemoryStorage } from "@larkx/storage-memory";
+import { createAgent, createScriptedModel, defineTool, type ModelResponse } from "@larkxai/agent";
+import { createEngine, defineWorkflow, type JournalDocument } from "@larkxai/core";
+import { createNodeSqliteDriver } from "@larkxai/node";
+import { createMemoryStorage } from "@larkxai/storage-memory";
 import {
   allowEventPayload,
   createCloudTelemetry,
@@ -12,7 +12,7 @@ import {
   reactNativeInstallationMetadata,
   sanitizeInstallationMetadata,
   type TelemetryFetch,
-} from "@larkx/telemetry";
+} from "@larkxai/telemetry";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

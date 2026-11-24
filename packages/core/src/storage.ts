@@ -1,4 +1,4 @@
-import type { WorkflowStatus } from "@larkx/protocol";
+import type { WorkflowStatus } from "@larkxai/protocol";
 
 import type { ApplyOutcome, ClaimOutcome, CreateRunInput, StorageCommand } from "./reduce.js";
 import type {

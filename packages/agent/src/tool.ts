@@ -1,5 +1,5 @@
-import { LarkxError, type RetryPolicy } from "@larkx/core";
-import type { EffectType, JsonValue } from "@larkx/protocol";
+import { LarkxError, type RetryPolicy } from "@larkxai/core";
+import type { EffectType, JsonValue } from "@larkxai/protocol";
 
 import type { JsonSchema } from "./schema.js";
 

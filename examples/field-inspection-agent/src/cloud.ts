@@ -1,5 +1,5 @@
-import type { ReactNativeEngine } from "@larkx/react-native";
-import { createExpoSqliteDriver } from "@larkx/react-native";
+import type { ReactNativeEngine } from "@larkxai/react-native";
+import { createExpoSqliteDriver } from "@larkxai/react-native";
 import * as Crypto from "expo-crypto";
 import {
   createCloudTelemetry,
@@ -8,9 +8,9 @@ import {
   reactNativeInstallationMetadata,
   type CloudTelemetry,
   type TelemetryPhase,
-} from "@larkx/telemetry";
+} from "@larkxai/telemetry";
 import { Platform } from "react-native";
-import type { SqliteDriver } from "@larkx/storage-sqlite";
+import type { SqliteDriver } from "@larkxai/storage-sqlite";
 
 export const TELEMETRY_DATABASE = "larkx-inspection-telemetry.db";
 

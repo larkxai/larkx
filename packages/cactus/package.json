@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/cactus",
+  "name": "@larkxai/cactus",
   "version": "0.1.0",
   "description": "Cactus model adapter for LarkX agents. Optional. The agent loop does not import this package.",
   "license": "Apache-2.0",
@@ -36,9 +36,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkx/agent": "workspace:*",
-    "@larkx/core": "workspace:*",
-    "@larkx/protocol": "workspace:*"
+    "@larkxai/agent": "workspace:*",
+    "@larkxai/core": "workspace:*",
+    "@larkxai/protocol": "workspace:*"
   },
   "peerDependencies": {
     "cactus-react-native": "1.13.1",

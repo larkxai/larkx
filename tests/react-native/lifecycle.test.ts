@@ -1,7 +1,7 @@
-import { createEngine, defineWorkflow } from "@larkx/core";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { createAutoClock } from "@larkx/testing";
-import { bindMobileLifecycle, type AppStateSource } from "@larkx/react-native/lifecycle";
+import { createEngine, defineWorkflow } from "@larkxai/core";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { createAutoClock } from "@larkxai/testing";
+import { bindMobileLifecycle, type AppStateSource } from "@larkxai/react-native/lifecycle";
 import { describe, expect, it } from "vitest";
 
 describe("mobile lifecycle", () => {

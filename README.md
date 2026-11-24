@@ -6,7 +6,7 @@ Build AI agents that recover from interruptions, continue offline, and coordinat
 
 Cactus runs your models. LarkX runs your workflows.
 
-**Status:** early implementation. Milestones M0 and M1 are covered by automated tests, including real Node.js process termination. M2 adds the React Native adapter. M3 adds durable agents and a Cactus adapter on that same engine. M4 adds an optional metadata-only exporter to LarkX Cloud. Public packages release to the `@larkx` scope from `main`. The agent tests run on Node.js. The Cactus screen has not been executed on an emulator or a device in CI. Hybrid dispatch is specified and not implemented. The Cloud service stays in a private repository.
+**Status:** early implementation. Milestones M0 and M1 are covered by automated tests, including real Node.js process termination. M2 adds the React Native adapter. M3 adds durable agents and a Cactus adapter on that same engine. M4 adds an optional metadata-only exporter to LarkX Cloud. Public packages release to the `@larkxai` scope from `main`. The agent tests run on Node.js. The Cactus screen has not been executed on an emulator or a device in CI. Hybrid dispatch is specified and not implemented. The Cloud service stays in a private repository.
 
 Website: [https://larkx.ai](https://larkx.ai)
 
@@ -14,21 +14,21 @@ License: Apache-2.0
 
 ## Project status
 
-| Area                                                   | State                                                                               |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| Execution protocol (`@larkx/protocol`)                 | Implemented, version 1                                                              |
-| Local workflow runtime (`@larkx/core`)                 | Implemented                                                                         |
-| Memory storage                                         | Implemented. Does not survive process exit                                          |
-| SQLite storage and Node adapter                        | Implemented. Node's built-in `node:sqlite` is experimental                          |
-| Replay, crash recovery, effect policies, ownership     | Implemented and tested on Node.js                                                   |
-| Durable agents, tools, model adapters (`@larkx/agent`) | Implemented on the existing engine. Scripted model in CI. No device run for Cactus  |
-| React Native adapter                                   | Implemented on the shared engine. Device and emulator runs are not in CI            |
-| Cactus adapter (`@larkx/cactus`)                       | Implemented against cactus-react-native 1.13.1. Native dev build only. Not run here |
-| Optional Cloud telemetry (`@larkx/telemetry`)          | Implemented. Metadata only. Execution does not wait on it. Not a device run         |
-| HTTP transport, worker SDK, reference coordinator      | Not implemented                                                                     |
-| Managed LarkX Cloud                                    | Ingestion lives in `larkxai/cloud`. This tree only sends the batch                  |
+| Area                                                     | State                                                                               |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Execution protocol (`@larkxai/protocol`)                 | Implemented, version 1                                                              |
+| Local workflow runtime (`@larkxai/core`)                 | Implemented                                                                         |
+| Memory storage                                           | Implemented. Does not survive process exit                                          |
+| SQLite storage and Node adapter                          | Implemented. Node's built-in `node:sqlite` is experimental                          |
+| Replay, crash recovery, effect policies, ownership       | Implemented and tested on Node.js                                                   |
+| Durable agents, tools, model adapters (`@larkxai/agent`) | Implemented on the existing engine. Scripted model in CI. No device run for Cactus  |
+| React Native adapter                                     | Implemented on the shared engine. Device and emulator runs are not in CI            |
+| Cactus adapter (`@larkxai/cactus`)                       | Implemented against cactus-react-native 1.13.1. Native dev build only. Not run here |
+| Optional Cloud telemetry (`@larkxai/telemetry`)          | Implemented. Metadata only. Execution does not wait on it. Not a device run         |
+| HTTP transport, worker SDK, reference coordinator        | Not implemented                                                                     |
+| Managed LarkX Cloud                                      | Ingestion lives in `larkxai/cloud`. This tree only sends the batch                  |
 
-The unscoped npm name `larkx` belongs to an unrelated project. Publishable packages use the `@larkx` scope. Examples are not published. The first release needs the npm organization and the `NPM_TOKEN` secret described in [Contributing](CONTRIBUTING.md).
+The unscoped npm name `larkx` belongs to an unrelated project. Publishable packages use the `@larkxai` scope. Examples are not published. Android and iOS ship from their own repositories. The release uses the organization secret `NPM_TOKEN`, described in [Contributing](CONTRIBUTING.md).
 
 ## Problem
 
@@ -55,10 +55,10 @@ LarkX makes the step the recovery boundary. It does not restore a JavaScript sta
 Node.js 22.13 or newer. These commands work after the first npm release. Until that release, build the packages from this repository.
 
 ```bash
-npm install @larkx/core @larkx/node
+npm install @larkxai/core @larkxai/node
 ```
 
-`@larkx/agent` is the durable agent loop. `@larkx/react-native` is the Expo adapter. `@larkx/cactus` and `@larkx/telemetry` are optional. Packages in `examples/` are demos and are not on npm.
+`@larkxai/agent` is the durable agent loop. `@larkxai/react-native` is the Expo adapter and is published from this repository until `larkxai/react-native` exists. `@larkxai/cactus` and `@larkxai/telemetry` are optional. Android and iOS are separate repositories. Packages in `examples/` are demos and are not on npm.
 
 ## Quick start
 
@@ -69,11 +69,11 @@ Requirements: Node.js 22.13 or newer, and pnpm 10.33.4 (`corepack enable` is eno
 ```bash
 pnpm install
 pnpm build
-pnpm --filter @larkx/example-node-workflow start -- \
+pnpm --filter @larkxai/example-node-workflow start -- \
   --database /tmp/larkx-demo.db \
   --log /tmp/larkx-demo.log \
   --crash-after-commit normalize
-pnpm --filter @larkx/example-node-workflow start -- \
+pnpm --filter @larkxai/example-node-workflow start -- \
   --database /tmp/larkx-demo.db \
   --log /tmp/larkx-demo.log
 ```
@@ -87,8 +87,8 @@ The example README describes the other crash points, including a non-idempotent 
 This is the API that exists today. Steps in this release must use `execution: "local"`.
 
 ```typescript
-import { defineWorkflow } from "@larkx/core";
-import { createNodeEngine } from "@larkx/node";
+import { defineWorkflow } from "@larkxai/core";
+import { createNodeEngine } from "@larkxai/node";
 
 const countLetters = defineWorkflow({
   name: "count-letters",
@@ -151,15 +151,15 @@ await ctx.step("plan", {
 flowchart TB
   subgraph implemented [Implemented in this repository]
     app[Application workflow]
-    core["@larkx/core"]
-    protocol["@larkx/protocol"]
-    memory["@larkx/storage-memory"]
-    sqlite["@larkx/storage-sqlite"]
-    node["@larkx/node"]
-    rn["@larkx/react-native"]
-    agent["@larkx/agent"]
-    cactus["@larkx/cactus"]
-    telemetry["@larkx/telemetry"]
+    core["@larkxai/core"]
+    protocol["@larkxai/protocol"]
+    memory["@larkxai/storage-memory"]
+    sqlite["@larkxai/storage-sqlite"]
+    node["@larkxai/node"]
+    rn["@larkxai/react-native"]
+    agent["@larkxai/agent"]
+    cactus["@larkxai/cactus"]
+    telemetry["@larkxai/telemetry"]
     app --> core
     agent --> core
     core --> protocol
@@ -174,8 +174,8 @@ flowchart TB
   end
 
   subgraph later [Specified, not in this repository yet]
-    transport["@larkx/transport-http"]
-    worker["@larkx/worker"]
+    transport["@larkxai/transport-http"]
+    worker["@larkxai/worker"]
     coordinator[Reference coordinator]
     cloud[LarkX Cloud private repo]
   end
@@ -236,13 +236,13 @@ Not claimed:
 
 ## Integration support
 
-`@larkx/agent` is the agent API. `@larkx/cactus` is the first model adapter, against Cactus 1.13.1, and it is optional. The agent tests use a scripted model. Ollama is a possible later Node adapter. RunAnywhere and LangGraph are not scheduled.
+`@larkxai/agent` is the agent API. `@larkxai/cactus` is the first model adapter, against Cactus 1.13.1, and it is optional. The agent tests use a scripted model. Ollama is a possible later Node adapter. RunAnywhere and LangGraph are not scheduled.
 
 ## Comparison
 
 LarkX is in the same family of problems as Temporal, DBOS, Restate, and Golem: durable steps, replay, and explicit side-effect boundaries. Those systems are built around a server or a service the worker can reach. LarkX's local runtime owns the workflow and must make progress with no network.
 
-LangGraph and similar agent frameworks orchestrate model and tool loops. They are not a substitute for a crash-safe step log on a device. `@larkx/agent` sits on this engine and does not keep a second log.
+LangGraph and similar agent frameworks orchestrate model and tool loops. They are not a substitute for a crash-safe step log on a device. `@larkxai/agent` sits on this engine and does not keep a second log.
 
 This table is positioning. It is not a benchmark, and it does not describe production adoption.
 

@@ -4,10 +4,10 @@ import {
   EngineTermination,
   LarkxError,
   type AnyWorkflow,
-} from "@larkx/core";
-import { PROTOCOL_VERSION } from "@larkx/protocol";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { createAutoClock } from "@larkx/testing";
+} from "@larkxai/core";
+import { PROTOCOL_VERSION } from "@larkxai/protocol";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { createAutoClock } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 function testEngine(

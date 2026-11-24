@@ -17,8 +17,8 @@ import {
   type StorageCommand,
   type WorkflowRunRecord,
   type WorkflowStorage,
-} from "@larkx/core";
-import { LarkxError, isRecoverableWorkflowStatus, isWorkflowStatus } from "@larkx/protocol";
+} from "@larkxai/core";
+import { LarkxError, isRecoverableWorkflowStatus, isWorkflowStatus } from "@larkxai/protocol";
 
 export interface MemoryStorageOptions {
   /** Test hook. Production callers leave this unset. A true result may steal a live lease. */

@@ -1,5 +1,5 @@
-import { encodeJson, LarkxError } from "@larkx/core";
-import type { JsonValue } from "@larkx/protocol";
+import { encodeJson, LarkxError } from "@larkxai/core";
+import type { JsonValue } from "@larkxai/protocol";
 
 export interface JsonSchema {
   readonly type: "object" | "string" | "number" | "integer" | "boolean" | "array" | "null";

@@ -8,7 +8,7 @@ import type {
   SelectedTarget,
   StepStatus,
   WorkflowStatus,
-} from "@larkx/protocol";
+} from "@larkxai/protocol";
 
 export interface OwnershipFence {
   readonly ownerId: string;

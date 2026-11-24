@@ -11,11 +11,11 @@ import {
 } from "node:fs";
 import { dirname } from "node:path";
 
-import { createEngine, defineWorkflow } from "@larkx/core";
-import { createNodeSqliteDriver } from "@larkx/node";
-import { importDurableArtifact, type DurableFileSystem } from "@larkx/react-native/artifacts";
-import { registerLiveOwner } from "@larkx/react-native/ownership";
-import { createMobileSqliteStorage } from "@larkx/react-native/storage";
+import { createEngine, defineWorkflow } from "@larkxai/core";
+import { createNodeSqliteDriver } from "@larkxai/node";
+import { importDurableArtifact, type DurableFileSystem } from "@larkxai/react-native/artifacts";
+import { registerLiveOwner } from "@larkxai/react-native/ownership";
+import { createMobileSqliteStorage } from "@larkxai/react-native/storage";
 
 interface Args {
   database: string;

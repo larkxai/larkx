@@ -2,9 +2,9 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createNodeSqliteStorage } from "@larkx/node";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { storageConformanceCases } from "@larkx/testing";
+import { createNodeSqliteStorage } from "@larkxai/node";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { storageConformanceCases } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 const cases = storageConformanceCases();
@@ -24,8 +24,8 @@ describe("memory storage conformance", () => {
   it("steals when the storage says the current owner is gone", async () => {
     let steal = false;
     const storage = createMemoryStorage({ mayStealFrom: () => steal });
-    const { encodeJson } = await import("@larkx/core");
-    const { PROTOCOL_VERSION } = await import("@larkx/protocol");
+    const { encodeJson } = await import("@larkxai/core");
+    const { PROTOCOL_VERSION } = await import("@larkxai/protocol");
     await storage.createRun({
       runId: "steal-me",
       workflowName: "room-analysis",

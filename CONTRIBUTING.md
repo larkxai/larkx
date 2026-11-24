@@ -23,25 +23,25 @@ pnpm test
 Prefer a small change that preserves a guarantee over a wide feature. Read [AGENTS.md](AGENTS.md) before editing the runtime.
 
 - Do not add an empty package and describe it as available.
-- Do not import Node, React Native, or a database driver from `@larkx/protocol`, `@larkx/core`, `@larkx/storage-memory`, or `@larkx/storage-sqlite`.
+- Do not import Node, React Native, or a database driver from `@larkxai/protocol`, `@larkxai/core`, `@larkxai/storage-memory`, or `@larkxai/storage-sqlite`.
 - Do not add a model provider dependency to the core.
-- State-machine changes start in `@larkx/protocol` and must be applied by the shared reducer.
+- State-machine changes start in `@larkxai/protocol` and must be applied by the shared reducer.
 - Crash-recovery changes need a `SIGKILL` test when they affect what survives process death.
 
 ## Packages
 
-| Package                 | Role                                     |
-| ----------------------- | ---------------------------------------- |
-| `@larkx/protocol`       | Contracts. No runtime dependency         |
-| `@larkx/core`           | Durable workflow engine                  |
-| `@larkx/storage-memory` | In-memory adapter for tests              |
-| `@larkx/storage-sqlite` | Schema, migrations, shared SQL behavior  |
-| `@larkx/node`           | Node driver and `createNodeEngine`       |
-| `@larkx/react-native`   | Expo SQLite adapter and mobile lifecycle |
-| `@larkx/agent`          | Durable agent loop                       |
-| `@larkx/cactus`         | Optional Cactus model adapter            |
-| `@larkx/telemetry`      | Optional metadata-only Cloud exporter    |
-| `@larkx/testing`        | Clocks and conformance helpers           |
+| Package                   | Role                                     |
+| ------------------------- | ---------------------------------------- |
+| `@larkxai/protocol`       | Contracts. No runtime dependency         |
+| `@larkxai/core`           | Durable workflow engine                  |
+| `@larkxai/storage-memory` | In-memory adapter for tests              |
+| `@larkxai/storage-sqlite` | Schema, migrations, shared SQL behavior  |
+| `@larkxai/node`           | Node driver and `createNodeEngine`       |
+| `@larkxai/react-native`   | Expo SQLite adapter and mobile lifecycle |
+| `@larkxai/agent`          | Durable agent loop                       |
+| `@larkxai/cactus`         | Optional Cactus model adapter            |
+| `@larkxai/telemetry`      | Optional metadata-only Cloud exporter    |
+| `@larkxai/testing`        | Clocks and conformance helpers           |
 
 Packages under `packages/` are the public SDK. The root package and everything in `examples/` are private.
 
@@ -54,18 +54,30 @@ Packages under `packages/` are the public SDK. The root package and everything i
 
 ## Publishing
 
-Library packages publish together to the public npm registry as `@larkx/*`. Changesets is configured with `access: public` and a fixed version group. Add a changeset for a user-visible package change. A push to `main` that still has changesets opens a "Version packages" pull request. Merging that pull request publishes every library package at the new version.
+Library packages in this repository publish together to npm as `@larkxai/*`. Changesets is configured with `access: public` and a fixed version group. Add a changeset for a user-visible package change. A push to `main` that still has changesets opens a "Version packages" pull request. Merging that pull request publishes every library package at the new version.
 
 The job is `release` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It runs only after `check` succeeds on `main`. It builds `dist`, then runs `changeset publish`. npm provenance is requested from GitHub Actions. The root package stays private because the unscoped name `larkx` belongs to an unrelated project.
 
-Before the first publish:
+The same npm scope is shared across the LarkX repositories. One token covers every current and future `@larkxai` package. Android and iOS do not use it.
 
-1. On npm, create the `larkx` organization with the account that should own the scope, or confirm that account already owns `@larkx`.
-2. Create an access token that can publish new and existing packages in that scope. Automation cannot complete a 2FA prompt, so the token has to be allowed to publish without an interactive prompt.
-3. Store the token as the Actions secret `NPM_TOKEN` in `larkxai/larkx`. Do not commit it.
-4. In the repository's Actions settings, allow GitHub Actions to create pull requests. The version pull request needs that.
+| Repository             | Distribution          | Package                                                                 |
+| ---------------------- | --------------------- | ----------------------------------------------------------------------- |
+| `larkxai/larkx`        | npm                   | `@larkxai/core`, `@larkxai/node`, and the other packages in `packages/` |
+| `larkxai/react-native` | npm                   | `@larkxai/react-native`                                                 |
+| `larkxai/android`      | Maven Central         | `ai.larkx:core`                                                         |
+| `larkxai/ios`          | Swift Package Manager | `LarkX`                                                                 |
 
-`pnpm version-packages` is what the workflow runs to bump versions, refresh the lockfile, and copy the `@larkx/telemetry` version into `SDK_VERSION`. `pnpm release` builds and publishes. Use those from a laptop only to recover a failed release.
+`@larkxai/react-native` still lives in this repository, so this release publishes it. When `larkxai/react-native` is created, remove it from this repository's publish set before that repository publishes the same name. `larkxai/android` and `larkxai/ios` are not in this tree.
+
+Store the token once as a GitHub organization secret:
+
+1. On npm, the organization that owns the scope is `larkxai`. A token from that organization can publish every `@larkxai` package. The token has to be allowed to publish without an interactive 2FA prompt.
+2. In the `larkxai` GitHub organization, create an Actions secret named `NPM_TOKEN`. Grant it to `larkx` and, when that repository exists, `react-native`. A repository secret with the same name also works. Do not commit the token, and do not create a separate token per repository.
+3. Allow GitHub Actions to create pull requests. The version pull request needs that.
+
+The release job already has `id-token: write`. After the packages exist, npm trusted publishing can replace `NPM_TOKEN`. Leave the token in place until each package has a trusted publisher for this workflow.
+
+`pnpm version-packages` is what the workflow runs to bump versions, refresh the lockfile, and copy the `@larkxai/telemetry` version into `SDK_VERSION`. `pnpm release` builds and publishes. Use those from a laptop only to recover a failed release.
 
 ## Code style
 

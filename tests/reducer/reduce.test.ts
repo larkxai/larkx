@@ -4,8 +4,8 @@ import {
   reduceClaim,
   reduceCreateRun,
   reduceRequestCancel,
-} from "@larkx/core";
-import { LarkxError, PROTOCOL_VERSION } from "@larkx/protocol";
+} from "@larkxai/core";
+import { LarkxError, PROTOCOL_VERSION } from "@larkxai/protocol";
 import { describe, expect, it } from "vitest";
 
 function created() {

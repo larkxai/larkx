@@ -1,4 +1,4 @@
-import type { SqliteDriver } from "@larkx/storage-sqlite";
+import type { SqliteDriver } from "@larkxai/storage-sqlite";
 
 export interface PendingBatch {
   readonly batchId: string;

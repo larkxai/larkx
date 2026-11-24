@@ -1,6 +1,6 @@
-import { createEngine, defineWorkflow } from "@larkx/core";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { createFakeClock } from "@larkx/testing";
+import { createEngine, defineWorkflow } from "@larkxai/core";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { createFakeClock } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 describe("mobile execution ownership", () => {

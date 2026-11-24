@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/protocol",
+  "name": "@larkxai/protocol",
   "version": "0.1.0",
   "description": "Language-independent execution contracts for LarkX.",
   "license": "Apache-2.0",

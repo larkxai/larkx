@@ -1,4 +1,4 @@
-import { defineWorkflow } from "@larkx/core";
+import { defineWorkflow } from "@larkxai/core";
 
 export interface LetterInput {
   readonly text: string;

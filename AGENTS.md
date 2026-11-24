@@ -8,13 +8,13 @@ LarkX is an independent durable execution engine for on-device and hybrid AI age
 
 ## What is implemented
 
-- `@larkx/protocol` — version 1 contracts, state machines, errors, dispatch types.
-- `@larkx/core` — local workflow runtime: registration, steps, replay, recovery, ownership, history.
-- `@larkx/storage-memory` — process-local storage.
-- `@larkx/storage-sqlite` — schema version 1 and a driver-agnostic SQLite adapter.
-- `@larkx/node` — `node:sqlite` driver, pid-file ownership reclaim, `createNodeEngine`.
-- `@larkx/react-native` — Expo SQLite driver, mobile ownership, lifecycle binding, local artifact copy, and a display hook.
-- `@larkx/testing` — fake clocks and storage conformance cases.
+- `@larkxai/protocol` — version 1 contracts, state machines, errors, dispatch types.
+- `@larkxai/core` — local workflow runtime: registration, steps, replay, recovery, ownership, history.
+- `@larkxai/storage-memory` — process-local storage.
+- `@larkxai/storage-sqlite` — schema version 1 and a driver-agnostic SQLite adapter.
+- `@larkxai/node` — `node:sqlite` driver, pid-file ownership reclaim, `createNodeEngine`.
+- `@larkxai/react-native` — Expo SQLite driver, mobile ownership, lifecycle binding, local artifact copy, and a display hook.
+- `@larkxai/testing` — fake clocks and storage conformance cases.
 - `examples/node-workflow` — the Node process-death demo.
 - `examples/react-native-workflow` — the Expo demo. Node tests do not prove it ran on a device.
 
@@ -22,9 +22,9 @@ Do not add a package that only re-exports types or throws "not implemented" and 
 
 ## Invariants
 
-- `@larkx/protocol`, `@larkx/core`, `@larkx/storage-memory`, and `@larkx/storage-sqlite` must not import `node:*`, `react-native`, `fs`, `path`, or a database driver. ESLint and `tests/boundaries/imports.test.ts` enforce this.
+- `@larkxai/protocol`, `@larkxai/core`, `@larkxai/storage-memory`, and `@larkxai/storage-sqlite` must not import `node:*`, `react-native`, `fs`, `path`, or a database driver. ESLint and `tests/boundaries/imports.test.ts` enforce this.
 - The core must not depend on a model SDK or agent framework.
-- Memory and SQLite storage both persist by running the reducer in `@larkx/core`. Do not special-case transitions in one adapter.
+- Memory and SQLite storage both persist by running the reducer in `@larkxai/core`. Do not special-case transitions in one adapter.
 - `workflow_runs` and `workflow_steps` are authoritative. `workflow_events` is an append-only journal in the same transaction. Replay does not fold events back into state.
 - Completed step handlers do not run again. Step keys are caller-supplied, not source locations.
 - `pure` and `idempotent` interrupted steps may retry. `idempotent` retries keep the same `operationId`. `non-idempotent` interrupted steps become `UNKNOWN_OUTCOME` and the run becomes `BLOCKED`.
@@ -58,11 +58,11 @@ Node.js must be 22.13 or newer. The lockfile is pinned to pnpm 10.33.4.
 
 ## Changes that need extra care
 
-- State-machine edits belong in `@larkx/protocol` and the reducer together. Update the transition tests.
+- State-machine edits belong in `@larkxai/protocol` and the reducer together. Update the transition tests.
 - JSON encoding is canonical and rejects `undefined`, `NaN`, infinities, `bigint`, functions, symbols, and class instances. `undefined` step results are stored as JSON `null`.
 - Ownership commits carry an epoch fence. A stolen or expired claim must not let the old owner write.
 - New execution targets need a durable outbox, dedupe on a stable operation id, and tests for lost acknowledgements. Do not add an in-memory HTTP server as the only proof of remote recovery.
 
 ## Publishing
 
-The `release` job in `.github/workflows/ci.yml` publishes public packages from `main` after `check`. Changesets `access` is `public`. Do not commit a registry token. Do not publish the root package or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. `@larkx/node` requires Node.js 22.13 or newer. The telemetry exporter's default `sdkVersion` is the `@larkx/telemetry` package version; `pnpm version-packages` keeps that constant aligned.
+The `release` job in `.github/workflows/ci.yml` publishes public packages from `main` after `check`. The npm scope is `@larkxai`. Changesets `access` is `public`. Do not commit a registry token. Do not publish the root package or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. One `NPM_TOKEN` covers the whole `@larkxai` scope. Android (`ai.larkx` on Maven Central) and iOS (Swift package `LarkX`) are separate repositories and do not use that token. `@larkxai/react-native` publishes from this repository until `larkxai/react-native` exists; do not publish that name from both. `@larkxai/node` requires Node.js 22.13 or newer. The telemetry exporter's default `sdkVersion` is the `@larkxai/telemetry` package version; `pnpm version-packages` keeps that constant aligned.

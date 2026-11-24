@@ -1,10 +1,10 @@
-import { createNodeEngine, createNodeSqliteDriver } from "@larkx/node";
-import { defineWorkflow } from "@larkx/core";
+import { createNodeEngine, createNodeSqliteDriver } from "@larkxai/node";
+import { defineWorkflow } from "@larkxai/core";
 import {
   createCloudTelemetry,
   createSqliteTelemetryStore,
   journalFromEngine,
-} from "@larkx/telemetry";
+} from "@larkxai/telemetry";
 import { appendFileSync } from "node:fs";
 
 const database = argument("--database");

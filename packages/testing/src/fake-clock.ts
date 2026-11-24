@@ -1,5 +1,5 @@
-import type { Clock } from "@larkx/core";
-import { LarkxError } from "@larkx/protocol";
+import type { Clock } from "@larkxai/core";
+import { LarkxError } from "@larkxai/protocol";
 
 export interface FakeClock extends Clock {
   /** Moves the clock forward and resolves sleeps whose deadline has been reached. */

@@ -1,6 +1,6 @@
 # Mobile lifecycle
 
-`@larkx/react-native` is the Expo adapter for the existing engine. It does not contain a second workflow runner or a second durability log. Workflow functions, replay, effect classes, and the SQLite schema are the ones from `@larkx/core` and `@larkx/storage-sqlite`.
+`@larkxai/react-native` is the Expo adapter for the existing engine. It does not contain a second workflow runner or a second durability log. Workflow functions, replay, effect classes, and the SQLite schema are the ones from `@larkxai/core` and `@larkxai/storage-sqlite`.
 
 ## SQLite driver
 
@@ -49,13 +49,13 @@ bindReactNativeLifecycle(engine);
 await engine.recover();
 ```
 
-`reactNativeSqliteStorage({ database: "larkx.db" })` is the storage object for `createEngine` from `@larkx/core`. The caller registers the owner with `registerLiveOwner` before starting work. `openReactNativeEngine` does that itself.
+`reactNativeSqliteStorage({ database: "larkx.db" })` is the storage object for `createEngine` from `@larkxai/core`. The caller registers the owner with `registerLiveOwner` before starting work. `openReactNativeEngine` does that itself.
 
 `useLarkxRun` only reads snapshots and events. Unmounting it does not release the run.
 
 Connectivity comes from `expo-network` when the app becomes active. Offline does not fail a local workflow. Coming online calls `recover()` again. The local runtime still does not enter `WAITING`.
 
-An optional `@larkx/telemetry` exporter can flush after that recovery, when connectivity is reported online, and from an explicit Sync control. `setActive(false)` clears its foreground timer when `AppState` is not `active`. The timer is not a background scheduler. Suspension still freezes JavaScript timers. Local inference does not read the ingestion key.
+An optional `@larkxai/telemetry` exporter can flush after that recovery, when connectivity is reported online, and from an explicit Sync control. `setActive(false)` clears its foreground timer when `AppState` is not `active`. The timer is not a background scheduler. Suspension still freezes JavaScript timers. Local inference does not read the ingestion key.
 
 ## Artifacts
 

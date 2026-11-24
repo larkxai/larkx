@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/storage-memory",
+  "name": "@larkxai/storage-memory",
   "version": "0.1.0",
   "description": "In-memory LarkX storage adapter. State does not survive process termination.",
   "license": "Apache-2.0",
@@ -21,8 +21,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkx/core": "workspace:*",
-    "@larkx/protocol": "workspace:*"
+    "@larkxai/core": "workspace:*",
+    "@larkxai/protocol": "workspace:*"
   },
   "repository": {
     "type": "git",

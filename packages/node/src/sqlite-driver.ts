@@ -1,11 +1,11 @@
 import { DatabaseSync } from "node:sqlite";
 
-import type { SqliteDriver, SqliteValue } from "@larkx/storage-sqlite";
+import type { SqliteDriver, SqliteValue } from "@larkxai/storage-sqlite";
 
 /**
  * Node's built-in SQLite driver. The API is still marked experimental by Node 22,
  * which prints a warning on first import. The storage behavior lives in
- * `@larkx/storage-sqlite` so this driver can be replaced without changing it.
+ * `@larkxai/storage-sqlite` so this driver can be replaced without changing it.
  */
 export function createNodeSqliteDriver(filename: string): SqliteDriver {
   const db = new DatabaseSync(filename);

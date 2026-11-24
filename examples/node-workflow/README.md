@@ -15,20 +15,20 @@ The steps are:
 From the repository root, after `pnpm install` and `pnpm build`:
 
 ```bash
-pnpm --filter @larkx/example-node-workflow start -- --database /tmp/larkx-demo.db --log /tmp/larkx-demo.log
+pnpm --filter @larkxai/example-node-workflow start -- --database /tmp/larkx-demo.db --log /tmp/larkx-demo.log
 ```
 
 Kill the process after the first committed step, then start it again with the same database and log:
 
 ```bash
-pnpm --filter @larkx/example-node-workflow start -- \
+pnpm --filter @larkxai/example-node-workflow start -- \
   --database /tmp/larkx-demo.db \
   --log /tmp/larkx-demo.log \
   --crash-after-commit normalize
 ```
 
 ```bash
-pnpm --filter @larkx/example-node-workflow start -- --database /tmp/larkx-demo.db --log /tmp/larkx-demo.log
+pnpm --filter @larkxai/example-node-workflow start -- --database /tmp/larkx-demo.db --log /tmp/larkx-demo.log
 ```
 
 The second invocation log contains `normalize` once. `count` and `summarize` run on the second process.

@@ -1,5 +1,5 @@
-import { LarkxError } from "@larkx/core";
-import { defineTool, type Tool, type ToolContext } from "@larkx/agent";
+import { LarkxError } from "@larkxai/core";
+import { defineTool, type Tool, type ToolContext } from "@larkxai/agent";
 
 import { BUDGET, ROOM, searchCatalog } from "./catalog";
 

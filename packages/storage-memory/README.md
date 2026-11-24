@@ -1,7 +1,7 @@
-# @larkx/storage-memory
+# @larkxai/storage-memory
 
 ```bash
-npm install @larkx/storage-memory
+npm install @larkxai/storage-memory
 ```
 
 In-memory implementation of the LarkX storage contract.

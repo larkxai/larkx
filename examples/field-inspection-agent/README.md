@@ -19,7 +19,7 @@ Requirements: Node.js 22.13 or newer, pnpm 10.33.4, and Xcode or the Android SDK
 
 ```bash
 pnpm install
-pnpm --filter @larkx/telemetry build
+pnpm --filter @larkxai/telemetry build
 cd examples/field-inspection-agent
 pnpm exec expo run:ios --device
 ```

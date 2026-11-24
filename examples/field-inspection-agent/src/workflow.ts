@@ -1,5 +1,10 @@
-import type { ModelAdapter } from "@larkx/agent";
-import { defineWorkflow, LarkxError, type RetryPolicy, type WorkflowDefinition } from "@larkx/core";
+import type { ModelAdapter } from "@larkxai/agent";
+import {
+  defineWorkflow,
+  LarkxError,
+  type RetryPolicy,
+  type WorkflowDefinition,
+} from "@larkxai/core";
 
 import {
   CLASSIFY_SYSTEM,

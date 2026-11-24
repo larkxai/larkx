@@ -1,4 +1,4 @@
-import type { ModelAdapter, ModelResponse } from "@larkx/agent";
+import type { ModelAdapter, ModelResponse } from "@larkxai/agent";
 
 import { severityFor } from "./rules.js";
 import {

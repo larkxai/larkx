@@ -1,7 +1,7 @@
-# @larkx/agent
+# @larkxai/agent
 
 ```bash
-npm install @larkx/agent
+npm install @larkxai/agent
 ```
 
 Durable agents on the existing LarkX workflow engine.
@@ -11,8 +11,8 @@ This package does not import React Native, Expo, Node.js, or a model provider. A
 ## Minimal agent
 
 ```typescript
-import { createAgent, createScriptedModel, defineTool } from "@larkx/agent";
-import { createNodeEngine } from "@larkx/node";
+import { createAgent, createScriptedModel, defineTool } from "@larkxai/agent";
+import { createNodeEngine } from "@larkxai/node";
 
 const savePlan = defineTool({
   name: "save_plan",
@@ -63,4 +63,4 @@ The stored model decision is the message, the finish reason, the tool calls, and
 
 ## Providers
 
-Implement `ModelAdapter.complete`. Declare `toolCalling`, `structuredOutput`, and `cancellation`. The loop only calls `complete`. Cactus lives in `@larkx/cactus`. Tests use `createScriptedModel`.
+Implement `ModelAdapter.complete`. Declare `toolCalling`, `structuredOutput`, and `cancellation`. The loop only calls `complete`. Cactus lives in `@larkxai/cactus`. Tests use `createScriptedModel`.

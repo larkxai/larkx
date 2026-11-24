@@ -1,6 +1,6 @@
 # Model adapter
 
-`ModelAdapter` lives in `@larkx/agent`. `@larkx/cactus` is the Cactus implementation. The engine does not import either package.
+`ModelAdapter` lives in `@larkxai/agent`. `@larkxai/cactus` is the Cactus implementation. The engine does not import either package.
 
 ## Role
 
@@ -35,7 +35,7 @@ A committed model step is replayed. The adapter is not called again for that ste
 
 ## Providers
 
-Cactus is implemented in `@larkx/cactus` against `cactus-react-native` 1.13.1. The calls are `download`, `init`, `complete`, `stop`, and `getModelName`. See that package README for the options that keep inference local. Ollama is not wired. RunAnywhere and LangGraph are not scheduled.
+Cactus is implemented in `@larkxai/cactus` against `cactus-react-native` 1.13.1. The calls are `download`, `init`, `complete`, `stop`, and `getModelName`. See that package README for the options that keep inference local. Ollama is not wired. RunAnywhere and LangGraph are not scheduled.
 
 `createScriptedModel` is the deterministic adapter. Recovery tests use it so they do not need a device or a downloaded model.
 

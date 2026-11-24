@@ -1,4 +1,4 @@
-import { LarkxError } from "@larkx/protocol";
+import { LarkxError } from "@larkxai/protocol";
 
 type TimerHost = typeof globalThis & {
   setTimeout: (callback: () => void, ms: number) => unknown;

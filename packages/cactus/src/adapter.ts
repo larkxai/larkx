@@ -4,9 +4,9 @@ import type {
   ModelRequest,
   ModelResponse,
   ToolCall,
-} from "@larkx/agent";
-import { decodeJson, encodeJson, LarkxError } from "@larkx/core";
-import { isJsonObject, type JsonObject, type JsonValue } from "@larkx/protocol";
+} from "@larkxai/agent";
+import { decodeJson, encodeJson, LarkxError } from "@larkxai/core";
+import { isJsonObject, type JsonObject, type JsonValue } from "@larkxai/protocol";
 
 import type { CactusCompletion, CactusLanguageModel, CactusMessage, CactusTool } from "./types.js";
 

@@ -1,10 +1,10 @@
-import type { WorkflowStorage } from "@larkx/core";
+import type { WorkflowStorage } from "@larkxai/core";
 import {
   createSqliteStorage,
   migrate,
   type SqliteDriver,
   type SqliteStorageOptions,
-} from "@larkx/storage-sqlite";
+} from "@larkxai/storage-sqlite";
 
 import { isLiveOwner } from "./ownership.js";
 
@@ -14,7 +14,7 @@ export interface MobileSqliteStorageOptions {
 
 /**
  * SQLite storage with mobile ownership.
- * The schema and reducer are the shared ones in `@larkx/storage-sqlite`.
+ * The schema and reducer are the shared ones in `@larkxai/storage-sqlite`.
  * A different owner can take a run only when the current owner is not registered
  * in this JavaScript realm. An expired lease is not enough.
  */

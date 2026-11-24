@@ -7,7 +7,7 @@ import {
   type JsonObject,
   type SelectedTarget,
   type WorkflowStatus,
-} from "@larkx/protocol";
+} from "@larkxai/protocol";
 
 import { decodeJson } from "./json.js";
 import type { AttemptRecord, ExecutionEventRecord, ExecutionState, StepRecord } from "./records.js";

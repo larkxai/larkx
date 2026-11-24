@@ -4,7 +4,7 @@ import {
   validateWorkflowVersion,
   type DataPolicy,
   type EffectType,
-} from "@larkx/protocol";
+} from "@larkxai/protocol";
 
 import type { RetryPolicy } from "./retry.js";
 

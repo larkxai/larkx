@@ -11,7 +11,7 @@ import {
   stepTransitionEntries,
   validateRemoteDispatchRequest,
   workflowTransitionEntries,
-} from "@larkx/protocol";
+} from "@larkxai/protocol";
 import { describe, expect, it } from "vitest";
 
 describe("protocol transitions", () => {

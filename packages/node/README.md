@@ -1,7 +1,7 @@
-# @larkx/node
+# @larkxai/node
 
 ```bash
-npm install @larkx/node
+npm install @larkxai/node
 ```
 
 Node.js adapter for the LarkX runtime.

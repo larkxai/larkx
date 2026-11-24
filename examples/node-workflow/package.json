@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/example-node-workflow",
+  "name": "@larkxai/example-node-workflow",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
-    "@larkx/core": "workspace:*",
-    "@larkx/node": "workspace:*"
+    "@larkxai/core": "workspace:*",
+    "@larkxai/node": "workspace:*"
   }
 }

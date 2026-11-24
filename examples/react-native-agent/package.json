@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/example-react-native-agent",
+  "name": "@larkxai/example-react-native-agent",
   "version": "0.1.0",
   "private": true,
   "main": "index.ts",
@@ -9,12 +9,12 @@
     "start": "expo start"
   },
   "dependencies": {
-    "@larkx/agent": "workspace:*",
-    "@larkx/cactus": "workspace:*",
-    "@larkx/core": "workspace:*",
-    "@larkx/react-native": "workspace:*",
-    "@larkx/storage-sqlite": "workspace:*",
-    "@larkx/telemetry": "workspace:*",
+    "@larkxai/agent": "workspace:*",
+    "@larkxai/cactus": "workspace:*",
+    "@larkxai/core": "workspace:*",
+    "@larkxai/react-native": "workspace:*",
+    "@larkxai/storage-sqlite": "workspace:*",
+    "@larkxai/telemetry": "workspace:*",
     "cactus-react-native": "1.13.1",
     "expo": "58.0.26",
     "expo-crypto": "58.0.8",

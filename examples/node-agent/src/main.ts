@@ -1,6 +1,6 @@
-import { createAgent, createScriptedModel, defineTool } from "@larkx/agent";
-import type { ModelResponse } from "@larkx/agent";
-import { createNodeEngine, createNodeSqliteDriver } from "@larkx/node";
+import { createAgent, createScriptedModel, defineTool } from "@larkxai/agent";
+import type { ModelResponse } from "@larkxai/agent";
+import { createNodeEngine, createNodeSqliteDriver } from "@larkxai/node";
 import {
   createCloudTelemetry,
   createMemoryTelemetryStore,
@@ -8,7 +8,7 @@ import {
   journalFromEngine,
   nodeInstallationMetadata,
   type CloudTelemetry,
-} from "@larkx/telemetry";
+} from "@larkxai/telemetry";
 import { platform, release } from "node:os";
 
 const room = defineTool({

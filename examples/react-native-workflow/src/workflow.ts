@@ -1,4 +1,4 @@
-import { defineWorkflow, type WorkflowDefinition } from "@larkx/core";
+import { defineWorkflow, type WorkflowDefinition } from "@larkxai/core";
 
 export interface NotesInput {
   readonly text: string;

@@ -44,12 +44,12 @@ describe("npm publish layout", () => {
   };
   const license = readFileSync(join(root, "LICENSE"));
 
-  it("publishes library packages publicly from the @larkx scope", () => {
+  it("publishes library packages publicly from the @larkxai scope", () => {
     expect(libraries.length).toBeGreaterThan(0);
     for (const { dir, pkg } of libraries) {
       const directory = relative(root, dir);
       expect(pkg.private).not.toBe(true);
-      expect(pkg.name).toBe(`@larkx/${basename(directory)}`);
+      expect(pkg.name).toBe(`@larkxai/${basename(directory)}`);
       expect(pkg.license).toBe("Apache-2.0");
       expect(pkg.publishConfig).toEqual({ access: "public" });
       expect(pkg.files).toEqual(expect.arrayContaining(["dist", "README.md", "LICENSE"]));
@@ -63,11 +63,11 @@ describe("npm publish layout", () => {
       expect(readFileSync(join(dir, "LICENSE"))).toEqual(license);
       for (const dependencies of [pkg.dependencies, pkg.devDependencies, pkg.peerDependencies]) {
         for (const [name, range] of Object.entries(dependencies ?? {})) {
-          if (name.startsWith("@larkx/")) expect(range).toBe("workspace:*");
+          if (name.startsWith("@larkxai/")) expect(range).toBe("workspace:*");
         }
       }
     }
-    expect(libraries.find(({ pkg }) => pkg.name === "@larkx/node")?.pkg.engines).toEqual({
+    expect(libraries.find(({ pkg }) => pkg.name === "@larkxai/node")?.pkg.engines).toEqual({
       node: ">=22.13.0",
     });
   });
@@ -77,7 +77,7 @@ describe("npm publish layout", () => {
     expect(rootPackage.name).toBe("larkx");
     expect(rootPackage.private).toBe(true);
     for (const [name, range] of Object.entries(rootPackage.devDependencies ?? {})) {
-      if (name.startsWith("@larkx/")) expect(range).toBe("workspace:*");
+      if (name.startsWith("@larkxai/")) expect(range).toBe("workspace:*");
     }
     expect(examples.length).toBeGreaterThan(0);
     for (const pkg of examples) {
@@ -91,8 +91,8 @@ describe("npm publish layout", () => {
   });
 
   it("keeps the telemetry sdk version aligned with the package", () => {
-    const telemetry = libraries.find(({ pkg }) => pkg.name === "@larkx/telemetry");
-    if (!telemetry) throw new Error("missing @larkx/telemetry");
+    const telemetry = libraries.find(({ pkg }) => pkg.name === "@larkxai/telemetry");
+    if (!telemetry) throw new Error("missing @larkxai/telemetry");
     const source = readFileSync(join(root, "packages/telemetry/src/project.ts"), "utf8");
     expect(source).toContain(`export const SDK_VERSION = "${telemetry.pkg.version}";`);
   });

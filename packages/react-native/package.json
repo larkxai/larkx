@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/react-native",
+  "name": "@larkxai/react-native",
   "version": "0.1.0",
   "description": "React Native adapter for the LarkX durable workflow engine.",
   "license": "Apache-2.0",
@@ -37,9 +37,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkx/core": "workspace:*",
-    "@larkx/protocol": "workspace:*",
-    "@larkx/storage-sqlite": "workspace:*"
+    "@larkxai/core": "workspace:*",
+    "@larkxai/protocol": "workspace:*",
+    "@larkxai/storage-sqlite": "workspace:*"
   },
   "peerDependencies": {
     "expo": "*",

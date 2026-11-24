@@ -1,6 +1,6 @@
-import { createEngine, defineWorkflow } from "@larkx/core";
-import { createMemoryStorage } from "@larkx/storage-memory";
-import { createAutoClock } from "@larkx/testing";
+import { createEngine, defineWorkflow } from "@larkxai/core";
+import { createMemoryStorage } from "@larkxai/storage-memory";
+import { createAutoClock } from "@larkxai/testing";
 import { describe, expect, it } from "vitest";
 
 describe("execution ownership", () => {

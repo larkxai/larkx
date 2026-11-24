@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/agent",
+  "name": "@larkxai/agent",
   "version": "0.1.0",
   "description": "Durable agent loop on the LarkX workflow engine. No model provider and no platform SDK.",
   "license": "Apache-2.0",
@@ -21,8 +21,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkx/core": "workspace:*",
-    "@larkx/protocol": "workspace:*"
+    "@larkxai/core": "workspace:*",
+    "@larkxai/protocol": "workspace:*"
   },
   "repository": {
     "type": "git",

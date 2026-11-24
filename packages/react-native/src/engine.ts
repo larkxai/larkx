@@ -4,7 +4,7 @@ import {
   type ArtifactRecord,
   type Engine,
   type EngineOptions,
-} from "@larkx/core";
+} from "@larkxai/core";
 
 import { importDurableArtifact } from "./artifacts.js";
 import { createExpoSqliteDriver } from "./expo-sqlite-driver.js";

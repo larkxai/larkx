@@ -1,14 +1,14 @@
 # Cloud observability specification
 
-Status: `@larkx/telemetry` implements the client side of this contract. Ingestion, accounts, and the dashboard stay in the private `larkxai/cloud` repository. This repository does not contain the Cloud API.
+Status: `@larkxai/telemetry` implements the client side of this contract. Ingestion, accounts, and the dashboard stay in the private `larkxai/cloud` repository. This repository does not contain the Cloud API.
 
 M2 is the React Native adapter on the shared local engine. The automated checks for that adapter run on Node.js. They do not include an emulator or a device run. The journals below come from that shared engine: the Node example used by `tests/crash-recovery/crash.test.ts`, the same recovery rules covered by `tests/react-native/restart.test.ts`, and the effect-policy cases in `tests/engine/effects.test.ts`.
 
-Cloud is a passive observer. The local runtime remains the source of truth. Cloud must not start or resume a run, claim or renew ownership, retry a step, reconcile an unknown outcome, cancel a run, write a step result, or send a command back to a device. Hybrid execution and remote workers are out of scope. The dispatch types in `@larkx/protocol` are a contract for a later milestone. This runtime does not send them.
+Cloud is a passive observer. The local runtime remains the source of truth. Cloud must not start or resume a run, claim or renew ownership, retry a step, reconcile an unknown outcome, cancel a run, write a step result, or send a command back to a device. Hybrid execution and remote workers are out of scope. The dispatch types in `@larkxai/protocol` are a contract for a later milestone. This runtime does not send them.
 
 ## How to read this document
 
-Sections 1 through 8 describe the local runtime. Sections 9 through 13 are the export contract. `@larkx/telemetry` sends that body. `larkxai/cloud` accepts it. Section 14 points at JSON fixtures: the `journal` object is a projection of stored rows, and each `telemetryBatches[].body` is the request body. Section 15 separates local execution from Cloud.
+Sections 1 through 8 describe the local runtime. Sections 9 through 13 are the export contract. `@larkxai/telemetry` sends that body. `larkxai/cloud` accepts it. Section 14 points at JSON fixtures: the `journal` object is a projection of stored rows, and each `telemetryBatches[].body` is the request body. Section 15 separates local execution from Cloud.
 
 Fixture `purpose` values (`full-resync`, `committed-before-recovery`, `checkpoint-suffix`) are labels for the files. They are not fields of the request body.
 
@@ -20,12 +20,12 @@ LarkX 0.1.0 is a local durable execution engine. A workflow is a TypeScript func
 flowchart TB
   subgraph implemented [Implemented in this repository]
     app[Application workflow]
-    protocol["@larkx/protocol 0.1.0"]
-    core["@larkx/core 0.1.0"]
-    memory["@larkx/storage-memory"]
-    sqlite["@larkx/storage-sqlite"]
-    node["@larkx/node"]
-    rn["@larkx/react-native"]
+    protocol["@larkxai/protocol 0.1.0"]
+    core["@larkxai/core 0.1.0"]
+    memory["@larkxai/storage-memory"]
+    sqlite["@larkxai/storage-sqlite"]
+    node["@larkxai/node"]
+    rn["@larkxai/react-native"]
     app --> core
     core --> protocol
     core --> memory
@@ -37,7 +37,7 @@ flowchart TB
   end
 
   subgraph client [Optional client in this repository]
-    exporter["@larkx/telemetry"]
+    exporter["@larkxai/telemetry"]
   end
 
   subgraph service [Not in this repository]
@@ -48,20 +48,20 @@ flowchart TB
   sqlite -.-> exporter
 ```
 
-| Package                 | Role today                                                                                                                                                                          |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@larkx/protocol`       | Version 1 contracts: states, transitions, effects, event names, error codes, identifiers, JSON values, the unused remote-dispatch request shape, and `RuntimeCapabilities`. No I/O. |
-| `@larkx/core`           | Registration, steps, replay, recovery, ownership fences, the reducer, and the event journal. No model SDK.                                                                          |
-| `@larkx/storage-memory` | The same reducer behind a mutex. `kind` is `"memory"`. Data dies with the process.                                                                                                  |
-| `@larkx/storage-sqlite` | Schema version 1 and the shared SQL adapter. Drivers are injected. `kind` is `"sqlite"`.                                                                                            |
-| `@larkx/node`           | `node:sqlite`, pid-file reclaim, `createNodeEngine`.                                                                                                                                |
-| `@larkx/react-native`   | Expo SQLite through the same driver interface and schema, exclusive ownership, lifecycle binding, local artifact copy, `openReactNativeEngine`.                                     |
-| `@larkx/agent`          | `createAgent` and `defineTool` on the same engine. One local step per model decision and per tool call. No provider SDK.                                                            |
-| `@larkx/cactus`         | Optional `cactus-react-native` 1.13.1 adapter. Not imported by the agent loop or the engine.                                                                                        |
-| `@larkx/testing`        | Fake clocks and storage conformance cases.                                                                                                                                          |
-| `@larkx/telemetry`      | Optional metadata-only exporter. Reads `readJournal`. Posts `/v1/telemetry/batches`. Does not execute workflows.                                                                    |
+| Package                   | Role today                                                                                                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@larkxai/protocol`       | Version 1 contracts: states, transitions, effects, event names, error codes, identifiers, JSON values, the unused remote-dispatch request shape, and `RuntimeCapabilities`. No I/O. |
+| `@larkxai/core`           | Registration, steps, replay, recovery, ownership fences, the reducer, and the event journal. No model SDK.                                                                          |
+| `@larkxai/storage-memory` | The same reducer behind a mutex. `kind` is `"memory"`. Data dies with the process.                                                                                                  |
+| `@larkxai/storage-sqlite` | Schema version 1 and the shared SQL adapter. Drivers are injected. `kind` is `"sqlite"`.                                                                                            |
+| `@larkxai/node`           | `node:sqlite`, pid-file reclaim, `createNodeEngine`.                                                                                                                                |
+| `@larkxai/react-native`   | Expo SQLite through the same driver interface and schema, exclusive ownership, lifecycle binding, local artifact copy, `openReactNativeEngine`.                                     |
+| `@larkxai/agent`          | `createAgent` and `defineTool` on the same engine. One local step per model decision and per tool call. No provider SDK.                                                            |
+| `@larkxai/cactus`         | Optional `cactus-react-native` 1.13.1 adapter. Not imported by the agent loop or the engine.                                                                                        |
+| `@larkxai/testing`        | Fake clocks and storage conformance cases.                                                                                                                                          |
+| `@larkxai/telemetry`      | Optional metadata-only exporter. Reads `readJournal`. Posts `/v1/telemetry/batches`. Does not execute workflows.                                                                    |
 
-`@larkx/protocol`, `@larkx/core`, `@larkx/storage-memory`, and `@larkx/storage-sqlite` do not import `node:*`, `react-native`, `fs`, `path`, or a database driver.
+`@larkxai/protocol`, `@larkxai/core`, `@larkxai/storage-memory`, and `@larkxai/storage-sqlite` do not import `node:*`, `react-native`, `fs`, `path`, or a database driver.
 
 There is one durability log. `workflow_runs` and `workflow_steps` are authoritative. `workflow_events` is an append-only journal written in the same transaction as the state change. Replay does not fold events back into state. The `outbox` table exists for a future dispatcher. The engine does not write it. M2 artifact rows store metadata for a local file copy. They are not execution events, and they are not uploaded.
 
@@ -90,7 +90,7 @@ Three numbers are independent. A mismatch in one does not imply a mismatch in th
 | Execution protocol  | `PROTOCOL_VERSION`       | `1`            | States, transitions, event names, and error codes. A stored run executes only when the stored protocol version equals the runtime. `checkProtocolCompatibility` has no compatible-range rule yet. |
 | Storage schema      | `STORAGE_SCHEMA_VERSION` | `1`            | SQLite migrations. A newer database than the library refuses to open.                                                                                                                             |
 | Workflow definition | `workflow.version`       | Integer `>= 1` | The version registered with `defineWorkflow`. A missing version blocks the run. It is not replayed on a different version.                                                                        |
-| Telemetry export    | `TELEMETRY_VERSION`      | `1`            | Batch format in section 9. Independent of the execution protocol and the storage schema. `@larkx/telemetry` exports the constant.                                                                 |
+| Telemetry export    | `TELEMETRY_VERSION`      | `1`            | Batch format in section 9. Independent of the execution protocol and the storage schema. `@larkxai/telemetry` exports the constant.                                                               |
 
 `protocolVersion` is stored on `workflow_runs`. It is copied into `WORKFLOW_CREATED`. It is not a per-event field.
 
@@ -128,7 +128,7 @@ A `cloud` or `hybrid` step under `device-only` throws `permission_denied` before
 
 ### Errors
 
-`ERROR_CODES` in `@larkx/protocol` is the closed set. `isRetryableErrorCode` is false for every code except `transient_execution_failure`, `network_unavailable`, and `step_timeout`. A `LarkxError` may override `retryable`. A thrown `Error` that is not a `LarkxError` is stored as `transient_execution_failure` with `retryable: true`. Anything else becomes that same code with the message `"Unknown execution error."`
+`ERROR_CODES` in `@larkxai/protocol` is the closed set. `isRetryableErrorCode` is false for every code except `transient_execution_failure`, `network_unavailable`, and `step_timeout`. A `LarkxError` may override `retryable`. A thrown `Error` that is not a `LarkxError` is stored as `transient_execution_failure` with `retryable: true`. Anything else becomes that same code with the message `"Unknown execution error."`
 
 Stored errors are JSON objects `{ code, message, retryable }` on the run, step, or attempt row. The journal carries the code, not the message.
 
@@ -142,7 +142,7 @@ Stored errors are JSON objects `{ code, message, retryable }` on the run, step, 
 
 ## 3. Workflow and step state machines
 
-The tables in `@larkx/protocol` are the legal transitions. `reduceApply` in `@larkx/core` is the only writer that applies them. Both storage adapters call that reducer inside a transaction or a mutex. An illegal transition throws `invalid_state_transition` and leaves the previous state in place.
+The tables in `@larkxai/protocol` are the legal transitions. `reduceApply` in `@larkxai/core` is the only writer that applies them. Both storage adapters call that reducer inside a transaction or a mutex. An illegal transition throws `invalid_state_transition` and leaves the previous state in place.
 
 ### Workflow
 
@@ -470,7 +470,7 @@ Sequences 8 and 9 are the reconcile command. Sequences 10 and 11 are the separat
 
 ## 8. SQLite journal structure and event ordering
 
-Schema version 1 is created by `migrate` in `@larkx/storage-sqlite`. Node and React Native both call it. There is no React Native-specific table. Foreign keys are on. The driver sets `busy_timeout` to 5000 and `synchronous` to `NORMAL`, and sets WAL when the library accepts it. Writes use `BEGIN IMMEDIATE`. A failed command rolls back.
+Schema version 1 is created by `migrate` in `@larkxai/storage-sqlite`. Node and React Native both call it. There is no React Native-specific table. Foreign keys are on. The driver sets `busy_timeout` to 5000 and `synchronous` to `NORMAL`, and sets WAL when the library accepts it. Writes use `BEGIN IMMEDIATE`. A failed command rolls back.
 
 | Table               | Role                                                                                |
 | ------------------- | ----------------------------------------------------------------------------------- |
@@ -519,7 +519,7 @@ Memory storage runs the same reducer and the same prefix check. It has no SQL. C
 
 ## 9. Versioned telemetry export protocol
 
-`@larkx/telemetry` sends this document. `larkxai/cloud` stores it. Adding a field later must not change reducer behavior, and it needs a new `telemetryVersion` after both repositories agree.
+`@larkxai/telemetry` sends this document. `larkxai/cloud` stores it. Adding a field later must not change reducer behavior, and it needs a new `telemetryVersion` after both repositories agree.
 
 `telemetryVersion` is `1`. It is not `PROTOCOL_VERSION` and not `STORAGE_SCHEMA_VERSION`. A batch carries all three so a consumer can refuse a journal it does not understand.
 
@@ -566,7 +566,7 @@ Event objects match `ExecutionEventRecord`: `eventId`, `runId`, `sequence`, `typ
 
 ## 10. Batch ingestion API
 
-No route exists in this repository. `larkxai/cloud` implements it. `@larkx/telemetry` calls it.
+No route exists in this repository. `larkxai/cloud` implements it. `@larkxai/telemetry` calls it.
 
 ```http
 POST /v1/telemetry/batches
@@ -677,7 +677,7 @@ An agent run is a normal workflow run:
 
 Provider id and model id are fields on the model step output (`provider`, `model`). That output also contains the assistant text and the tool-call arguments. Metadata-only export still excludes step output. Do not upload user messages, model responses, tool arguments, tool outputs, or artifacts by default. They are not in the journal today, and M3 does not put them there.
 
-The exporter does not read `provider` or `model` out of that output, and it does not promote tool names into the batch. A compatible extension would add a new non-sensitive field in `@larkx/protocol`, bump `telemetryVersion`, and land in `larkxai/cloud` before this client sends it. That extension is not part of version 1.
+The exporter does not read `provider` or `model` out of that output, and it does not promote tool names into the batch. A compatible extension would add a new non-sensitive field in `@larkxai/protocol`, bump `telemetryVersion`, and land in `larkxai/cloud` before this client sends it. That extension is not part of version 1.
 
 Unchanged rules:
 
@@ -828,6 +828,6 @@ The operation id in `STEP_STARTED` above is the fixture id for `summarize` in th
 | Network              | None for execution. React Native recovery does not wait for a network                     | Optional exporter sends batches in the foreground, after recovery, and on an explicit flush      |
 | Dispatch and workers | Types only. `remoteDispatch: false`                                                       | Not part of this contract                                                                        |
 | Agents               | Ordinary workflow runs. No `AGENT_*` events                                               | Same journal. No separate agent protocol. Provider and model id stay on the device               |
-| API                  | None in this repository                                                                   | `POST /v1/telemetry/batches` in `larkxai/cloud`, called by `@larkx/telemetry`                    |
+| API                  | None in this repository                                                                   | `POST /v1/telemetry/batches` in `larkxai/cloud`, called by `@larkxai/telemetry`                  |
 
 A Cloud implementation can be developed against the five fixtures without a device. Those fixtures are not a claim that the Expo example has been run on an emulator or a phone. They are the journal the shared M2 engine writes.

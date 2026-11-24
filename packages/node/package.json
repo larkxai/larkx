@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/node",
+  "name": "@larkxai/node",
   "version": "0.1.0",
   "description": "Node.js adapter for LarkX. SQLite driver, owner reclaim, and engine setup.",
   "license": "Apache-2.0",
@@ -21,9 +21,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkx/core": "workspace:*",
-    "@larkx/protocol": "workspace:*",
-    "@larkx/storage-sqlite": "workspace:*"
+    "@larkxai/core": "workspace:*",
+    "@larkxai/protocol": "workspace:*",
+    "@larkxai/storage-sqlite": "workspace:*"
   },
   "repository": {
     "type": "git",

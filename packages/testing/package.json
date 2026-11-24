@@ -1,5 +1,5 @@
 {
-  "name": "@larkx/testing",
+  "name": "@larkxai/testing",
   "version": "0.1.0",
   "description": "Deterministic clocks and storage conformance cases for LarkX adapters.",
   "license": "Apache-2.0",
@@ -21,8 +21,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkx/core": "workspace:*",
-    "@larkx/protocol": "workspace:*"
+    "@larkxai/core": "workspace:*",
+    "@larkxai/protocol": "workspace:*"
   },
   "repository": {
     "type": "git",

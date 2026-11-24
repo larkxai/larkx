@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { createEngine, type Engine, type EngineOptions, type WorkflowStorage } from "@larkx/core";
-import { createSqliteStorage, migrate } from "@larkx/storage-sqlite";
+import { createEngine, type Engine, type EngineOptions, type WorkflowStorage } from "@larkxai/core";
+import { createSqliteStorage, migrate } from "@larkxai/storage-sqlite";
 
 import { ownerProcessIsDead, readOwnerFile, writeOwnerFile } from "./owner-file.js";
 import { createNodeSqliteDriver } from "./sqlite-driver.js";

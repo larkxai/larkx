@@ -1,4 +1,4 @@
-import { LarkxError, isJsonObject, type JsonObject, type JsonValue } from "@larkx/protocol";
+import { LarkxError, isJsonObject, type JsonObject, type JsonValue } from "@larkxai/protocol";
 
 function jsonError(message: string): LarkxError {
   return new LarkxError({

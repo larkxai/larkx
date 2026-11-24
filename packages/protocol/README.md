@@ -1,7 +1,7 @@
-# @larkx/protocol
+# @larkxai/protocol
 
 ```bash
-npm install @larkx/protocol
+npm install @larkxai/protocol
 ```
 
 Language-independent execution contracts for LarkX.

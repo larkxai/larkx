@@ -1,4 +1,4 @@
-import type { Engine, JournalDocument } from "@larkx/core";
+import type { Engine, JournalDocument } from "@larkxai/core";
 
 import { sanitizeInstallationMetadata, type InstallationMetadata } from "./metadata.js";
 import {

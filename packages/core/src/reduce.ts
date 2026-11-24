@@ -6,7 +6,7 @@ import {
   isTerminalWorkflowStatus,
   type StepStatus,
   type WorkflowStatus,
-} from "@larkx/protocol";
+} from "@larkxai/protocol";
 
 import type {
   AttemptRecord,

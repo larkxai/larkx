@@ -8,8 +8,8 @@ import {
   type RunHandle,
   type StartRequest,
   type WorkflowDefinition,
-} from "@larkx/core";
-import { isJsonObject, type JsonValue } from "@larkx/protocol";
+} from "@larkxai/core";
+import { isJsonObject, type JsonValue } from "@larkxai/protocol";
 
 import {
   isFinishReason,

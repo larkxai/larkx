@@ -1,5 +1,5 @@
-import { createEngine, defineWorkflow } from "@larkx/core";
-import { createMemoryStorage } from "@larkx/storage-memory";
+import { createEngine, defineWorkflow } from "@larkxai/core";
+import { createMemoryStorage } from "@larkxai/storage-memory";
 
 const workflow = defineWorkflow({
   name: "tick",
