@@ -1729,6 +1729,11 @@ Status Runtime::cancel(const std::string& run_id, int64_t now_ms) {
   return impl_->store->transition_run(transition, run_id);
 }
 
+Status Runtime::list_runs(std::vector<Run>& out) {
+  std::lock_guard<std::mutex> lock(impl_->mutex);
+  return impl_->store->list_runs(out);
+}
+
 Status Runtime::inspect(const std::string& run_id, Run& out) {
   std::lock_guard<std::mutex> lock(impl_->mutex);
   State state;

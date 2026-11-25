@@ -554,6 +554,28 @@ void test_open_attempt_can_be_submitted_after_reopen() {
   std::remove(path.c_str());
 }
 
+void test_run_list_returns_persisted_runs() {
+  const std::string path = temp_db();
+  larkx_runtime* runtime = open_runtime(path);
+  register_agent(runtime, "listed", 1, nullptr, 0);
+  start_run(runtime, "listed", 1, "listed-b");
+  start_run(runtime, "listed", 1, "listed-a");
+  int32_t count = 0;
+  larkx_error error{};
+  CHECK(larkx_run_count(runtime, &count, &error) == LARKX_OK);
+  CHECK(count == 2);
+  larkx_run_info first{};
+  larkx_run_info second{};
+  CHECK(larkx_run_at(runtime, 0, &first, &error) == LARKX_OK);
+  CHECK(larkx_run_at(runtime, 1, &second, &error) == LARKX_OK);
+  CHECK(std::strcmp(first.run_id, "listed-a") == 0 || std::strcmp(first.run_id, "listed-b") == 0);
+  CHECK(std::strcmp(first.run_id, second.run_id) != 0);
+  larkx_run_info missing{};
+  CHECK(larkx_run_at(runtime, 2, &missing, &error) == LARKX_ERR_NOT_FOUND);
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
 void test_context_limit_does_not_invoke_the_model() {
   const auto path = temp_db();
   auto* runtime = open_runtime(path);
@@ -582,6 +604,7 @@ int main() {
   test_agent_version_and_effect_compatibility();
   test_open_attempt_can_be_submitted_after_reopen();
   test_context_limit_does_not_invoke_the_model();
+  test_run_list_returns_persisted_runs();
   if (g_failed != 0) {
     std::fprintf(stderr, "%d checks failed\n", g_failed);
     return 1;

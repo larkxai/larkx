@@ -239,6 +239,10 @@ void Session::close_unlocked() {
 Status Session::invoke(const std::string& method, const std::string& args_json, std::string& out) {
   std::lock_guard<std::mutex> lock(mu_);
   out.clear();
+  if (method == "echo") {
+    out = object_json({{"text", jstr(args_json)}});
+    return {};
+  }
   Json args;
   if (Status parsed = require_object(args_json, args); !parsed.ok()) {
     return parsed;
@@ -449,6 +453,36 @@ Status Session::invoke(const std::string& method, const std::string& args_json, 
       return status_from(code, error);
     }
     out = run_json(info);
+    return {};
+  }
+  if (method == "listRuns") {
+    int32_t count = 0;
+    const larkx_code counted = larkx_run_count(runtime_, &count, &error);
+    if (counted != LARKX_OK) {
+      return status_from(counted, error);
+    }
+    Json runs;
+    runs.kind = Json::Kind::Array;
+    for (int32_t index = 0; index < count; index += 1) {
+      larkx_run_info info{};
+      const larkx_code code = larkx_run_at(runtime_, index, &info, &error);
+      if (code == LARKX_ERR_NOT_FOUND) {
+        break;
+      }
+      if (code != LARKX_OK) {
+        return status_from(code, error);
+      }
+      Json item;
+      std::string parse_error;
+      if (!parse_json(run_json(info), item, parse_error)) {
+        return invalid(parse_error.empty() ? "Run list item was not JSON." : parse_error);
+      }
+      runs.array.push_back(std::move(item));
+    }
+    Json body;
+    body.kind = Json::Kind::Object;
+    body.object = {{"runs", std::move(runs)}};
+    out = canonical_json(body);
     return {};
   }
   if (method == "result" || method == "stepOutput" || method == "eventPayload") {

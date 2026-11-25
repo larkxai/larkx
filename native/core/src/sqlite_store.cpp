@@ -62,7 +62,7 @@ class Transaction {
 };
 
 void bind_text(sqlite3_stmt* stmt, int index, const std::string& value) {
-  sqlite3_bind_text(stmt, index, value.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, index, value.data(), static_cast<int>(value.size()), SQLITE_TRANSIENT);
 }
 
 void bind_optional_text(sqlite3_stmt* stmt, int index, const std::optional<std::string>& value) {
@@ -83,7 +83,11 @@ void bind_optional_int(sqlite3_stmt* stmt, int index, const std::optional<int64_
 
 std::string column_text(sqlite3_stmt* stmt, int index) {
   const auto* raw = sqlite3_column_text(stmt, index);
-  return raw == nullptr ? std::string() : reinterpret_cast<const char*>(raw);
+  if (raw == nullptr) {
+    return {};
+  }
+  const int bytes = sqlite3_column_bytes(stmt, index);
+  return std::string(reinterpret_cast<const char*>(raw), static_cast<size_t>(bytes < 0 ? 0 : bytes));
 }
 
 std::optional<std::string> column_optional_text(sqlite3_stmt* stmt, int index) {
@@ -887,6 +891,48 @@ Status Store::insert_outbox(const OutboxInput& input, bool& deduplicated, int32_
   deduplicated = outcome.deduplicated;
   count = static_cast<int32_t>(next.outbox.size());
   return Status::success();
+}
+
+Status Store::list_runs(std::vector<Run>& out) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  out.clear();
+  sqlite3_stmt* raw = nullptr;
+  if (sqlite3_prepare_v2(db_,
+                         "SELECT run_id, workflow_name, workflow_version, status, created_at, updated_at, owner_id, "
+                         "ownership_epoch, lease_expires_at, protocol_version, data_policy, cancel_requested, "
+                         "blocked_reason FROM workflow_runs ORDER BY updated_at ASC, run_id ASC",
+                         -1, &raw, nullptr) != SQLITE_OK) {
+    return storage(sqlite3_errmsg(db_));
+  }
+  Statement query(raw);
+  while (true) {
+    const int rc = sqlite3_step(query.get());
+    if (rc == SQLITE_DONE) {
+      return Status::success();
+    }
+    if (rc != SQLITE_ROW) {
+      return storage(sqlite3_errmsg(db_));
+    }
+    Run run;
+    run.run_id = column_text(query.get(), 0);
+    run.workflow_name = column_text(query.get(), 1);
+    run.workflow_version = static_cast<int32_t>(sqlite3_column_int64(query.get(), 2));
+    if (!parse_workflow_status(column_text(query.get(), 3), run.status)) {
+      return storage("Stored workflow status is invalid.");
+    }
+    run.created_at = sqlite3_column_int64(query.get(), 4);
+    run.updated_at = sqlite3_column_int64(query.get(), 5);
+    run.owner_id = column_optional_text(query.get(), 6);
+    run.ownership_epoch = sqlite3_column_int64(query.get(), 7);
+    run.lease_expires_at = column_optional_int(query.get(), 8);
+    run.protocol_version = static_cast<int32_t>(sqlite3_column_int64(query.get(), 9));
+    if (!parse_data_policy(column_text(query.get(), 10), run.data_policy)) {
+      return storage("Stored data policy is invalid.");
+    }
+    run.cancel_requested = sqlite3_column_int64(query.get(), 11) != 0;
+    run.blocked_reason = column_optional_text(query.get(), 12);
+    out.push_back(std::move(run));
+  }
 }
 
 }  // namespace larkx

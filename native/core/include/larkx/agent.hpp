@@ -74,6 +74,7 @@ class Runtime {
   Status resume_run(const std::string& run_id, int64_t now_ms);
   Status cancel(const std::string& run_id, int64_t now_ms);
   Status inspect(const std::string& run_id, Run& out);
+  Status list_runs(std::vector<Run>& out);
   Status result_json(const std::string& run_id, std::string& out);
   Status step_count(const std::string& run_id, int32_t& count);
   Status step_at(const std::string& run_id, int32_t index, Step& out);

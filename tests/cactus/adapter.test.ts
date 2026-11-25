@@ -1,4 +1,8 @@
-import { normalizeCactusCompletion, toCactusMessages } from "@larkxai/cactus/adapter";
+import {
+  cactusHostModel,
+  normalizeCactusCompletion,
+  toCactusMessages,
+} from "@larkxai/cactus/adapter";
 import { LarkxError } from "@larkxai/core";
 import { describe, expect, it } from "vitest";
 
@@ -75,5 +79,53 @@ describe("Cactus response normalization", () => {
     ]);
     expect(messages[3]?.content).toContain("get_budget");
     expect(JSON.stringify(messages)).not.toContain("chain-of-thought");
+  });
+});
+
+describe("Cactus native host model", () => {
+  it("normalizes a native JSON request and surfaces a completion failure", async () => {
+    const seen: unknown[] = [];
+    const host = cactusHostModel({
+      download: async () => undefined,
+      init: async () => undefined,
+      stop: async () => undefined,
+      getModelName: () => "qwen3-0.6b-int8",
+      async complete(request) {
+        seen.push(request.messages);
+        return {
+          success: false,
+          response: "",
+          timeToFirstTokenMs: 0,
+          totalTimeMs: 1,
+          prefillTokens: 0,
+          decodeTokens: 0,
+          totalTokens: 0,
+        };
+      },
+    });
+    await expect(
+      host.complete(
+        {
+          messages: [
+            { role: "system", content: "Inspect equipment." },
+            { role: "user", content: "Pump 12" },
+          ],
+          tools: [
+            {
+              name: "read_inspection_notes",
+              description: "Read notes",
+              inputSchema: { type: "object", properties: {}, required: [] },
+            },
+          ],
+        },
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toMatchObject({ code: "transient_execution_failure" });
+    expect(JSON.stringify(seen)).toContain("Pump 12");
+    expect(host.capabilities).toMatchObject({
+      toolCalling: true,
+      cancellation: true,
+      structuredOutput: false,
+    });
   });
 });

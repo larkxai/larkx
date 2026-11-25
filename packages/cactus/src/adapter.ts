@@ -1,8 +1,10 @@
 import type {
+  JsonSchema,
   ModelAdapter,
   ModelMessage,
   ModelRequest,
   ModelResponse,
+  ModelToolDefinition,
   ToolCall,
 } from "@larkxai/agent";
 import { decodeJson, encodeJson, LarkxError } from "@larkxai/core";
@@ -205,6 +207,121 @@ function cancelled(): LarkxError {
     message: "Cactus generation cancelled.",
     retryable: false,
   });
+}
+
+export interface NativeHostModel {
+  readonly id: string;
+  readonly model: string;
+  readonly capabilities: {
+    readonly toolCalling: boolean;
+    readonly structuredOutput: boolean;
+    readonly cancellation: boolean;
+  };
+  complete(
+    request: { readonly messages: readonly JsonValue[]; readonly tools: readonly JsonValue[] },
+    context: { readonly signal: AbortSignal },
+  ): Promise<ModelResponse>;
+  download(params?: { onProgress?: (progress: number) => void }): Promise<void>;
+  init(): Promise<void>;
+  stop(): Promise<void>;
+  getModelName(): string;
+}
+
+/**
+ * Adapt Cactus to the native host's JSON model request.
+ * Cactus still only performs inference. The native runtime owns the agent loop.
+ */
+export function cactusHostModel(model: CactusLanguageModel): NativeHostModel {
+  const adapter = cactusAdapter(model);
+  return {
+    id: adapter.id,
+    model: adapter.model,
+    capabilities: adapter.capabilities,
+    download: (params) => model.download(params),
+    init: () => model.init(),
+    stop: () => model.stop(),
+    getModelName: () => model.getModelName(),
+    complete(request, context) {
+      return adapter.complete(
+        {
+          messages: request.messages.map(readHostMessage),
+          tools: request.tools.map(readHostTool),
+        },
+        context,
+      );
+    },
+  };
+}
+
+function readHostMessage(value: JsonValue): ModelMessage {
+  if (!isJsonObject(value) || typeof value.role !== "string") {
+    throw permanent("Native model message must be an object with a role.");
+  }
+  if (value.role === "system" || value.role === "user") {
+    if (typeof value.content !== "string") {
+      throw permanent("Native model message content must be a string.");
+    }
+    return { role: value.role, content: value.content };
+  }
+  if (value.role === "assistant") {
+    const calls = Array.isArray(value.calls)
+      ? value.calls.flatMap((call) => {
+          if (call === undefined) {
+            return [];
+          }
+          return [readHostCall(call)];
+        })
+      : [];
+    return {
+      role: "assistant",
+      content: typeof value.content === "string" ? value.content : null,
+      calls,
+    };
+  }
+  if (value.role === "tool") {
+    if (
+      typeof value.name !== "string" ||
+      typeof value.callId !== "string" ||
+      typeof value.content !== "string"
+    ) {
+      throw permanent("Native tool message is missing a name, call id, or content.");
+    }
+    return { role: "tool", name: value.name, callId: value.callId, content: value.content };
+  }
+  throw permanent(`Native model message role "${value.role}" is not supported.`);
+}
+
+function readHostCall(value: JsonValue): ToolCall {
+  const args = isJsonObject(value) ? value.arguments : undefined;
+  if (
+    !isJsonObject(value) ||
+    typeof value.id !== "string" ||
+    typeof value.name !== "string" ||
+    args === undefined ||
+    !isJsonObject(args)
+  ) {
+    throw permanent("Native assistant call must include an id, name, and object arguments.");
+  }
+  return { id: value.id, name: value.name, arguments: args };
+}
+
+function readHostTool(value: JsonValue): ModelToolDefinition {
+  if (
+    !isJsonObject(value) ||
+    typeof value.name !== "string" ||
+    typeof value.description !== "string"
+  ) {
+    throw permanent("Native tool definition must include a name and description.");
+  }
+  const schema = value.inputSchema;
+  if (schema === undefined || !isJsonObject(schema) || schema.type !== "object") {
+    throw permanent(`Tool "${value.name}" is missing an object input schema.`);
+  }
+  return {
+    name: value.name,
+    description: value.description,
+    inputSchema: schema as unknown as JsonSchema,
+  };
 }
 
 function permanent(message: string): LarkxError {

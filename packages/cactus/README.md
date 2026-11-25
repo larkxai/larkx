@@ -32,3 +32,5 @@ Cactus messages are `system`, `user`, and `assistant` only. Tool results are sen
 `cactus-react-native` 1.13.1 depends on `react-native-nitro-modules` `^0.33.9`. It does not run in Expo Go. The M2 workflow demo is not evidence that Expo Go can load Cactus. Use a development build (`expo run:android` or `expo run:ios`). This repository has not executed that build on a device or an emulator.
 
 Import `@larkxai/cactus/adapter` in Node tests. That entry does not load the native module. The package root loads it.
+
+`cactusHostModel` in that adapter entry accepts the native host's JSON model request and returns a LarkX model response. It does not plan steps. Download and `init` stay outside the run. A failed completion is retryable. A cloud handoff is a permanent local error. Structured output is not advertised. Cancellation calls `stop()`.

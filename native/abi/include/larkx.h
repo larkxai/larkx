@@ -512,6 +512,14 @@ larkx_code larkx_run_resume(larkx_runtime* runtime, const char* run_id, int64_t 
 larkx_code larkx_run_cancel(larkx_runtime* runtime, const char* run_id, int64_t now_ms, larkx_error* err);
 
 larkx_code larkx_run_inspect(larkx_runtime* runtime, const char* run_id, larkx_run_info* out, larkx_error* err);
+
+/**
+ * Snapshot of persisted runs, ordered by updated time and then run id.
+ * count receives the number of runs. at reads one index from a fresh snapshot.
+ * An index past the end returns LARKX_ERR_NOT_FOUND.
+ */
+larkx_code larkx_run_count(larkx_runtime* runtime, int32_t* count, larkx_error* err);
+larkx_code larkx_run_at(larkx_runtime* runtime, int32_t index, larkx_run_info* out, larkx_error* err);
 larkx_code larkx_run_result(
     larkx_runtime* runtime, const char* run_id, char* buffer, size_t capacity, size_t* needed, larkx_error* err);
 larkx_code larkx_run_step_count(larkx_runtime* runtime, const char* run_id, int32_t* count, larkx_error* err);

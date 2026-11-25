@@ -2,6 +2,7 @@
   "name": "@larkxai/example-react-native-workflow",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "main": "index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",
@@ -9,8 +10,11 @@
     "start": "expo start"
   },
   "dependencies": {
+    "@larkxai/cactus": "workspace:*",
     "@larkxai/core": "workspace:*",
     "@larkxai/react-native": "workspace:*",
+    "cactus-react-native": "1.13.1",
+    "react-native-nitro-modules": "0.33.9",
     "@larkxai/storage-sqlite": "workspace:*",
     "@larkxai/telemetry": "workspace:*",
     "expo": "58.0.26",

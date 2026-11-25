@@ -51,6 +51,7 @@ Implemented in this tree. Automated tests run on Node.js with a scripted model, 
 - A deterministic scripted model for tests and for the React Native test mode.
 - `@larkxai/cactus` against `cactus-react-native` 1.13.1. Download and `init` stay outside the agent run.
 - `examples/node-agent` and `examples/react-native-agent`.
+- The native React Native host schedules execution from `agent.start()`. `run.result()` waits. `@larkxai/cactus` can be the model for that host. `examples/react-native-workflow` includes a field-inspection screen. Physical-device validation is still pending. The checklist is [docs/validation/on-device-agent.md](docs/validation/on-device-agent.md).
 
 Not part of M3:
 

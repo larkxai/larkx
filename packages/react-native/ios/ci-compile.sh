@@ -22,10 +22,15 @@ clang++ -std=c++20 -fPIC -c \
   -I "$ROOT/native/core/include" \
   "$PACKAGE/cpp/host_session.cpp" \
   -o "$CORE/host_session.o"
+clang++ -std=c++20 -fPIC -c \
+  -I "$PACKAGE/cpp" \
+  "$PACKAGE/cpp/utf.cpp" \
+  -o "$CORE/utf.o"
 clang++ -dynamiclib \
   -o "$CORE/libLarkXNativeCore.dylib" \
   "$CORE/LarkXNativeCore.o" \
   "$CORE/host_session.o" \
+  "$CORE/utf.o" \
   "$CORE/liblarkx_core.a" \
   -framework Foundation -lsqlite3 -lc++
 echo "Compiled $CORE/libLarkXNativeCore.dylib"

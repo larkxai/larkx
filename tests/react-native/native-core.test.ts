@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -517,7 +518,37 @@ describe("native React Native host", () => {
     expect(model.invocations).toBe(1);
   });
 
-  it("does not call the model until result()", async () => {
+  it("schedules execution from start before result is awaited", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    const { runtime } = await openHost();
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model: {
+        id: "scripted",
+        model: "scripted-1",
+        async complete() {
+          calls += 1;
+          await gate;
+          return summary;
+        },
+      },
+      instructions: "Help the user.",
+    });
+    const run = await agent.start({ message: "Summarize my notes", runId: "assistant-eager" });
+    await waitFor(() => calls === 1);
+    const pending = run.result();
+    await delay(20);
+    expect(calls).toBe(1);
+    release();
+    expect(await pending).toMatchObject({ message: "Summary: Example note" });
+  });
+
+  it("defers execution until schedule()", async () => {
     const { runtime } = await openHost();
     const model = scriptedModel([summary]);
     const agent = runtime.createAgent({
@@ -526,11 +557,17 @@ describe("native React Native host", () => {
       model,
       instructions: "Help the user.",
     });
-    const run = await agent.start({ message: "Summarize my notes", runId: "assistant-lazy" });
+    const run = await agent.start({
+      message: "Summarize my notes",
+      runId: "assistant-deferred",
+      defer: true,
+    });
+    const pending = run.result();
     await delay(40);
     expect(model.invocations).toBe(0);
-    expect(await run.getStatus()).toMatchObject({ status: "RUNNING", runId: "assistant-lazy" });
-    expect(await run.result()).toMatchObject({ message: "Summary: Example note" });
+    expect(await run.getStatus()).toMatchObject({ status: "RUNNING", runId: "assistant-deferred" });
+    run.schedule();
+    expect(await pending).toMatchObject({ message: "Summary: Example note" });
     expect(model.invocations).toBe(1);
   });
 
@@ -734,6 +771,109 @@ describe("native React Native host", () => {
     });
     const stolen = await second.runtime.resume("assistant-11");
     await expect(stolen.result()).rejects.toMatchObject({ code: "execution_ownership_conflict" });
+  });
+
+  it("runs two logical runs without sharing a driver", async () => {
+    const { runtime } = await openHost();
+    const model = scriptedModel([summary, summary]);
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model,
+      instructions: "Help the user.",
+    });
+    const [first, second] = await Promise.all([
+      agent.start({ message: "Summarize my notes", runId: "assistant-a" }),
+      agent.start({ message: "Summarize my notes", runId: "assistant-b" }),
+    ]);
+    expect(first).not.toBe(second);
+    await Promise.all([first.result(), second.result()]);
+    expect(model.invocations).toBe(2);
+    const listed = await runtime.listRuns();
+    expect(listed.map((run) => run.runId).sort()).toEqual(["assistant-a", "assistant-b"]);
+  });
+
+  it("discovers a deferred run after the runtime is closed and reopened", async () => {
+    const directory = tempDirectory();
+    const path = join(directory, "agent.db");
+    const first = await openHost(path);
+    const agent = first.runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model: scriptedModel([summary]),
+      instructions: "Help the user.",
+    });
+    await agent.start({ message: "Summarize my notes", runId: "assistant-saved", defer: true });
+    await first.runtime.close();
+    const second = await openHost(path);
+    const listed = await second.runtime.listRuns();
+    expect(listed).toEqual([
+      expect.objectContaining({
+        runId: "assistant-saved",
+        status: "RUNNING",
+        workflowName: "personal-assistant",
+      }),
+    ]);
+    second.runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model: scriptedModel([summary]),
+      instructions: "Help the user.",
+    });
+    const recovered = await second.runtime.resume("assistant-saved", { defer: true });
+    expect((await recovered.getStatus()).status).toBe("RUNNING");
+    recovered.schedule();
+    expect(await recovered.result()).toMatchObject({ message: "Summary: Example note" });
+  });
+
+  it("waits on an observer before calling the model", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { runtime } = await openHost();
+    runtime.observe(async (event) => {
+      if (event.type === "model-requested") {
+        await gate;
+      }
+    });
+    const model = scriptedModel([summary]);
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model,
+      instructions: "Help the user.",
+    });
+    const run = await agent.start({ message: "Summarize my notes", runId: "assistant-boundary" });
+    await delay(40);
+    expect(model.invocations).toBe(0);
+    release();
+    expect(await run.result()).toMatchObject({ message: "Summary: Example note" });
+    expect(runtime.diagnostics().modelInvocations).toBe(1);
+  });
+
+  it("rejects a lone surrogate instead of truncating the prompt", async () => {
+    const { runtime } = await openHost();
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model: scriptedModel([summary]),
+      instructions: "Help the user.",
+    });
+    await expect(
+      agent.start({ message: "broken \uD83D", runId: "assistant-surrogate" }),
+    ).rejects.toMatchObject({ code: "serialization_failure" });
+  });
+
+  it("round-trips an embedded NUL through the node binding", () => {
+    const require = createRequire(import.meta.url);
+    const addon = require("../../packages/react-native/build/larkx_native.node") as {
+      createSession(): { invoke(method: string, argsJson: string): string };
+    };
+    const payload = "a\0b 😀 𝄞";
+    const echoed = JSON.parse(addon.createSession().invoke("echo", payload)) as { text: string };
+    expect(echoed.text).toBe(payload);
+    expect(echoed.text.length).toBe(payload.length);
   });
 });
 
