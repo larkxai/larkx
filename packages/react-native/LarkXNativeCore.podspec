@@ -16,6 +16,8 @@ Pod::Spec.new do |spec|
     "ios/LarkXNativeCore.mm",
     "cpp/host_session.cpp",
     "cpp/host_session.h",
+    "cpp/utf.cpp",
+    "cpp/utf.h",
     "vendor/larkx/core/src/*.{cpp,hpp}",
     "vendor/larkx/abi/include/*.h",
     "vendor/larkx/core/include/**/*.hpp",

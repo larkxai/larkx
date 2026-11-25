@@ -236,6 +236,8 @@ await engine.close();
 
 `reviewDocument` fixes the order: summary, then actions. `createAgent` is the other shape. The model decides which tool to call, and each decision is still one durable step. `createAgent` registers the workflow. Each model call is `model-<n>`. Each tool call is `tool-<n>-<m>`. Replay returns committed decisions and does not call the model or the tool again. The package README has the full example. The Node script is `examples/node-agent`. The engineering phone demo is `examples/react-native-agent`. The field inspection showcase is `examples/field-inspection-agent`, a four-stage on-device workflow.
 
+The React Native package also binds the shared C++ runtime at `@larkxai/react-native/native`. `agent.start()` persists the run and schedules that runtime. `run.result()` waits. `runtime.listRuns()` reads persisted runs after a relaunch. Each count and index call is its own snapshot. `cactusHostModel` adapts Cactus completions to that host and does not plan steps. Completions on one Cactus instance run one at a time. `examples/react-native-workflow` includes the field-inspection screen. The scripted agent and the local Cactus agent have different names. A local run is not recovered with the scripted model. Physical-device checks are listed in [docs/validation/on-device-agent.md](docs/validation/on-device-agent.md) and have not been run on a phone.
+
 Calling cloud or hybrid steps today fails with `permission_denied` under the default `device-only` policy, or with `unsupported_capability` when the policy is `cloud-allowed`. There is no remote dispatcher.
 
 ```typescript

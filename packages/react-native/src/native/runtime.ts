@@ -99,6 +99,15 @@ export interface ModelResponse {
   readonly message: string | null;
   readonly finish: "stop" | "tool_calls" | "length" | "error";
   readonly calls: readonly ToolCall[];
+  readonly usage?: {
+    readonly inputTokens?: number;
+    readonly outputTokens?: number;
+    readonly totalTokens?: number;
+  };
+  readonly timingMs?: {
+    readonly total?: number;
+    readonly timeToFirstToken?: number;
+  };
 }
 
 export interface ModelRequest {
@@ -199,6 +208,53 @@ export interface AgentOptions {
 export interface StartInput {
   readonly message: string;
   readonly runId?: string;
+  /**
+   * Persist the run and return without scheduling the host driver.
+   * Call `run.schedule()` when execution should begin. `run.result()` waits
+   * either way. It does not start the driver.
+   */
+  readonly defer?: boolean;
+}
+
+export interface ResumeOptions {
+  /**
+   * Attach to the persisted run without scheduling recovery.
+   * The default schedules one driver for that run id.
+   */
+  readonly defer?: boolean;
+}
+
+export interface HostEvent {
+  readonly type:
+    | "run-started"
+    | "model-requested"
+    | "model-committed"
+    | "tool-requested"
+    | "tool-committed"
+    | "retry"
+    | "reconcile-required"
+    | "before-completion"
+    | "run-completed"
+    | "run-failed"
+    | "run-paused";
+  readonly runId: string;
+  readonly stepKey?: string;
+  readonly operationId?: string;
+  readonly attempt?: number;
+  readonly status?: string;
+  readonly atMs: number;
+}
+
+export interface RuntimeDiagnostics {
+  readonly initializationMs: number;
+  readonly modelInvocations: number;
+  readonly toolInvocations: number;
+  readonly modelDurationMs: number;
+  readonly toolDurationMs: number;
+  readonly lastModelMs: number | null;
+  readonly lastToolMs: number | null;
+  readonly lastTimeToFirstTokenMs: number | null;
+  readonly recoveryMs: number | null;
 }
 
 interface DriveRequest {
@@ -339,6 +395,17 @@ export class Runtime {
   private opened = false;
   private suspended = false;
   private foreground: Array<() => void> = [];
+  private readonly observers: Array<(event: HostEvent) => void | Promise<void>> = [];
+  private readonly barriers: Array<(event: HostEvent) => void | Promise<void>> = [];
+  private initializationMs = 0;
+  private modelInvocations = 0;
+  private toolInvocations = 0;
+  private modelDurationMs = 0;
+  private toolDurationMs = 0;
+  private lastModelMs: number | null = null;
+  private lastToolMs: number | null = null;
+  private lastTimeToFirstTokenMs: number | null = null;
+  private recoveryMs: number | null = null;
   private versionsReady: RuntimeVersions = {
     backend: "native-cpp",
     abi: 0,
@@ -373,6 +440,7 @@ export class Runtime {
       schema: readNumber(reported, "schema"),
     };
     Object.assign(this.versions, this.versionsReady);
+    const started = Date.now();
     await this.call("open", {
       path: this.storage.path,
       ownerId: this.ownerId,
@@ -380,6 +448,7 @@ export class Runtime {
       exclusive: this.exclusive,
       maySteal: this.maySteal,
     });
+    this.initializationMs = Date.now() - started;
     this.opened = true;
   }
 
@@ -455,14 +524,23 @@ export class Runtime {
     return new Agent(this, registered, ready);
   }
 
-  /** Attach to a run that was persisted earlier. Register the agent first. */
-  async resume(runId: string): Promise<Run> {
+  /**
+   * Attach to a run that was persisted earlier. Register the agent first.
+   * Unless `defer` is set, this schedules the one driver for that run id.
+   * A `WAITING` run stays paused until `run.resume()`. A terminal run resolves
+   * `result()` from the stored output.
+   */
+  async resume(runId: string, options?: ResumeOptions): Promise<Run> {
     this.ensureOpen();
     const generation = this.generation;
+    const started = Date.now();
     return this.lockRun(runId, async () => {
       this.ensureGeneration(generation);
       const existing = this.currentRun(runId);
       if (existing !== undefined) {
+        if (options?.defer !== true) {
+          existing.schedule();
+        }
         return existing;
       }
       const info = await this.inspect(runId);
@@ -473,8 +551,95 @@ export class Runtime {
         run.notePaused();
       }
       this.runs.set(runId, run);
+      this.recoveryMs = Date.now() - started;
+      if (options?.defer !== true) {
+        run.schedule();
+      }
       return run;
     });
+  }
+
+  /** Persisted runs in the shared C++ store. This is the source of truth after relaunch. */
+  async listRuns(): Promise<readonly RunStatus[]> {
+    this.ensureOpen();
+    const parsed = JSON.parse(await this.call("listRuns", {})) as { runs?: unknown };
+    if (!Array.isArray(parsed.runs)) {
+      throw permanent("The native runtime returned a run list that is not an array.");
+    }
+    return parsed.runs.map((entry) => readStatus(entry));
+  }
+
+  /**
+   * Diagnostics listener. The driver does not wait for it, and a throw or
+   * rejection does not fail the run.
+   */
+  observe(listener: (event: HostEvent) => void | Promise<void>): () => void {
+    this.observers.push(listener);
+    return () => {
+      removeListener(this.observers, listener);
+    };
+  }
+
+  /**
+   * Development barrier. The driver waits for each listener so a demo can hold
+   * the process at a boundary. A throw or rejection does not fail the run.
+   * This is not a production control API.
+   */
+  holdExecution(listener: (event: HostEvent) => void | Promise<void>): () => void {
+    this.barriers.push(listener);
+    return () => {
+      removeListener(this.barriers, listener);
+    };
+  }
+
+  diagnostics(): RuntimeDiagnostics {
+    return {
+      initializationMs: this.initializationMs,
+      modelInvocations: this.modelInvocations,
+      toolInvocations: this.toolInvocations,
+      modelDurationMs: this.modelDurationMs,
+      toolDurationMs: this.toolDurationMs,
+      lastModelMs: this.lastModelMs,
+      lastToolMs: this.lastToolMs,
+      lastTimeToFirstTokenMs: this.lastTimeToFirstTokenMs,
+      recoveryMs: this.recoveryMs,
+    };
+  }
+
+  async emit(event: HostEvent): Promise<void> {
+    for (const listener of [...this.observers]) {
+      try {
+        const result = listener(event);
+        if (isPromise(result)) {
+          void result.then(
+            () => undefined,
+            () => undefined,
+          );
+        }
+      } catch {
+        // A diagnostics listener cannot stop the durable run.
+      }
+    }
+    for (const barrier of [...this.barriers]) {
+      try {
+        await barrier(event);
+      } catch {
+        // A broken development barrier cannot stop the durable run.
+      }
+    }
+  }
+
+  recordModel(durationMs: number, timeToFirstTokenMs: number | null): void {
+    this.modelInvocations += 1;
+    this.modelDurationMs += durationMs;
+    this.lastModelMs = durationMs;
+    this.lastTimeToFirstTokenMs = timeToFirstTokenMs;
+  }
+
+  recordTool(durationMs: number): void {
+    this.toolInvocations += 1;
+    this.toolDurationMs += durationMs;
+    this.lastToolMs = durationMs;
   }
 
   async close(): Promise<void> {
@@ -640,10 +805,16 @@ export class Agent {
     return this.registered.version;
   }
 
+  /** Resolves when the native runtime has stored this agent definition. */
+  whenRegistered(): Promise<void> {
+    return this.ready;
+  }
+
   /**
-   * Persist the run and return its handle. This does not call the model.
-   * `run.result()` starts the one host driver for the run id. A second start
-   * with the same id returns that handle after the core checks the message.
+   * Persist the run, then schedule its one host driver. `run.result()` waits
+   * for that driver. It does not start a second one. Pass `defer` to persist
+   * without scheduling. A second start with the same message returns the same
+   * handle. A different message is rejected and does not start another driver.
    */
   async start(input: StartInput): Promise<Run> {
     if (input.message.trim().length === 0) {
@@ -663,10 +834,16 @@ export class Agent {
         nowMs: this.runtime.now(),
       });
       if (existing !== undefined) {
+        if (input.defer !== true) {
+          existing.schedule();
+        }
         return existing;
       }
       const run = new Run(this.runtime, runId, this.registered, generation);
       this.runtime.adopt(run);
+      if (input.defer !== true) {
+        run.schedule();
+      }
       return run;
     });
   }
@@ -710,9 +887,8 @@ export class Run {
   }
 
   /**
-   * Start the host driver, if this run does not already have one, and wait
-   * for the terminal result. The driver is per run id. Another handle for
-   * the same id waits on the same loop instead of calling the model again.
+   * Wait for the terminal result. The driver is started by `agent.start()` or
+   * `run.schedule()`, once per run id. This method does not start execution.
    */
   result(): Promise<AgentResult> {
     if (this.settled) {
@@ -720,7 +896,6 @@ export class Run {
         ? Promise.resolve(this.settled.value)
         : Promise.reject(this.settled.error);
     }
-    this.start();
     return new Promise((resolve, reject) => {
       if (this.settled) {
         if (this.settled.ok) {
@@ -753,7 +928,13 @@ export class Run {
     this.pauseRequested = false;
     this.resumeEpoch += 1;
     await this.runtime.call("resume", { runId: this.runId, nowMs: this.runtime.now() });
+    this.schedule();
     this.wakePause();
+  }
+
+  /** Start the one host driver for this run id. A second call joins that driver. */
+  schedule(): void {
+    this.start();
   }
 
   async cancel(): Promise<void> {
@@ -834,11 +1015,16 @@ export class Run {
       return;
     }
     this.driving = Promise.resolve();
-    this.driving = this.loop();
+    const loop = this.loop();
+    this.driving = loop.then(
+      () => undefined,
+      () => undefined,
+    );
   }
 
   private async loop(): Promise<void> {
     try {
+      await this.runtime.emit({ type: "run-started", runId: this.runId, atMs: this.runtime.now() });
       const info = await this.runtime.inspect(this.runId);
       if (info.status === "COMPLETED") {
         this.finish({ ok: true, value: await this.runtime.readResult(this.runId) });
@@ -851,6 +1037,11 @@ export class Run {
       for (;;) {
         this.runtime.ensureGeneration(this.generation);
         if (this.pauseRequested && this.inflight === null) {
+          await this.runtime.emit({
+            type: "run-paused",
+            runId: this.runId,
+            atMs: this.runtime.now(),
+          });
           await this.runtime.call("pause", { runId: this.runId, nowMs: this.runtime.now() });
         }
         const request = readDrive(
@@ -874,6 +1065,7 @@ export class Run {
   private async handle(request: DriveRequest): Promise<void> {
     switch (request.kind) {
       case RequestKind.Complete:
+        await this.runtime.emit(this.event("before-completion", request));
         this.finish({ ok: true, value: await this.runtime.readResult(this.runId) });
         return;
       case RequestKind.Failed:
@@ -887,12 +1079,19 @@ export class Run {
         }
         return;
       case RequestKind.Reconcile:
+        await this.runtime.emit(this.event("reconcile-required", request));
         await this.awaitReconcile(request);
         return;
       case RequestKind.InvokeModel:
+        if (request.attempt > 1) {
+          await this.runtime.emit(this.event("retry", request));
+        }
         await this.invokeModel(request);
         return;
       case RequestKind.InvokeTool:
+        if (request.attempt > 1) {
+          await this.runtime.emit(this.event("retry", request));
+        }
         await this.invokeTool(request);
         return;
       default:
@@ -909,10 +1108,19 @@ export class Run {
     const controller = new AbortController();
     this.inflight = controller;
     try {
+      await this.runtime.emit(this.event("model-requested", request));
       const detail = JSON.parse(request.detailJson) as ModelRequest;
+      const started = Date.now();
       const response = await this.agent.model.complete(
         { messages: detail.messages ?? [], tools: detail.tools ?? [] },
         { signal: controller.signal },
+      );
+      const duration = Date.now() - started;
+      this.runtime.recordModel(
+        duration,
+        typeof response.timingMs?.timeToFirstToken === "number"
+          ? response.timingMs.timeToFirstToken
+          : null,
       );
       if (this.shouldCancel(request) || controller.signal.aborted) {
         await this.submitModel(
@@ -925,6 +1133,7 @@ export class Run {
         return;
       }
       await this.submitModel(request, response, "", "", false);
+      await this.runtime.emit(this.event("model-committed", request));
     } catch (error) {
       if (!this.alive()) {
         return;
@@ -969,6 +1178,8 @@ export class Run {
     const controller = new AbortController();
     this.inflight = controller;
     try {
+      await this.runtime.emit(this.event("tool-requested", request));
+      const started = Date.now();
       const output = await tool.handler(detail.arguments ?? null, {
         operationId: readString(detail, "operationId"),
         attempt: readNumber(detail, "attempt"),
@@ -977,11 +1188,13 @@ export class Run {
         callId: readString(detail, "callId"),
         signal: controller.signal,
       });
+      this.runtime.recordTool(Date.now() - started);
       if (this.shouldCancel(request) || controller.signal.aborted) {
         await this.submitTool(request, null, "cancelled_execution", "Tool call cancelled.", false);
         return;
       }
       await this.submitTool(request, output, "", "", false);
+      await this.runtime.emit(this.event("tool-committed", request));
     } catch (error) {
       if (!this.alive()) {
         return;
@@ -1114,17 +1327,53 @@ export class Run {
     }
   }
 
+  private event(type: HostEvent["type"], request: DriveRequest): HostEvent {
+    return {
+      type,
+      runId: this.runId,
+      stepKey: request.stepKey,
+      operationId: request.operationId,
+      attempt: request.attempt,
+      atMs: this.runtime.now(),
+    };
+  }
+
   private finish(settlement: Settlement): void {
     if (this.settled) {
       return;
     }
     this.settled = settlement;
+    void this.runtime
+      .emit({
+        type: settlement.ok ? "run-completed" : "run-failed",
+        runId: this.runId,
+        status: settlement.ok ? "COMPLETED" : settlement.error.code,
+        atMs: this.runtime.now(),
+      })
+      .then(
+        () => undefined,
+        () => undefined,
+      );
     const waiting = this.waiters;
     this.waiters = [];
     for (const waiter of waiting) {
       waiter(settlement);
     }
   }
+}
+
+function removeListener(
+  listeners: Array<(event: HostEvent) => void | Promise<void>>,
+  listener: (event: HostEvent) => void | Promise<void>,
+): void {
+  const index = listeners.indexOf(listener);
+  if (index >= 0) {
+    listeners.splice(index, 1);
+  }
+}
+
+function isPromise(value: void | Promise<void>): value is Promise<void> {
+  return typeof value === "object" && value !== null && "then" in value;
 }
 
 function agentKey(name: string, version: number): string {
@@ -1267,8 +1516,11 @@ function readDrive(text: string): DriveRequest {
   };
 }
 
-function readStatus(text: string): RunStatus {
-  const value = readRecord(JSON.parse(text) as unknown, "Run status");
+function readStatus(text: string | unknown): RunStatus {
+  const value = readRecord(
+    typeof text === "string" ? (JSON.parse(text) as unknown) : text,
+    "Run status",
+  );
   return {
     runId: readString(value, "runId"),
     status: readString(value, "status"),

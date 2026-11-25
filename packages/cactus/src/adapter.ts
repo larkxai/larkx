@@ -1,8 +1,10 @@
 import type {
+  JsonSchema,
   ModelAdapter,
   ModelMessage,
   ModelRequest,
   ModelResponse,
+  ModelToolDefinition,
   ToolCall,
 } from "@larkxai/agent";
 import { decodeJson, encodeJson, LarkxError } from "@larkxai/core";
@@ -56,6 +58,7 @@ export function normalizeCactusCompletion(
 
 export function cactusAdapter(model: CactusLanguageModel): ModelAdapter {
   const modelId = model.getModelName();
+  const queue = queueFor(model);
   return {
     id: "cactus",
     model: modelId,
@@ -64,41 +67,105 @@ export function cactusAdapter(model: CactusLanguageModel): ModelAdapter {
       structuredOutput: false,
       cancellation: true,
     },
-    async complete(request, context) {
-      if (context.signal.aborted) {
-        throw cancelled();
-      }
-      const onAbort = (): void => {
-        void model.stop().catch(() => undefined);
-      };
-      context.signal.addEventListener("abort", onAbort);
-      try {
-        const result = await model.complete({
-          messages: toCactusMessages(request.messages),
-          tools: request.tools.map(toCactusTool),
-          options: {
-            maxTokens: 512,
-            forceTools: false,
-            telemetryEnabled: false,
-            confidenceThreshold: 0,
-            toolRagTopK: Math.max(request.tools.length, 1),
-            useVad: false,
-            enableThinking: false,
-          },
-        });
-        if (context.signal.aborted) {
-          throw cancelled();
-        }
-        return normalizeCactusCompletion(result, modelId);
-      } catch (error) {
-        if (context.signal.aborted) {
-          throw cancelled();
-        }
-        throw error;
-      } finally {
-        context.signal.removeEventListener("abort", onAbort);
-      }
+    complete(request, context) {
+      return queue.run(
+        context.signal,
+        async () => {
+          try {
+            if (context.signal.aborted) {
+              throw cancelled();
+            }
+            const result = await model.complete({
+              messages: toCactusMessages(request.messages),
+              tools: request.tools.map(toCactusTool),
+              options: {
+                maxTokens: 512,
+                forceTools: false,
+                telemetryEnabled: false,
+                confidenceThreshold: 0,
+                toolRagTopK: Math.max(request.tools.length, 1),
+                useVad: false,
+                enableThinking: false,
+              },
+            });
+            if (context.signal.aborted) {
+              throw cancelled();
+            }
+            return normalizeCactusCompletion(result, modelId);
+          } catch (error) {
+            if (context.signal.aborted) {
+              throw cancelled();
+            }
+            throw error;
+          }
+        },
+        stopModel(model),
+      );
     },
+  };
+}
+
+/**
+ * One CactusLM accepts one complete() at a time and stop() has no request id.
+ * Completions for the same instance wait in order. stop() runs only for the
+ * completion that is inside complete(), so cancelling a queued agent does not
+ * interrupt the one that is generating. A different model instance has its own queue.
+ */
+const modelQueues = new WeakMap<CactusLanguageModel, ModelQueue>();
+
+function queueFor(model: CactusLanguageModel): ModelQueue {
+  const existing = modelQueues.get(model);
+  if (existing !== undefined) {
+    return existing;
+  }
+  const created = new ModelQueue();
+  modelQueues.set(model, created);
+  return created;
+}
+
+class ModelQueue {
+  private tail: Promise<void> = Promise.resolve();
+  private active: AbortSignal | null = null;
+
+  run<T>(signal: AbortSignal, execute: () => Promise<T>, stop: () => void): Promise<T> {
+    if (signal.aborted) {
+      return Promise.reject(cancelled());
+    }
+    const result = new Promise<T>((resolve, reject) => {
+      this.tail = this.tail.then(
+        async () => {
+          if (signal.aborted) {
+            reject(cancelled());
+            return;
+          }
+          this.active = signal;
+          const onAbort = (): void => {
+            if (this.active === signal) {
+              stop();
+            }
+          };
+          signal.addEventListener("abort", onAbort);
+          try {
+            resolve(await execute());
+          } catch (error) {
+            reject(error);
+          } finally {
+            signal.removeEventListener("abort", onAbort);
+            if (this.active === signal) {
+              this.active = null;
+            }
+          }
+        },
+        async () => undefined,
+      );
+    });
+    return result;
+  }
+}
+
+function stopModel(model: CactusLanguageModel): () => void {
+  return () => {
+    void model.stop().catch(() => undefined);
   };
 }
 
@@ -205,6 +272,123 @@ function cancelled(): LarkxError {
     message: "Cactus generation cancelled.",
     retryable: false,
   });
+}
+
+export interface NativeHostModel {
+  readonly id: string;
+  readonly model: string;
+  readonly capabilities: {
+    readonly toolCalling: boolean;
+    readonly structuredOutput: boolean;
+    readonly cancellation: boolean;
+  };
+  complete(
+    request: { readonly messages: readonly JsonValue[]; readonly tools: readonly JsonValue[] },
+    context: { readonly signal: AbortSignal },
+  ): Promise<ModelResponse>;
+  download(params?: { onProgress?: (progress: number) => void }): Promise<void>;
+  init(): Promise<void>;
+  stop(): Promise<void>;
+  destroy(): Promise<void>;
+  getModelName(): string;
+}
+
+/**
+ * Adapt Cactus to the native host's JSON model request.
+ * Cactus still only performs inference. The native runtime owns the agent loop.
+ */
+export function cactusHostModel(model: CactusLanguageModel): NativeHostModel {
+  const adapter = cactusAdapter(model);
+  return {
+    id: adapter.id,
+    model: adapter.model,
+    capabilities: adapter.capabilities,
+    download: (params) => model.download(params),
+    init: () => model.init(),
+    stop: () => model.stop(),
+    destroy: () => model.destroy(),
+    getModelName: () => model.getModelName(),
+    complete(request, context) {
+      return adapter.complete(
+        {
+          messages: request.messages.map(readHostMessage),
+          tools: request.tools.map(readHostTool),
+        },
+        context,
+      );
+    },
+  };
+}
+
+function readHostMessage(value: JsonValue): ModelMessage {
+  if (!isJsonObject(value) || typeof value.role !== "string") {
+    throw permanent("Native model message must be an object with a role.");
+  }
+  if (value.role === "system" || value.role === "user") {
+    if (typeof value.content !== "string") {
+      throw permanent("Native model message content must be a string.");
+    }
+    return { role: value.role, content: value.content };
+  }
+  if (value.role === "assistant") {
+    const calls = Array.isArray(value.calls)
+      ? value.calls.flatMap((call) => {
+          if (call === undefined) {
+            return [];
+          }
+          return [readHostCall(call)];
+        })
+      : [];
+    return {
+      role: "assistant",
+      content: typeof value.content === "string" ? value.content : null,
+      calls,
+    };
+  }
+  if (value.role === "tool") {
+    if (
+      typeof value.name !== "string" ||
+      typeof value.callId !== "string" ||
+      typeof value.content !== "string"
+    ) {
+      throw permanent("Native tool message is missing a name, call id, or content.");
+    }
+    return { role: "tool", name: value.name, callId: value.callId, content: value.content };
+  }
+  throw permanent(`Native model message role "${value.role}" is not supported.`);
+}
+
+function readHostCall(value: JsonValue): ToolCall {
+  const args = isJsonObject(value) ? value.arguments : undefined;
+  if (
+    !isJsonObject(value) ||
+    typeof value.id !== "string" ||
+    typeof value.name !== "string" ||
+    args === undefined ||
+    !isJsonObject(args)
+  ) {
+    throw permanent("Native assistant call must include an id, name, and object arguments.");
+  }
+  return { id: value.id, name: value.name, arguments: args };
+}
+
+function readHostTool(value: JsonValue): ModelToolDefinition {
+  if (
+    !isJsonObject(value) ||
+    typeof value.name !== "string" ||
+    typeof value.description !== "string"
+  ) {
+    throw permanent("Native tool definition must include a name and description.");
+  }
+  const schema = value.inputSchema;
+  if (schema === undefined || !isJsonObject(schema) || schema.type !== "object") {
+    throw permanent(`Tool "${value.name}" is missing an object input schema.`);
+  }
+  return {
+    name: value.name,
+    description: value.description,
+    inputSchema: schema as unknown as JsonSchema,
+  };
 }
 
 function permanent(message: string): LarkxError {

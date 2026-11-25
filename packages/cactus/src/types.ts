@@ -61,5 +61,6 @@ export interface CactusLanguageModel {
   init(): Promise<void>;
   complete(params: CactusCompleteRequest): Promise<CactusCompletion>;
   stop(): Promise<void>;
+  destroy(): Promise<void>;
   getModelName(): string;
 }

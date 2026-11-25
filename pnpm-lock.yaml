@@ -219,6 +219,9 @@ importers:
 
   examples/react-native-workflow:
     dependencies:
+      '@larkxai/cactus':
+        specifier: workspace:*
+        version: link:../../packages/cactus
       '@larkxai/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -231,6 +234,9 @@ importers:
       '@larkxai/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
+      cactus-react-native:
+        specifier: 1.13.1
+        version: 1.13.1(react-native-nitro-modules@0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
       expo:
         specifier: 58.0.26
         version: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
@@ -255,6 +261,9 @@ importers:
       react-native:
         specifier: 0.88.1
         version: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
+      react-native-nitro-modules:
+        specifier: 0.33.9
+        version: 0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
     devDependencies:
       '@types/react':
         specifier: 19.2.18

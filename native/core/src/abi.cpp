@@ -8,6 +8,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <vector>
 
 struct larkx_store {
   std::unique_ptr<larkx::Store> impl;
@@ -904,4 +905,35 @@ larkx_code larkx_run_event_payload(larkx_runtime* runtime, const char* run_id, i
     return fail(err, status);
   }
   return copy_buffer(json, buffer, capacity, needed, err);
+}
+
+larkx_code larkx_run_count(larkx_runtime* runtime, int32_t* count, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr || count == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Run list is missing an argument."));
+  }
+  std::vector<larkx::Run> runs;
+  auto status = runtime->impl->list_runs(runs);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  if (runs.size() > 0x7fffffffU) {
+    return fail(err, larkx::Status::fail(larkx::Code::Capacity, "Run list does not fit a 32-bit count."));
+  }
+  *count = static_cast<int32_t>(runs.size());
+  return ok(err);
+}
+
+larkx_code larkx_run_at(larkx_runtime* runtime, int32_t index, larkx_run_info* out, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr || out == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Run list is missing an argument."));
+  }
+  std::vector<larkx::Run> runs;
+  auto status = runtime->impl->list_runs(runs);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  if (index < 0 || static_cast<size_t>(index) >= runs.size()) {
+    return fail(err, larkx::Status::fail(larkx::Code::NotFound, "Run index is out of range."));
+  }
+  return fill_run(runs[static_cast<size_t>(index)], out, err);
 }

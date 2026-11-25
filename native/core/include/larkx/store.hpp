@@ -23,6 +23,7 @@ class Store {
 
   Status create_run(const CreateRunInput& input, bool& created);
   Status load_run(const std::string& run_id, std::optional<Run>& out);
+  Status list_runs(std::vector<Run>& out);
   Status load_state(const std::string& run_id, std::optional<State>& out);
   Status compatible(const std::string& run_id, const std::string& workflow_name, int32_t workflow_version,
                     const std::string& input_json);
