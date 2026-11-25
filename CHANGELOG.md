@@ -4,10 +4,10 @@ This file summarizes user-visible changes. Public packages share one version and
 
 ## Unreleased
 
-- `@larkxai/react-native` runs the existing engine on Expo SQLite, with mobile ownership, foreground recovery, and local artifact copies.
-- Storage can use exclusive ownership so an expired lease is not treated as a dead executor.
-- Stopping a run cancels its heartbeat timer instead of leaving that timer until the next interval.
-- `examples/react-native-workflow` is a local demo. It has not been executed on an emulator or a device in CI.
+- The TypeScript execution engine is removed. `@larkxai/node` and `@larkxai/react-native` drive the shared C++ runtime. Import `createRuntime`, `defineTool`, and `sqlite` from the package root.
+- `@larkxai/core`, `@larkxai/agent`, `@larkxai/storage-memory`, `@larkxai/storage-sqlite`, and `@larkxai/testing` are no longer published from this repository. Existing npm versions stay published.
+- There is no migration from a TypeScript-engine database. Open a new SQLite file. The runtime does not delete an existing database.
+- `@larkxai/telemetry` keeps the metadata batch contract. The C++ runtime does not export it yet.
 
 ## 0.1.0
 

@@ -1,7 +1,7 @@
 {
   "name": "@larkxai/cactus",
   "version": "0.1.2",
-  "description": "Cactus model adapter for LarkX agents. Optional. The agent loop does not import this package.",
+  "description": "Optional Cactus model adapter. The C++ runtime does not import this package.",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
@@ -36,8 +36,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkxai/agent": "workspace:*",
-    "@larkxai/core": "workspace:*",
     "@larkxai/protocol": "workspace:*"
   },
   "peerDependencies": {

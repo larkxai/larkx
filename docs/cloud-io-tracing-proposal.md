@@ -1,6 +1,6 @@
 # Proposal: opt-in input and output tracing
 
-Status: proposal only. `@larkxai/telemetry` version 1 stays `metadata-only`. This document does not change the exporter.
+Status: proposal only. `@larkxai/telemetry` version 1 stays `metadata-only`. The C++ runtime does not export telemetry yet. This document does not change the exporter and does not describe the current agent API.
 
 ## Why
 

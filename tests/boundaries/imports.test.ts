@@ -3,14 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const roots = [
-  "packages/protocol/src",
-  "packages/core/src",
-  "packages/agent/src",
-  "packages/storage-memory/src",
-  "packages/storage-sqlite/src",
-  "packages/telemetry/src",
-];
+const roots = ["packages/protocol/src", "packages/host/src", "packages/telemetry/src"];
 
 describe("package boundaries", () => {
   it("keeps Node and React Native imports out of the platform-independent packages", () => {
@@ -30,23 +23,11 @@ describe("package boundaries", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps the testable React Native modules free of native imports", () => {
-    const files = [
-      "packages/react-native/src/storage.ts",
-      "packages/react-native/src/ownership.ts",
-      "packages/react-native/src/artifacts.ts",
-      "packages/react-native/src/lifecycle.ts",
-      "packages/react-native/src/native/runtime.ts",
-    ];
-    const offenders = files.filter((file) =>
-      /from\s+["'](expo|react-native|node:)/.test(readFileSync(file, "utf8")),
-    );
-    expect(offenders).toEqual([]);
-  });
-
-  it("does not import a model provider into the core", () => {
-    const source = readFileSync("packages/core/src/engine.ts", "utf8");
-    expect(source).not.toMatch(/cactus|ollama|openai|anthropic/i);
+  it("keeps the host driver free of a platform SDK", () => {
+    const imports = readFileSync("packages/host/src/runtime.ts", "utf8")
+      .split("\n")
+      .filter((line) => line.includes("from ") || line.includes("require("));
+    expect(imports.join("\n")).not.toMatch(/react-native|node:|expo|cactus/);
   });
 
   it("keeps the Cactus SDK inside the native module", () => {

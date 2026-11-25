@@ -1,4 +1,4 @@
-import type { ModelResponse } from "@larkxai/react-native/native";
+import type { ModelResponse } from "@larkxai/react-native";
 
 const REPORT =
   "Pump 12 needs a seal inspection and a filter change. Vibration is above the local limit.";

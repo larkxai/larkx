@@ -1,13 +1,9 @@
 # @larkxai/protocol
 
+Shared execution contracts for LarkX: workflow and step states, legal transitions, effect classes, event names, error codes, and canonical JSON.
+
+The C++ runtime in `native/` implements the state machine. This package does not import it, and the runtime does not import this package. Remote dispatch types remain so a later transport can be built against them. The current runtime does not send them.
+
 ```bash
 npm install @larkxai/protocol
 ```
-
-Language-independent execution contracts for LarkX.
-
-This package defines workflow and step states, the legal transition tables, effect classes, event names, error codes, payload types, and the remote dispatch request shape. It has no dependency on the runtime or on a platform adapter.
-
-The TypeScript types are the source of the version 1 contract. A future Rust core is expected to implement the same states, transitions, and serialization rules rather than to import this package.
-
-Remote dispatch types are specified here so transports can be built against a stable contract. The local runtime in this release does not send them.

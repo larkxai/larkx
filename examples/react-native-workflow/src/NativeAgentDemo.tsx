@@ -8,7 +8,7 @@ import {
   sqlite,
   type RunHistory,
   type RuntimeVersions,
-} from "@larkxai/react-native/native";
+} from "@larkxai/react-native";
 
 const RUN_ID = "native-agent-demo";
 

@@ -1,77 +1,15 @@
 # Mobile lifecycle
 
-`@larkxai/react-native` is the Expo adapter for the existing engine. It does not contain a second workflow runner or a second durability log. Workflow functions, replay, effect classes, and the SQLite schema are the ones from `@larkxai/core` and `@larkxai/storage-sqlite`.
-
-## SQLite driver
-
-The driver is `expo-sqlite` 58, through `openDatabaseSync`, `execSync`, `runSync`, `getFirstSync`, `getAllSync`, and `closeSync`.
-
-That module was chosen because `SqliteDriver` is synchronous. The Expo sync API can run `BEGIN IMMEDIATE`, the statement, and `COMMIT` or `ROLLBACK` before the call returns. The shared `migrate()` function creates schema version 1. There is no React Native-specific schema.
-
-OP-SQLite (`@op-engineering/op-sqlite` 19) was rejected for this milestone. Its transactions are asynchronous, and its documentation says `executeSync` is not available inside a transaction. Using it would require a second storage implementation. It also does not run in Expo Go.
-
-`withTransactionSync` was not used. It starts a deferred `BEGIN` and does not return the callback's value. The driver issues `BEGIN IMMEDIATE` itself, matching the Node driver.
-
-Sync calls block the JavaScript thread. LarkX transactions are short status updates. That is acceptable here. It is not a claim about large scans.
-
-## Ownership
-
-Node can treat a dead pid as proof that the previous executor stopped, and it can take an expired lease. A phone cannot. A suspended JavaScript runtime is still the same runtime: timers do not fire, so the lease expires, but the in-flight handler and its fence are still alive.
-
-Mobile storage sets `exclusiveOwnership`. Another owner can take a run only when `mayStealFrom` returns true. The adapter returns true only when that owner id is absent from the live-owner set on `globalThis`.
-
-| Situation                              | What happens                                                                                                                                                                                            |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| App is suspended and the lease expires | The same owner refreshes the lease and keeps its epoch. The in-flight commit still matches the fence. A second engine in the same realm cannot take the run                                             |
-| Foreground                             | `bindReactNativeLifecycle` calls `recover()`. A run this engine already owns is not started again                                                                                                       |
-| Force-quit or full reload              | The JavaScript realm is gone, so the live-owner set is empty. The new engine may take the run immediately, even if the stored lease has not expired. The epoch increases, so a stale commit cannot land |
-| Several `recover()` calls              | The in-process lock and the storage claim allow one executor                                                                                                                                            |
-| Background or inactive                 | Ownership is not released. The runtime is not marked dead                                                                                                                                               |
-
-Assumptions and limits:
-
-- One JavaScript realm owns a database. Two isolated processes are not coordinated beyond the fence.
-- Fast Refresh keeps `globalThis`. `openReactNativeEngine` returns the existing engine for that database name. A full reload does not.
-- Lease expiry alone is not proof the executor stopped. The Node adapter does not use this rule. Its pid file still does.
-- Heartbeats use timers. Suspension freezes them. Exclusive ownership is what keeps the suspended owner in place.
-- This does not schedule native background work. A killed app resumes on the next time the runtime starts.
-- Two devices still must not own one run. Nothing in this package transfers ownership between devices.
-
-## Lifecycle API
+`@larkxai/react-native` is the React Native binding of the C++ runtime. It is not a second runner.
 
 ```typescript
-const engine = openReactNativeEngine({
-  database: "larkx.db",
-  workflows: [notes],
-});
+import { createRuntime, defineTool, sqlite } from "@larkxai/react-native";
 
-bindReactNativeLifecycle(engine);
-await engine.recover();
+const runtime = await createRuntime({ storage: sqlite() });
 ```
 
-`reactNativeSqliteStorage({ database: "larkx.db" })` is the storage object for `createEngine` from `@larkxai/core`. The caller registers the owner with `registerLiveOwner` before starting work. `openReactNativeEngine` does that itself.
+`sqlite()` with no path uses the application document directory through `expo-file-system`. Pass a path to choose the file. Expo Go does not load `LarkXNativeCore`. Use a development build.
 
-`useLarkxRun` only reads snapshots and events. Unmounting it does not release the run.
+`bindNativeAppState` tells the host when the app leaves the foreground so in-flight work can pause. Closing the runtime drops the in-process session and leaves the database on disk. Register the agent again after relaunch, then `runtime.resume(runId)`.
 
-Connectivity comes from `expo-network` when the app becomes active. Offline does not fail a local workflow. Coming online calls `recover()` again. The local runtime still does not enter `WAITING`.
-
-An optional `@larkxai/telemetry` exporter can flush after that recovery, when connectivity is reported online, and from an explicit Sync control. `setActive(false)` clears its foreground timer when `AppState` is not `active`. The timer is not a background scheduler. Suspension still freezes JavaScript timers. Local inference does not read the ingestion key.
-
-## Artifacts
-
-`importDurableArtifact` reads a temporary URI, writes the bytes under the application document directory `larkx-artifacts`, checks the written bytes, and only then inserts the artifact row. A step handler must finish that import before it returns a reference.
-
-The same artifact id is reused when the durable file is still present and its hash matches, including when the temporary source has already disappeared. A missing source with no durable copy fails the import. A second hash for the same id is rejected.
-
-Cleanup is not automatic. A crash after the file write and before the metadata insert leaves a file that the next import of that id overwrites. A partial file whose hash does not match is not treated as durable. Remote upload is not implemented. The application deletes artifacts it no longer needs. The database file itself is not encrypted.
-
-## Validation split
-
-| Kind                      | What exists                                                                                                                         |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Unit and Node integration | Ownership, exclusive leases, lifecycle binding, artifact reuse, and the shared storage cases that do not assume Node lease stealing |
-| Process death             | `SIGKILL` of a Node process using the mobile storage policy and `node:sqlite`                                                       |
-| Emulator                  | Not run for this change                                                                                                             |
-| Physical device           | Not run for this change                                                                                                             |
-
-Do not read a green Node suite as Expo Go, Android, or iOS validation.
+A Node test of this package is not a phone run. The open checklist is [docs/validation/on-device-agent.md](../validation/on-device-agent.md).

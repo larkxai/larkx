@@ -109,8 +109,10 @@ describe("npm publish layout", () => {
   it("publishes the public libraries to GitHub Packages", () => {
     const names = libraryPackageDirs(root).map((dir) => basename(dir));
     expect(names).toContain("react-native");
-    expect(names).toContain("core");
-    expect(names).not.toContain("example-node-workflow");
+    expect(names).toContain("host");
+    expect(names).toContain("node");
+    expect(names).not.toContain("core");
+    expect(names).not.toContain("agent");
     expect(isAlreadyPublished("You cannot publish over the previously published versions")).toBe(
       true,
     );

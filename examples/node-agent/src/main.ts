@@ -1,155 +1,200 @@
-import { createAgent, createScriptedModel, defineTool } from "@larkxai/agent";
-import type { ModelResponse } from "@larkxai/agent";
-import { createNodeEngine, createNodeSqliteDriver } from "@larkxai/node";
-import {
-  createCloudTelemetry,
-  createMemoryTelemetryStore,
-  createSqliteTelemetryStore,
-  journalFromEngine,
-  nodeInstallationMetadata,
-  type CloudTelemetry,
-} from "@larkxai/telemetry";
-import { platform, release } from "node:os";
+import { closeSync, fsyncSync, openSync, writeSync } from "node:fs";
 
-const room = defineTool({
-  name: "get_room_info",
-  description: "Read the living room",
-  inputSchema: { type: "object", properties: {}, additionalProperties: false },
-  effects: "pure",
-  run: () => ({ name: "Living room", lengthM: 6, widthM: 4 }),
-});
+import { createRuntime, defineTool, sqlite, type ModelResponse } from "@larkxai/node";
 
-const budget = defineTool({
-  name: "get_budget",
-  description: "Read the renovation budget",
-  inputSchema: { type: "object", properties: {}, additionalProperties: false },
-  effects: "pure",
-  run: () => ({ currency: "USD", remaining: 2000 }),
-});
+const toolCall: ModelResponse = {
+  message: null,
+  finish: "tool_calls",
+  calls: [{ id: "call-1", name: "read_notes", arguments: {} }],
+};
 
-const search = defineTool({
-  name: "search_furniture",
-  description: "Search the bundled catalog",
-  inputSchema: {
-    type: "object",
-    properties: { query: { type: "string" } },
-    required: ["query"],
-    additionalProperties: false,
-  },
-  effects: "pure",
-  run: (input: { query: string }) => ({
-    query: input.query,
-    items: [{ name: "Linen sofa", price: 900 }],
-  }),
-});
+const saveCall: ModelResponse = {
+  message: null,
+  finish: "tool_calls",
+  calls: [{ id: "call-2", name: "save_report", arguments: { report: "Seal weeps." } }],
+};
 
-const save = defineTool({
-  name: "save_plan",
-  description: "Save the plan locally",
-  inputSchema: {
-    type: "object",
-    properties: {
-      title: { type: "string" },
-      summary: { type: "string" },
-      totalCost: { type: "number" },
-    },
-    required: ["title", "summary", "totalCost"],
-    additionalProperties: false,
-  },
-  effects: "idempotent",
-  run: (input: { title: string; summary: string; totalCost: number }, ctx) => ({
-    id: ctx.operationId,
-    ...input,
-  }),
-});
+const summary: ModelResponse = {
+  message: "Seal needs service.",
+  finish: "stop",
+  calls: [],
+};
 
-const model = createScriptedModel({
-  id: "scripted",
-  model: "scripted-renovation",
-  respond(request): ModelResponse {
-    const completed = request.messages.filter((message) => message.role === "tool").length;
-    if (completed === 0) {
-      return call("get_room_info", {});
-    }
-    if (completed === 1) {
-      return call("get_budget", {});
-    }
-    if (completed === 2) {
-      return call("search_furniture", { query: "sofa" });
-    }
-    if (completed === 3) {
-      return call("save_plan", {
-        title: "Living room",
-        summary: "Linen sofa within the $2,000 budget.",
-        totalCost: 900,
-      });
-    }
-    return { message: "Saved a living-room plan for $900.", finish: "stop", calls: [] };
-  },
-});
-
-const database = process.argv[2] ?? ":memory:";
-const endpoint = process.env.LARKX_CLOUD_ENDPOINT?.trim() ?? "";
-const apiKey = process.env.LARKX_INGESTION_KEY?.trim() ?? "";
-const engine = createNodeEngine({ database, workflows: [], heartbeat: false });
-const cloud = openTelemetry(engine, database, endpoint, apiKey);
-const agent = createAgent({
-  engine,
-  name: "renovation-agent",
-  version: 1,
-  model,
-  instructions: "Plan a living-room renovation from local tools only.",
-  tools: [room, budget, search, save],
-  maxIterations: 8,
-});
-
-const run = await agent.start({
-  id: "renovation-node",
-  input: { message: "Create a renovation plan for my living room with a $2,000 budget." },
-});
-const result = await run.result();
-const steps = await engine.getSteps(run.id);
-let sync: { phase: string; error: string | null } | null = null;
-if (cloud.telemetry) {
-  const flushed = await cloud.telemetry.flush();
-  sync = { phase: flushed.phase, error: flushed.error };
+interface Args {
+  readonly database: string;
+  readonly log: string;
+  readonly crashDuring?: string;
+  readonly resume: boolean;
+  readonly nonIdempotent: boolean;
 }
-process.stdout.write(
-  `${JSON.stringify({ result, steps: steps.map((step) => step.stepKey), cloud: sync }, null, 2)}\n`,
-);
-await cloud.telemetry?.stop();
-cloud.driver?.close();
-await engine.close();
 
-function openTelemetry(
-  runtime: Parameters<typeof journalFromEngine>[0],
-  databasePath: string,
-  cloudEndpoint: string,
-  cloudKey: string,
-): { telemetry: CloudTelemetry | null; driver: { close(): void } | null } {
-  if (cloudEndpoint.length === 0 || cloudKey.length === 0) {
-    return { telemetry: null, driver: null };
-  }
-  const driver =
-    databasePath === ":memory:" ? null : createNodeSqliteDriver(`${databasePath}.telemetry`);
-  const telemetry = createCloudTelemetry({
-    endpoint: cloudEndpoint,
-    apiKey: cloudKey,
-    journal: journalFromEngine(runtime),
-    state: driver ? createSqliteTelemetryStore(driver) : createMemoryTelemetryStore(),
-    appId: process.env.LARKX_APP_ID?.trim() || "node-agent",
-    runtime: "node",
-    metadata: nodeInstallationMetadata({
-      appName: "Node agent",
-      appVersion: "0.1.0",
-      osName: platform(),
-      osVersion: release(),
-    }),
-    intervalMs: 0,
+async function main(): Promise<void> {
+  const args = parseArgs(process.argv.slice(2));
+  const runtime = await createRuntime({
+    storage: sqlite(args.database),
+    ownerId: "node-agent",
+    leaseMs: 0,
   });
-  return { telemetry, driver };
+  const readNotes = defineTool({
+    name: "read_notes",
+    description: "Read the local inspection notes.",
+    effects: "pure",
+    schema: { type: "object", properties: {} },
+    handler: () => {
+      record(args.log, "read_notes");
+      if (args.crashDuring === "read_notes") {
+        stop();
+      }
+      return { notes: ["Seal weeps above 80 psi."] };
+    },
+  });
+  const saveReport = defineTool({
+    name: "save_report",
+    description: "Save the inspection report on this device.",
+    effects: args.nonIdempotent ? "non-idempotent" : "idempotent",
+    schema: {
+      type: "object",
+      properties: { report: { type: "string" } },
+      required: ["report"],
+    },
+    handler: () => {
+      record(args.log, "save_report");
+      if (args.crashDuring === "save_report") {
+        stop();
+      }
+      return { saved: true };
+    },
+  });
+  const agent = runtime.createAgent({
+    name: "notes-agent",
+    version: 1,
+    model: {
+      id: "scripted",
+      model: "scripted-notes",
+      capabilities: { toolCalling: true },
+      async complete(request) {
+        record(args.log, "model");
+        if (args.crashDuring === "model") {
+          stop();
+        }
+        const text = JSON.stringify(request.messages);
+        if (text.includes("save_report")) {
+          return summary;
+        }
+        if (text.includes("read_notes")) {
+          return saveCall;
+        }
+        return toolCall;
+      },
+    },
+    instructions: "Inspect the equipment and save a short report.",
+    tools: [readNotes, saveReport],
+  });
+  await agent.whenRegistered();
+  let markBlocked: () => void = () => undefined;
+  const blocked = new Promise<void>((resolve) => {
+    markBlocked = resolve;
+  });
+  const stopObserving = runtime.observe((event) => {
+    if (event.type === "reconcile-required" && event.runId === "notes-run") {
+      markBlocked();
+    }
+  });
+  try {
+    const run = args.resume
+      ? await runtime.resume("notes-run")
+      : await agent.start({ message: "Inspect pump 12", runId: "notes-run" });
+    const settled = run.result().then(
+      (result) => ({ kind: "done" as const, result }),
+      (error: unknown) => ({ kind: "error" as const, error }),
+    );
+    const outcome = await Promise.race([
+      settled,
+      blocked.then(() => ({ kind: "blocked" as const })),
+    ]);
+    if (outcome.kind === "blocked") {
+      const status = await run.getStatus();
+      writeResult({ status: "BLOCKED", reason: status.blockedReason });
+      await runtime.close();
+      process.exitCode = 2;
+      return;
+    }
+    if (outcome.kind === "error") {
+      throw outcome.error;
+    }
+    writeResult({ status: "COMPLETED", message: outcome.result.message });
+    await runtime.close();
+  } catch (error) {
+    const status = await runtime.inspect("notes-run").catch(() => null);
+    writeResult({
+      status: status?.status ?? "FAILED",
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    await runtime.close();
+    process.exitCode = status?.status === "BLOCKED" ? 2 : 1;
+  } finally {
+    stopObserving();
+  }
 }
 
-function call(name: string, args: ModelResponse["calls"][number]["arguments"]): ModelResponse {
-  return { message: null, finish: "tool_calls", calls: [{ id: name, name, arguments: args }] };
+function record(log: string, line: string): void {
+  const fd = openSync(log, "a");
+  writeSync(fd, `${line}\n`);
+  fsyncSync(fd);
+  closeSync(fd);
 }
+
+function stop(): never {
+  process.kill(process.pid, "SIGKILL");
+  throw new Error("SIGKILL did not stop the process.");
+}
+
+function writeResult(value: {
+  readonly status: string;
+  readonly message?: string;
+  readonly error?: string;
+  readonly reason?: string;
+}): void {
+  process.stdout.write(`${JSON.stringify(value)}\n`);
+}
+
+function parseArgs(argv: readonly string[]): Args {
+  let database = "";
+  let log = "";
+  let crashDuring: string | undefined;
+  let resume = false;
+  let nonIdempotent = false;
+  for (let index = 0; index < argv.length; index += 1) {
+    const flag = argv[index];
+    const next = argv[index + 1];
+    if (flag === "--database" && next !== undefined) {
+      database = next;
+      index += 1;
+    } else if (flag === "--log" && next !== undefined) {
+      log = next;
+      index += 1;
+    } else if (flag === "--crash-during" && next !== undefined) {
+      crashDuring = next;
+      index += 1;
+    } else if (flag === "--resume") {
+      resume = true;
+    } else if (flag === "--non-idempotent") {
+      nonIdempotent = true;
+    }
+  }
+  if (database.length === 0 || log.length === 0) {
+    throw new Error("Pass --database and --log.");
+  }
+  return {
+    database,
+    log,
+    resume,
+    nonIdempotent,
+    ...(crashDuring !== undefined ? { crashDuring } : {}),
+  };
+}
+
+void main().catch((error: unknown) => {
+  process.stderr.write(`${error instanceof Error ? error.message : "unknown error"}\n`);
+  process.exitCode = 1;
+});

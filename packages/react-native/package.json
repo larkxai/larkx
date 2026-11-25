@@ -1,7 +1,7 @@
 {
   "name": "@larkxai/react-native",
   "version": "0.1.2",
-  "description": "React Native adapter for the LarkX engine, plus a preview binding to the shared C++ core.",
+  "description": "React Native SDK for the shared LarkX C++ runtime.",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
@@ -20,34 +20,9 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./storage": {
-      "types": "./dist/storage.d.ts",
-      "import": "./dist/storage.js"
-    },
-    "./ownership": {
-      "types": "./dist/ownership.d.ts",
-      "import": "./dist/ownership.js"
-    },
-    "./artifacts": {
-      "types": "./dist/artifacts.d.ts",
-      "import": "./dist/artifacts.js"
-    },
-    "./lifecycle": {
-      "types": "./dist/lifecycle.d.ts",
-      "import": "./dist/lifecycle.js"
-    },
-    "./native": {
-      "types": "./dist/native/index.d.ts",
-      "react-native": "./dist/native/index.js",
-      "import": "./dist/native/index.js",
-      "default": "./dist/native/index.js"
-    },
-    "./native-node": {
-      "types": "./dist/native/node-client.d.ts",
-      "import": "./dist/native/node-client.js",
-      "default": "./dist/native/node-client.js"
+      "react-native": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
@@ -57,26 +32,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkxai/core": "workspace:*",
-    "@larkxai/protocol": "workspace:*",
-    "@larkxai/storage-sqlite": "workspace:*"
+    "@larkxai/host": "workspace:*",
+    "@larkxai/protocol": "workspace:*"
   },
   "peerDependencies": {
-    "expo": "*",
-    "expo-crypto": "*",
     "expo-file-system": "*",
-    "expo-network": "*",
-    "expo-sqlite": "*",
     "react": "*",
     "react-native": "*"
   },
   "devDependencies": {
     "@types/react": "19.2.18",
     "expo": "58.0.26",
-    "expo-crypto": "58.0.8",
     "expo-file-system": "58.0.14",
-    "expo-network": "58.0.5",
-    "expo-sqlite": "58.0.18",
     "react": "19.3.0",
     "react-native": "0.88.1"
   },

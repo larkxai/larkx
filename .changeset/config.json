@@ -7,11 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": [
-    "@larkxai/example-node-workflow",
-    "@larkxai/example-node-agent",
-    "@larkxai/example-react-native-workflow",
-    "@larkxai/example-react-native-agent",
-    "@larkxai/example-field-inspection"
-  ]
+  "ignore": ["@larkxai/example-node-agent", "@larkxai/example-react-native-workflow"]
 }

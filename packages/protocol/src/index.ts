@@ -59,7 +59,8 @@ export {
   validateWorkflowVersion,
 } from "./ids.js";
 
-export { PROTOCOL_VERSION, checkProtocolCompatibility } from "./version.js";
+export { PROTOCOL_VERSION, STORAGE_SCHEMA_VERSION, checkProtocolCompatibility } from "./version.js";
+export { decodeJson, encodeJson, encodePayload } from "./json.js";
 export type { ProtocolCompatibility } from "./version.js";
 
 export { validateRemoteDispatchRequest } from "./dispatch.js";

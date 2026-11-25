@@ -19,15 +19,12 @@ importers:
       '@eslint/js':
         specifier: 9.39.5
         version: 9.39.5
-      '@larkxai/agent':
-        specifier: workspace:*
-        version: link:packages/agent
       '@larkxai/cactus':
         specifier: workspace:*
         version: link:packages/cactus
-      '@larkxai/core':
+      '@larkxai/host':
         specifier: workspace:*
-        version: link:packages/core
+        version: link:packages/host
       '@larkxai/node':
         specifier: workspace:*
         version: link:packages/node
@@ -37,18 +34,9 @@ importers:
       '@larkxai/react-native':
         specifier: workspace:*
         version: link:packages/react-native
-      '@larkxai/storage-memory':
-        specifier: workspace:*
-        version: link:packages/storage-memory
-      '@larkxai/storage-sqlite':
-        specifier: workspace:*
-        version: link:packages/storage-sqlite
       '@larkxai/telemetry':
         specifier: workspace:*
         version: link:packages/telemetry
-      '@larkxai/testing':
-        specifier: workspace:*
-        version: link:packages/testing
       '@types/node':
         specifier: 22.20.5
         version: 22.20.5
@@ -74,181 +62,29 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@types/node@22.20.5)(vite@8.3.8(@types/node@22.20.5)(terser@5.51.2))
 
-  examples/field-inspection-agent:
-    dependencies:
-      '@larkxai/agent':
-        specifier: workspace:*
-        version: link:../../packages/agent
-      '@larkxai/cactus':
-        specifier: workspace:*
-        version: link:../../packages/cactus
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@larkxai/react-native':
-        specifier: workspace:*
-        version: link:../../packages/react-native
-      '@larkxai/storage-sqlite':
-        specifier: workspace:*
-        version: link:../../packages/storage-sqlite
-      '@larkxai/telemetry':
-        specifier: workspace:*
-        version: link:../../packages/telemetry
-      cactus-react-native:
-        specifier: 1.13.1
-        version: 1.13.1(react-native-nitro-modules@0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
-      expo:
-        specifier: 58.0.26
-        version: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
-      expo-clipboard:
-        specifier: ~58.0.4
-        version: 58.0.4(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
-      expo-crypto:
-        specifier: 58.0.8
-        version: 58.0.8(expo@58.0.26)
-      expo-file-system:
-        specifier: 58.0.14
-        version: 58.0.14(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))
-      expo-network:
-        specifier: 58.0.5
-        version: 58.0.5(expo@58.0.26)(react@19.3.0)
-      expo-sqlite:
-        specifier: 58.0.18
-        version: 58.0.18(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
-      expo-status-bar:
-        specifier: 58.0.5
-        version: 58.0.5(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
-      react:
-        specifier: 19.3.0
-        version: 19.3.0
-      react-native:
-        specifier: 0.88.1
-        version: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
-      react-native-nitro-modules:
-        specifier: 0.33.9
-        version: 0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
-    devDependencies:
-      '@types/react':
-        specifier: 19.2.18
-        version: 19.2.18
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
-
   examples/node-agent:
     dependencies:
-      '@larkxai/agent':
-        specifier: workspace:*
-        version: link:../../packages/agent
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@larkxai/node':
         specifier: workspace:*
         version: link:../../packages/node
-      '@larkxai/telemetry':
-        specifier: workspace:*
-        version: link:../../packages/telemetry
-
-  examples/node-workflow:
-    dependencies:
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@larkxai/node':
-        specifier: workspace:*
-        version: link:../../packages/node
-
-  examples/react-native-agent:
-    dependencies:
-      '@larkxai/agent':
-        specifier: workspace:*
-        version: link:../../packages/agent
-      '@larkxai/cactus':
-        specifier: workspace:*
-        version: link:../../packages/cactus
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@larkxai/react-native':
-        specifier: workspace:*
-        version: link:../../packages/react-native
-      '@larkxai/storage-sqlite':
-        specifier: workspace:*
-        version: link:../../packages/storage-sqlite
-      '@larkxai/telemetry':
-        specifier: workspace:*
-        version: link:../../packages/telemetry
-      cactus-react-native:
-        specifier: 1.13.1
-        version: 1.13.1(react-native-nitro-modules@0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
-      expo:
-        specifier: 58.0.26
-        version: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
-      expo-crypto:
-        specifier: 58.0.8
-        version: 58.0.8(expo@58.0.26)
-      expo-file-system:
-        specifier: 58.0.14
-        version: 58.0.14(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))
-      expo-network:
-        specifier: 58.0.5
-        version: 58.0.5(expo@58.0.26)(react@19.3.0)
-      expo-sqlite:
-        specifier: 58.0.18
-        version: 58.0.18(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
-      expo-status-bar:
-        specifier: 58.0.5
-        version: 58.0.5(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
-      react:
-        specifier: 19.3.0
-        version: 19.3.0
-      react-native:
-        specifier: 0.88.1
-        version: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
-      react-native-nitro-modules:
-        specifier: 0.33.9
-        version: 0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
-    devDependencies:
-      '@types/react':
-        specifier: 19.2.18
-        version: 19.2.18
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
 
   examples/react-native-workflow:
     dependencies:
       '@larkxai/cactus':
         specifier: workspace:*
         version: link:../../packages/cactus
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@larkxai/react-native':
         specifier: workspace:*
         version: link:../../packages/react-native
-      '@larkxai/storage-sqlite':
-        specifier: workspace:*
-        version: link:../../packages/storage-sqlite
-      '@larkxai/telemetry':
-        specifier: workspace:*
-        version: link:../../packages/telemetry
       cactus-react-native:
         specifier: 1.13.1
         version: 1.13.1(react-native-nitro-modules@0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
       expo:
         specifier: 58.0.26
         version: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
-      expo-crypto:
-        specifier: 58.0.8
-        version: 58.0.8(expo@58.0.26)
       expo-file-system:
         specifier: 58.0.14
         version: 58.0.14(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))
-      expo-network:
-        specifier: 58.0.5
-        version: 58.0.5(expo@58.0.26)(react@19.3.0)
       expo-sqlite:
         specifier: 58.0.18
         version: 58.0.18(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
@@ -272,23 +108,8 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
-  packages/agent:
-    dependencies:
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../core
-      '@larkxai/protocol':
-        specifier: workspace:*
-        version: link:../protocol
-
   packages/cactus:
     dependencies:
-      '@larkxai/agent':
-        specifier: workspace:*
-        version: link:../agent
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../core
       '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -300,7 +121,7 @@ importers:
         specifier: 0.33.9
         version: 0.33.9(patch_hash=d1f6661ed06754461829733f01f4209a7160921fbdcd60917f8d372af692e966)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
 
-  packages/core:
+  packages/host:
     dependencies:
       '@larkxai/protocol':
         specifier: workspace:*
@@ -308,29 +129,23 @@ importers:
 
   packages/node:
     dependencies:
-      '@larkxai/core':
+      '@larkxai/host':
         specifier: workspace:*
-        version: link:../core
+        version: link:../host
       '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@larkxai/storage-sqlite':
-        specifier: workspace:*
-        version: link:../storage-sqlite
 
   packages/protocol: {}
 
   packages/react-native:
     dependencies:
-      '@larkxai/core':
+      '@larkxai/host':
         specifier: workspace:*
-        version: link:../core
+        version: link:../host
       '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@larkxai/storage-sqlite':
-        specifier: workspace:*
-        version: link:../storage-sqlite
     devDependencies:
       '@types/react':
         specifier: 19.2.18
@@ -338,18 +153,9 @@ importers:
       expo:
         specifier: 58.0.26
         version: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
-      expo-crypto:
-        specifier: 58.0.8
-        version: 58.0.8(expo@58.0.26)
       expo-file-system:
         specifier: 58.0.14
         version: 58.0.14(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))
-      expo-network:
-        specifier: 58.0.5
-        version: 58.0.5(expo@58.0.26)(react@19.3.0)
-      expo-sqlite:
-        specifier: 58.0.18
-        version: 58.0.18(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -357,41 +163,8 @@ importers:
         specifier: 0.88.1
         version: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
 
-  packages/storage-memory:
-    dependencies:
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../core
-      '@larkxai/protocol':
-        specifier: workspace:*
-        version: link:../protocol
-
-  packages/storage-sqlite:
-    dependencies:
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../core
-      '@larkxai/protocol':
-        specifier: workspace:*
-        version: link:../protocol
-
   packages/telemetry:
     dependencies:
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../core
-      '@larkxai/protocol':
-        specifier: workspace:*
-        version: link:../protocol
-      '@larkxai/storage-sqlite':
-        specifier: workspace:*
-        version: link:../storage-sqlite
-
-  packages/testing:
-    dependencies:
-      '@larkxai/core':
-        specifier: workspace:*
-        version: link:../core
       '@larkxai/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -1989,23 +1762,11 @@ packages:
       react: '*'
       react-native: '*'
 
-  expo-clipboard@58.0.4:
-    resolution: {integrity: sha512-b2eEJMwdWXLTrmrkg/otsmL2OV6s9D90tytSNBsY87UswrWf6JwxcB2OaWegyUWD9XnvtBVNeVK7lej0zZh+5A==}
-    peerDependencies:
-      expo: '*'
-      react: '*'
-      react-native: '*'
-
   expo-constants@58.0.16:
     resolution: {integrity: sha512-sVETnE1ktBMclc2Ve3qNrHhOCCio75a9JdghnJYGbqblmKfrrfE+lO9K4g9kNtmslIBLTK9Dyty6PbubkXs3Yw==}
     peerDependencies:
       expo: '*'
       react-native: '*'
-
-  expo-crypto@58.0.8:
-    resolution: {integrity: sha512-yMSiMlallOweQ28oQ3BqJf6I/4ZoBggFNRg+PfjG1NbQWBWzGKmkPPUrd3yT0oPW4P+AYppg+Mw6xoAYddLUKA==}
-    peerDependencies:
-      expo: '*'
 
   expo-file-system@58.0.14:
     resolution: {integrity: sha512-VK67RQPDmWRHGbvpmPY5MeA1Ulw1LiyKs4KIN8na/q7SlkxYuPPR8biWsyX1S1/8XAHm6y2txUnYjCKh9l93lQ==}
@@ -2052,12 +1813,6 @@ packages:
 
   expo-modules-macros@0.33.0:
     resolution: {integrity: sha512-ddrT2jbYPYmiHmzcYOixRemFUUK9qQEb5pOBWgoFoW0gj3sGld1CZX0GwblUXeZMyEX65S9vc1bEhIAGVDRA9w==}
-
-  expo-network@58.0.5:
-    resolution: {integrity: sha512-/0F4WsFgJK9/wBzVd8ai/tUHpOROG3dbI4Azu89PQZnC7uohmm7/ruwK5VaTBumPh3hBMANXnww3WFAaMA1gOA==}
-    peerDependencies:
-      expo: '*'
-      react: '*'
 
   expo-server@58.1.0:
     resolution: {integrity: sha512-jo7I6uHnP5OQYKx3+7lbpdVVnOEwFj2ryDkQdauUQSwgh2HuMUkiFXWUIVe01ts6DLRoff5U0Tv+uNb3CMq/kw==}
@@ -5422,12 +5177,6 @@ snapshots:
       - supports-color
       - typescript
 
-  expo-clipboard@58.0.4(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0):
-    dependencies:
-      expo: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
-      react: 19.3.0
-      react-native: 0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)
-
   expo-constants@58.0.16(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(typescript@5.9.3):
     dependencies:
       '@expo/env': 2.6.0
@@ -5437,10 +5186,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
-
-  expo-crypto@58.0.8(expo@58.0.26):
-    dependencies:
-      expo: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
 
   expo-file-system@58.0.14(expo@58.0.26)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0)):
     dependencies:
@@ -5492,11 +5237,6 @@ snapshots:
       '@expo/modules-macros-linux-x64': 0.33.0
       '@expo/modules-macros-win32-arm64': 0.33.0
       '@expo/modules-macros-win32-x64': 0.33.0
-
-  expo-network@58.0.5(expo@58.0.26)(react@19.3.0):
-    dependencies:
-      expo: 58.0.26(@babel/core@7.29.13)(@expo/dom-webview@58.0.2)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.2.18)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
-      react: 19.3.0
 
   expo-server@58.1.0: {}
 

@@ -14,7 +14,7 @@ import {
   type RunStatus,
   type Runtime,
   type RuntimeDiagnostics,
-} from "@larkxai/react-native/native";
+} from "@larkxai/react-native";
 
 import {
   AGENT_VERSION,

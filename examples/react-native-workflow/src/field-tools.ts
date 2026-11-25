@@ -1,6 +1,6 @@
 import { openDatabaseSync, type SQLiteDatabase } from "expo-sqlite";
 
-import { defineTool } from "@larkxai/react-native/native";
+import { defineTool } from "@larkxai/react-native";
 
 import { commitOnce, type EffectStore } from "./field-effects";
 import type { FailureGate } from "./failure-gate";

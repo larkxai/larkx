@@ -1,4 +1,9 @@
-import type { SqliteDriver } from "@larkxai/storage-sqlite";
+export interface TelemetrySql {
+  exec(sql: string): void;
+  get<T>(sql: string, params?: readonly unknown[]): T | null | undefined;
+  run(sql: string, params?: readonly unknown[]): void;
+  transaction(work: () => void): void;
+}
 
 export interface PendingBatch {
   readonly batchId: string;
@@ -58,7 +63,7 @@ export function createMemoryTelemetryStore(): TelemetryStateStore {
   };
 }
 
-export function createSqliteTelemetryStore(driver: SqliteDriver): TelemetryStateStore {
+export function createSqliteTelemetryStore(driver: TelemetrySql): TelemetryStateStore {
   driver.exec(`
     CREATE TABLE IF NOT EXISTS larkx_telemetry_state (
       slot INTEGER PRIMARY KEY CHECK (slot = 1),

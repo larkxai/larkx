@@ -1,13 +1,5 @@
-# Guide: React Native workflow
+# React Native agents
 
-The demo and the manual interruption steps are in [examples/react-native-workflow/README.md](../../examples/react-native-workflow/README.md).
+The maintained Expo example is [examples/react-native-workflow](../../examples/react-native-workflow/README.md). It runs a scripted agent, a Cactus agent, and the field inspection assistant on the C++ runtime.
 
-The app uses `openReactNativeEngine` and the same `defineWorkflow` functions as Node. Build the workspace first so Metro loads the package `dist` entries:
-
-```bash
-pnpm install
-pnpm build
-pnpm --filter @larkxai/example-react-native-workflow start
-```
-
-CI does not boot an emulator. The Node tests under `tests/react-native` are the automated half of M2. They are not an Expo SQLite run.
+Expo Go cannot load the native module. A Node test is not a phone run.

@@ -1,3 +1,12 @@
+import {
+  decodeJson,
+  encodeJson,
+  isJsonObject,
+  LarkxError,
+  type JsonObject,
+  type JsonValue,
+} from "@larkxai/protocol";
+
 import type {
   JsonSchema,
   ModelAdapter,
@@ -6,9 +15,7 @@ import type {
   ModelResponse,
   ModelToolDefinition,
   ToolCall,
-} from "@larkxai/agent";
-import { decodeJson, encodeJson, LarkxError } from "@larkxai/core";
-import { isJsonObject, type JsonObject, type JsonValue } from "@larkxai/protocol";
+} from "./model.js";
 
 import type { CactusCompletion, CactusLanguageModel, CactusMessage, CactusTool } from "./types.js";
 

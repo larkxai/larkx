@@ -4,10 +4,7 @@ import tseslint from "typescript-eslint";
 
 const platformAgnostic = [
   "packages/protocol/**/*.ts",
-  "packages/core/**/*.ts",
-  "packages/agent/**/*.ts",
-  "packages/storage-memory/**/*.ts",
-  "packages/storage-sqlite/**/*.ts",
+  "packages/host/**/*.ts",
   "packages/telemetry/**/*.ts",
 ];
 

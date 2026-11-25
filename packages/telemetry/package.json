@@ -21,9 +21,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkxai/core": "workspace:*",
-    "@larkxai/protocol": "workspace:*",
-    "@larkxai/storage-sqlite": "workspace:*"
+    "@larkxai/protocol": "workspace:*"
   },
   "repository": {
     "type": "git",

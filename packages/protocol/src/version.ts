@@ -1,6 +1,12 @@
 /** Execution protocol implemented by this package. Not a storage schema version. */
 export const PROTOCOL_VERSION = 1 as const;
 
+/**
+ * SQLite schema implemented by the C++ runtime.
+ * Independent of the protocol version and of any agent definition version.
+ */
+export const STORAGE_SCHEMA_VERSION = 1 as const;
+
 export interface ProtocolCompatibility {
   readonly compatible: boolean;
   readonly reason?: string;
