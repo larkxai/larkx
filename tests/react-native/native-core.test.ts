@@ -832,7 +832,7 @@ describe("native React Native host", () => {
       release = resolve;
     });
     const { runtime } = await openHost();
-    runtime.observe(async (event) => {
+    runtime.holdExecution(async (event) => {
       if (event.type === "model-requested") {
         await gate;
       }
@@ -850,6 +850,112 @@ describe("native React Native host", () => {
     release();
     expect(await run.result()).toMatchObject({ message: "Summary: Example note" });
     expect(runtime.diagnostics().modelInvocations).toBe(1);
+  });
+
+  it("keeps running when a diagnostics observer throws or never settles", async () => {
+    const { runtime } = await openHost();
+    runtime.observe(() => {
+      throw new Error("diagnostics failed");
+    });
+    runtime.observe(
+      () =>
+        new Promise<void>(() => {
+          // This listener never settles. Diagnostics must not block the driver.
+        }),
+    );
+    const model = scriptedModel([summary]);
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model,
+      instructions: "Help the user.",
+    });
+    const run = await agent.start({ message: "Summarize my notes", runId: "assistant-observer" });
+    expect(await run.result()).toMatchObject({ message: "Summary: Example note" });
+    expect(model.invocations).toBe(1);
+  });
+
+  it("does not fail the run when a development barrier rejects", async () => {
+    const { runtime } = await openHost();
+    runtime.holdExecution((event) => {
+      if (event.type === "model-requested") {
+        throw new Error("barrier failed");
+      }
+    });
+    const model = scriptedModel([summary]);
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model,
+      instructions: "Help the user.",
+    });
+    const run = await agent.start({ message: "Summarize my notes", runId: "assistant-barrier" });
+    expect(await run.result()).toMatchObject({ message: "Summary: Example note" });
+  });
+
+  it("refuses to continue a persisted run with a different model", async () => {
+    const directory = tempDirectory();
+    const path = join(directory, "agent.db");
+    let entered: () => void = () => undefined;
+    const enteredPromise = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let finishTool: (value: { notes: string[] }) => void = () => undefined;
+    const toolPromise = new Promise<{ notes: string[] }>((resolve) => {
+      finishTool = resolve;
+    });
+    const blockingTool = defineTool({
+      name: "read_notes",
+      description: "Read locally stored notes",
+      schema: { type: "object", properties: {} },
+      effects: "pure",
+      handler: () => {
+        entered();
+        return toolPromise;
+      },
+    });
+    const first = await openHost(path);
+    const original = first.runtime.createAgent({
+      name: "field-assistant-local",
+      version: 1,
+      model: scriptedModel([toolCall], { id: "cactus", model: "qwen3-0.6b-int8" }),
+      instructions: "Help the user.",
+      tools: [blockingTool],
+    });
+    const started = await original.start({ message: "Inspect pump 12", runId: "field-local" });
+    const ignored = started.result().then(
+      () => undefined,
+      () => undefined,
+    );
+    await enteredPromise;
+    await first.runtime.close();
+    await ignored;
+
+    const mismatch = await openHost(path);
+    const wrong = mismatch.runtime.createAgent({
+      name: "field-assistant-local",
+      version: 1,
+      model: scriptedModel([summary], { id: "scripted", model: "scripted-field-inspector" }),
+      instructions: "Help the user.",
+      tools: [blockingTool],
+    });
+    await wrong.whenRegistered();
+    const rejected = await mismatch.runtime.resume("field-local");
+    await expect(rejected.result()).rejects.toThrow(/does not match the committed model/);
+    await mismatch.runtime.close();
+
+    finishTool({ notes: ["Seal weeps"] });
+    const recovered = await openHost(path);
+    const right = recovered.runtime.createAgent({
+      name: "field-assistant-local",
+      version: 1,
+      model: scriptedModel([summary], { id: "cactus", model: "qwen3-0.6b-int8" }),
+      instructions: "Help the user.",
+      tools: [blockingTool],
+    });
+    await right.whenRegistered();
+    const run = await recovered.runtime.resume("field-local");
+    expect(await run.result()).toMatchObject({ message: "Summary: Example note" });
   });
 
   it("rejects a lone surrogate instead of truncating the prompt", async () => {

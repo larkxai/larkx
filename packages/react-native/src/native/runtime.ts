@@ -396,6 +396,7 @@ export class Runtime {
   private suspended = false;
   private foreground: Array<() => void> = [];
   private readonly observers: Array<(event: HostEvent) => void | Promise<void>> = [];
+  private readonly barriers: Array<(event: HostEvent) => void | Promise<void>> = [];
   private initializationMs = 0;
   private modelInvocations = 0;
   private toolInvocations = 0;
@@ -569,17 +570,25 @@ export class Runtime {
   }
 
   /**
-   * Observe host boundaries. The driver awaits each listener, so a listener can
-   * pause execution at a committed step. Listeners are for the demo and for
-   * diagnostics. They are not a failure-injection API.
+   * Diagnostics listener. The driver does not wait for it, and a throw or
+   * rejection does not fail the run.
    */
   observe(listener: (event: HostEvent) => void | Promise<void>): () => void {
     this.observers.push(listener);
     return () => {
-      const index = this.observers.indexOf(listener);
-      if (index >= 0) {
-        this.observers.splice(index, 1);
-      }
+      removeListener(this.observers, listener);
+    };
+  }
+
+  /**
+   * Development barrier. The driver waits for each listener so a demo can hold
+   * the process at a boundary. A throw or rejection does not fail the run.
+   * This is not a production control API.
+   */
+  holdExecution(listener: (event: HostEvent) => void | Promise<void>): () => void {
+    this.barriers.push(listener);
+    return () => {
+      removeListener(this.barriers, listener);
     };
   }
 
@@ -599,7 +608,24 @@ export class Runtime {
 
   async emit(event: HostEvent): Promise<void> {
     for (const listener of [...this.observers]) {
-      await listener(event);
+      try {
+        const result = listener(event);
+        if (isPromise(result)) {
+          void result.then(
+            () => undefined,
+            () => undefined,
+          );
+        }
+      } catch {
+        // A diagnostics listener cannot stop the durable run.
+      }
+    }
+    for (const barrier of [...this.barriers]) {
+      try {
+        await barrier(event);
+      } catch {
+        // A broken development barrier cannot stop the durable run.
+      }
     }
   }
 
@@ -1334,6 +1360,20 @@ export class Run {
       waiter(settlement);
     }
   }
+}
+
+function removeListener(
+  listeners: Array<(event: HostEvent) => void | Promise<void>>,
+  listener: (event: HostEvent) => void | Promise<void>,
+): void {
+  const index = listeners.indexOf(listener);
+  if (index >= 0) {
+    listeners.splice(index, 1);
+  }
+}
+
+function isPromise(value: void | Promise<void>): value is Promise<void> {
+  return typeof value === "object" && value !== null && "then" in value;
 }
 
 function agentKey(name: string, version: number): string {

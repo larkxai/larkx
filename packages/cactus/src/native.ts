@@ -15,6 +15,7 @@ export function createCactusModel(params?: { readonly model?: string }): CactusL
     init: () => model.init(),
     complete: (request) => model.complete(request as CactusLMCompleteParams),
     stop: () => model.stop(),
+    destroy: () => model.destroy(),
     getModelName: () => model.getModelName(),
   };
 }

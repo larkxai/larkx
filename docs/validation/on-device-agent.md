@@ -2,24 +2,28 @@
 
 Physical-device checks for the native React Native host. Automated tests do not complete this list. Mark a step only after it happens on a phone.
 
-Build from `examples/react-native-workflow`:
+From the repository root:
 
 ```bash
 pnpm install
 pnpm --filter @larkxai/react-native build
-cd examples/react-native-workflow
-npx expo prebuild
-npx expo run:ios
-npx expo run:android
+pnpm --filter @larkxai/example-react-native-workflow exec expo prebuild
+pnpm --filter @larkxai/example-react-native-workflow exec expo run:ios
+pnpm --filter @larkxai/example-react-native-workflow exec expo run:android
 ```
 
-Expo Go cannot load `LarkXNativeCore` or Cactus. The field card uses database `larkx-field.db` in the app documents directory. Runs are discovered with `runtime.listRuns()`. React state is not the record of the run.
+`pnpm --filter @larkxai/example-react-native-workflow exec expo --version` resolves Expo 58 in this workspace. `expo prebuild` and `expo run:ios` / `expo run:android` were not run here. This machine has no Xcode and no Android SDK.
+
+Expo Go cannot load `LarkXNativeCore` or Cactus. The field card uses database `larkx-field.db` in the app documents directory. Tool effects use `larkx-field-data.db`. Runs are discovered with `runtime.listRuns()`. That list is two snapshots, so refresh it before recovering if other work is in flight. React state is not the record of the run.
+
+Scripted runs are `field-assistant-scripted` version 1. Local runs are `field-assistant-local` version 1. Recover a run in the mode that matches its name. The screen refuses to continue a local run with the scripted model, and the C++ runtime rejects a registered model that does not match a committed model decision.
 
 ## Install the local model
 
 1. Open the field-inspection card and choose Local model.
 2. Press Prepare model. The status shows download progress, then initialization time and the model name from `getModelName()`.
 3. Confirm the status says tool calling and cancellation are supported, and structured output is not.
+4. Leave the screen. The card calls `destroy()` on that `CactusLM`. Prepare model again only after a new initialization. This repository has not executed download, init, or destroy on a device.
 
 ## Scripted timeline
 

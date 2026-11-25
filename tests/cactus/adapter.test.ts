@@ -1,8 +1,10 @@
 import {
+  cactusAdapter,
   cactusHostModel,
   normalizeCactusCompletion,
   toCactusMessages,
 } from "@larkxai/cactus/adapter";
+import type { CactusLanguageModel } from "@larkxai/cactus";
 import { LarkxError } from "@larkxai/core";
 import { describe, expect, it } from "vitest";
 
@@ -89,6 +91,7 @@ describe("Cactus native host model", () => {
       download: async () => undefined,
       init: async () => undefined,
       stop: async () => undefined,
+      destroy: async () => undefined,
       getModelName: () => "qwen3-0.6b-int8",
       async complete(request) {
         seen.push(request.messages);
@@ -129,3 +132,151 @@ describe("Cactus native host model", () => {
     });
   });
 });
+
+describe("Cactus inference queue", () => {
+  it("cancels a queued completion without stopping the active one", async () => {
+    const model = gatingModel();
+    const first = cactusAdapter(model);
+    const second = cactusAdapter(model);
+    const active = new AbortController();
+    const queued = new AbortController();
+    const running = first.complete(request("one"), { signal: active.signal });
+    await waitFor(() => model.active === 1);
+    const waiting = second.complete(request("two"), { signal: queued.signal });
+    await delay(20);
+    expect(model.maxActive).toBe(1);
+    queued.abort();
+    model.release();
+    await expect(running).resolves.toMatchObject({ message: "one" });
+    await expect(waiting).rejects.toMatchObject({ code: "cancelled_execution" });
+    expect(model.stops).toBe(0);
+  });
+
+  it("stops only the active completion on a shared model", async () => {
+    const model = gatingModel();
+    const adapter = cactusAdapter(model);
+    const other = separateModel();
+    const active = new AbortController();
+    const otherController = new AbortController();
+    const running = adapter.complete(request("one"), { signal: active.signal });
+    const parallel = cactusAdapter(other).complete(request("other"), {
+      signal: otherController.signal,
+    });
+    await waitFor(() => model.active === 1 && other.active === 1);
+    active.abort();
+    await waitFor(() => model.stops === 1);
+    model.release();
+    await expect(running).rejects.toMatchObject({ code: "cancelled_execution" });
+    other.release();
+    await expect(parallel).resolves.toMatchObject({ message: "other" });
+    expect(other.stops).toBe(0);
+  });
+
+  it("lets the next agent generate after the cancelled one", async () => {
+    const model = gatingModel();
+    const adapter = cactusHostModel(model);
+    const active = new AbortController();
+    const running = adapter.complete(request("one"), { signal: active.signal });
+    await waitFor(() => model.active === 1);
+    active.abort();
+    model.release();
+    await expect(running).rejects.toMatchObject({ code: "cancelled_execution" });
+    const next = adapter.complete(request("two"), { signal: new AbortController().signal });
+    await waitFor(() => model.active === 1);
+    model.release();
+    await expect(next).resolves.toMatchObject({ message: "two" });
+    expect(model.stops).toBe(1);
+    expect(model.maxActive).toBe(1);
+  });
+});
+
+function request(content: string) {
+  return {
+    messages: [{ role: "user" as const, content }],
+    tools: [],
+  };
+}
+
+function gatingModel(): CactusLanguageModel & {
+  active: number;
+  maxActive: number;
+  stops: number;
+  release(): void;
+} {
+  return separateModel();
+}
+
+function separateModel(): CactusLanguageModel & {
+  active: number;
+  maxActive: number;
+  stops: number;
+  release(): void;
+} {
+  let active = 0;
+  let maxActive = 0;
+  let stops = 0;
+  let releaseCurrent: (() => void) | null = null;
+  const model: CactusLanguageModel = {
+    download: async () => undefined,
+    init: async () => undefined,
+    destroy: async () => undefined,
+    getModelName: () => "qwen3-0.6b-int8",
+    stop: async () => {
+      stops += 1;
+      releaseCurrent?.();
+    },
+    async complete(params) {
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      const content = params.messages[0]?.content ?? "";
+      try {
+        await new Promise<void>((resolve) => {
+          releaseCurrent = resolve;
+        });
+        return {
+          success: true,
+          response: content,
+          timeToFirstTokenMs: 1,
+          totalTimeMs: 2,
+          prefillTokens: 1,
+          decodeTokens: 1,
+          totalTokens: 2,
+        };
+      } finally {
+        active -= 1;
+        releaseCurrent = null;
+      }
+    },
+  };
+  return {
+    ...model,
+    get active() {
+      return active;
+    },
+    get maxActive() {
+      return maxActive;
+    },
+    get stops() {
+      return stops;
+    },
+    release() {
+      releaseCurrent?.();
+    },
+  };
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+async function waitFor(predicate: () => boolean): Promise<void> {
+  const started = Date.now();
+  while (!predicate()) {
+    if (Date.now() - started > 2_000) {
+      throw new Error("Timed out waiting for Cactus queue.");
+    }
+    await delay(5);
+  }
+}

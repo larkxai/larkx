@@ -58,6 +58,7 @@ export function normalizeCactusCompletion(
 
 export function cactusAdapter(model: CactusLanguageModel): ModelAdapter {
   const modelId = model.getModelName();
+  const queue = queueFor(model);
   return {
     id: "cactus",
     model: modelId,
@@ -66,41 +67,105 @@ export function cactusAdapter(model: CactusLanguageModel): ModelAdapter {
       structuredOutput: false,
       cancellation: true,
     },
-    async complete(request, context) {
-      if (context.signal.aborted) {
-        throw cancelled();
-      }
-      const onAbort = (): void => {
-        void model.stop().catch(() => undefined);
-      };
-      context.signal.addEventListener("abort", onAbort);
-      try {
-        const result = await model.complete({
-          messages: toCactusMessages(request.messages),
-          tools: request.tools.map(toCactusTool),
-          options: {
-            maxTokens: 512,
-            forceTools: false,
-            telemetryEnabled: false,
-            confidenceThreshold: 0,
-            toolRagTopK: Math.max(request.tools.length, 1),
-            useVad: false,
-            enableThinking: false,
-          },
-        });
-        if (context.signal.aborted) {
-          throw cancelled();
-        }
-        return normalizeCactusCompletion(result, modelId);
-      } catch (error) {
-        if (context.signal.aborted) {
-          throw cancelled();
-        }
-        throw error;
-      } finally {
-        context.signal.removeEventListener("abort", onAbort);
-      }
+    complete(request, context) {
+      return queue.run(
+        context.signal,
+        async () => {
+          try {
+            if (context.signal.aborted) {
+              throw cancelled();
+            }
+            const result = await model.complete({
+              messages: toCactusMessages(request.messages),
+              tools: request.tools.map(toCactusTool),
+              options: {
+                maxTokens: 512,
+                forceTools: false,
+                telemetryEnabled: false,
+                confidenceThreshold: 0,
+                toolRagTopK: Math.max(request.tools.length, 1),
+                useVad: false,
+                enableThinking: false,
+              },
+            });
+            if (context.signal.aborted) {
+              throw cancelled();
+            }
+            return normalizeCactusCompletion(result, modelId);
+          } catch (error) {
+            if (context.signal.aborted) {
+              throw cancelled();
+            }
+            throw error;
+          }
+        },
+        stopModel(model),
+      );
     },
+  };
+}
+
+/**
+ * One CactusLM accepts one complete() at a time and stop() has no request id.
+ * Completions for the same instance wait in order. stop() runs only for the
+ * completion that is inside complete(), so cancelling a queued agent does not
+ * interrupt the one that is generating. A different model instance has its own queue.
+ */
+const modelQueues = new WeakMap<CactusLanguageModel, ModelQueue>();
+
+function queueFor(model: CactusLanguageModel): ModelQueue {
+  const existing = modelQueues.get(model);
+  if (existing !== undefined) {
+    return existing;
+  }
+  const created = new ModelQueue();
+  modelQueues.set(model, created);
+  return created;
+}
+
+class ModelQueue {
+  private tail: Promise<void> = Promise.resolve();
+  private active: AbortSignal | null = null;
+
+  run<T>(signal: AbortSignal, execute: () => Promise<T>, stop: () => void): Promise<T> {
+    if (signal.aborted) {
+      return Promise.reject(cancelled());
+    }
+    const result = new Promise<T>((resolve, reject) => {
+      this.tail = this.tail.then(
+        async () => {
+          if (signal.aborted) {
+            reject(cancelled());
+            return;
+          }
+          this.active = signal;
+          const onAbort = (): void => {
+            if (this.active === signal) {
+              stop();
+            }
+          };
+          signal.addEventListener("abort", onAbort);
+          try {
+            resolve(await execute());
+          } catch (error) {
+            reject(error);
+          } finally {
+            signal.removeEventListener("abort", onAbort);
+            if (this.active === signal) {
+              this.active = null;
+            }
+          }
+        },
+        async () => undefined,
+      );
+    });
+    return result;
+  }
+}
+
+function stopModel(model: CactusLanguageModel): () => void {
+  return () => {
+    void model.stop().catch(() => undefined);
   };
 }
 
@@ -224,6 +289,7 @@ export interface NativeHostModel {
   download(params?: { onProgress?: (progress: number) => void }): Promise<void>;
   init(): Promise<void>;
   stop(): Promise<void>;
+  destroy(): Promise<void>;
   getModelName(): string;
 }
 
@@ -240,6 +306,7 @@ export function cactusHostModel(model: CactusLanguageModel): NativeHostModel {
     download: (params) => model.download(params),
     init: () => model.init(),
     stop: () => model.stop(),
+    destroy: () => model.destroy(),
     getModelName: () => model.getModelName(),
     complete(request, context) {
       return adapter.complete(

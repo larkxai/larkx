@@ -16,9 +16,16 @@ import {
   type RuntimeDiagnostics,
 } from "@larkxai/react-native/native";
 
+import {
+  AGENT_VERSION,
+  agentNameForMode,
+  recoveryMismatch,
+  type FieldMode,
+} from "./agent-identity";
 import { FAILURE_BOUNDARIES, FailureGate, type FailureBoundary } from "./failure-gate";
 import { fieldTools, storedFieldEffect } from "./field-tools";
 import { scriptedInspectionResponse } from "./scripted-inspection";
+import type { CactusLanguageModel } from "@larkxai/cactus";
 
 const SDK_VERSION = "0.1.1";
 
@@ -30,7 +37,7 @@ const INSTRUCTIONS = [
   "Call record_part_replacement only when a physical part must be issued. Do not repeat a tool call that already succeeded.",
 ].join(" ");
 
-type Mode = "scripted" | "local";
+type Mode = FieldMode;
 
 export function FieldInspection() {
   const runtimeRef = useRef<Runtime | null>(null);
@@ -38,6 +45,7 @@ export function FieldInspection() {
   const gateRef = useRef(new FailureGate());
   const registeredMode = useRef<Mode | null>(null);
   const agentRef = useRef<Agent | null>(null);
+  const cactusRef = useRef<CactusLanguageModel | null>(null);
   const [lines, setLines] = useState<readonly string[]>(["Native runtime is not open."]);
   const [message, setMessage] = useState("Inspect pump 12 and prepare a report.");
   const [mode, setMode] = useState<Mode>("scripted");
@@ -67,6 +75,11 @@ export function FieldInspection() {
       active = false;
       void runtimeRef.current?.close();
       runtimeRef.current = null;
+      const model = cactusRef.current;
+      cactusRef.current = null;
+      if (model !== null) {
+        void model.destroy().catch(() => undefined);
+      }
     };
   }, []);
 
@@ -76,8 +89,10 @@ export function FieldInspection() {
     const started = Date.now();
     const runtime = await createRuntime({ storage: sqlite(DATABASE) });
     push(`Runtime opened in ${String(Date.now() - started)} ms.`);
-    runtime.observe(async (event) => {
+    runtime.observe((event) => {
       push(formatEvent(event));
+    });
+    runtime.holdExecution(async (event) => {
       const boundaryForEvent = boundaryOf(event.type);
       if (boundaryForEvent !== null) {
         await gateRef.current.reach(boundaryForEvent);
@@ -111,11 +126,15 @@ export function FieldInspection() {
       // A static import of @larkxai/cactus evaluates CactusLM before Nitro installs JSI.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { createCactusModel } = require("@larkxai/cactus") as {
-        createCactusModel(params?: {
-          readonly model?: string;
-        }): Parameters<typeof cactusHostModel>[0];
+        createCactusModel(params?: { readonly model?: string }): CactusLanguageModel;
       };
+      const previous = cactusRef.current;
+      cactusRef.current = null;
+      if (previous !== null) {
+        await previous.destroy();
+      }
       const model = createCactusModel({ model: "qwen3-0.6b" });
+      cactusRef.current = model;
       setModelStatus(`Downloading ${model.getModelName()}…`);
       const started = Date.now();
       await model.download({
@@ -186,10 +205,10 @@ export function FieldInspection() {
     const model =
       mode === "scripted"
         ? scriptedInspectionModel(gateRef.current)
-        : await localModel(gateRef.current);
+        : localInspectionModel(cactusRef.current, gateRef.current);
     const agent = runtime.createAgent({
-      name: "field-assistant",
-      version: 1,
+      name: agentNameForMode(mode),
+      version: AGENT_VERSION,
       model,
       instructions: INSTRUCTIONS,
       tools: fieldTools(gateRef.current),
@@ -215,7 +234,7 @@ export function FieldInspection() {
   async function reconcileRun(run: Run, resolution: ReconcileInput["resolution"]): Promise<void> {
     const history = await run.getHistory();
     const unknown = history.steps.find((step) => step.status === "UNKNOWN_OUTCOME");
-    const stored = unknown === undefined ? undefined : storedFieldEffect(unknown.operationId);
+    const stored = unknown === undefined ? undefined : await storedFieldEffect(unknown.operationId);
     if (resolution === "complete") {
       await run.reconcile({
         resolution,
@@ -253,6 +272,15 @@ export function FieldInspection() {
     }
     setBusy(true);
     try {
+      const listed = await runtime.listRuns();
+      const persisted = listed.find((candidate) => candidate.runId === runId);
+      if (persisted === undefined) {
+        throw new Error(`Run ${runId} is not in the C++ store.`);
+      }
+      const mismatch = recoveryMismatch(persisted.workflowName, mode);
+      if (mismatch !== null) {
+        throw new Error(mismatch);
+      }
       await ensureAgent(runtime);
       const started = Date.now();
       const run = await runtime.resume(runId);
@@ -361,7 +389,7 @@ export function FieldInspection() {
 
 function scriptedInspectionModel(gate: FailureGate) {
   return {
-    id: "scripted-field-inspector",
+    id: "scripted",
     model: "scripted-field-inspector",
     capabilities: { toolCalling: true },
     async complete(request: ModelRequest) {
@@ -371,13 +399,11 @@ function scriptedInspectionModel(gate: FailureGate) {
   };
 }
 
-async function localModel(gate: FailureGate) {
-  // A static import of @larkxai/cactus evaluates CactusLM before Nitro installs JSI.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { createCactusModel } = require("@larkxai/cactus") as {
-    createCactusModel(params?: { readonly model?: string }): Parameters<typeof cactusHostModel>[0];
-  };
-  const cactus = cactusHostModel(createCactusModel({ model: "qwen3-0.6b" }));
+function localInspectionModel(model: CactusLanguageModel | null, gate: FailureGate) {
+  if (model === null) {
+    throw new Error("Prepare the local model before starting or recovering a Cactus run.");
+  }
+  const cactus = cactusHostModel(model);
   return {
     ...cactus,
     async complete(

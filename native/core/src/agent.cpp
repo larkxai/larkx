@@ -375,6 +375,30 @@ Json call_json(const Call& call) {
   return value;
 }
 
+Status require_registered_model(const State& state, const AgentRecord& agent) {
+  for (auto it = state.steps.rbegin(); it != state.steps.rend(); ++it) {
+    if (it->step_key.rfind("model-", 0) != 0 || it->status != StepStatus::Completed || !it->output_json.has_value()) {
+      continue;
+    }
+    Json output;
+    if (auto status = parse_any(*it->output_json, output); !status.ok()) {
+      return status;
+    }
+    const auto* provider = field(output, "provider");
+    const auto* model = field(output, "model");
+    if (provider == nullptr || model == nullptr || provider->kind != Json::Kind::String ||
+        model->kind != Json::Kind::String) {
+      return Status::success();
+    }
+    if (provider->text != agent.model_id || model->text != agent.model_name) {
+      return state_error("Registered model \"" + agent.model_id + "/" + agent.model_name +
+                          "\" does not match the committed model \"" + provider->text + "/" + model->text + "\".");
+    }
+    return Status::success();
+  }
+  return Status::success();
+}
+
 Json decision_json(const AgentRecord& agent, const Decision& decision) {
   Json calls;
   calls.kind = Json::Kind::Array;
@@ -907,6 +931,11 @@ struct Runtime::Impl {
 
   Status plan(State state, const AgentRecord& agent, const Fence& fence, int64_t now_ms, ExecRequest& out, bool& again) {
     again = false;
+    if (!is_terminal(state.run.status)) {
+      if (auto status = require_registered_model(state, agent); !status.ok()) {
+        return status;
+      }
+    }
     const std::string run_id = state.run.run_id;
     if (state.run.cancel_requested && (state.steps.empty() || state.steps.back().status != StepStatus::Running) &&
         !is_terminal(state.run.status) && state.run.status != WorkflowStatus::Blocked) {

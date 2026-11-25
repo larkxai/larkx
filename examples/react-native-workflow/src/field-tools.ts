@@ -3,7 +3,7 @@ import { openDatabaseSync, type SQLiteDatabase } from "expo-sqlite";
 import { defineTool } from "@larkxai/react-native/native";
 
 import { commitOnce, type EffectStore } from "./field-effects";
-import type { FailureBoundary, FailureGate } from "./failure-gate";
+import type { FailureGate } from "./failure-gate";
 
 const NOTES = [
   "Pump 12: vibration increased after the last night shift.",
@@ -18,36 +18,37 @@ const EQUIPMENT: Record<string, { readonly spec: string; readonly limit: string 
   },
 };
 
-let database: SQLiteDatabase | undefined;
+let effectsStore: EffectStore | undefined;
 
 function effects(): EffectStore {
-  if (database === undefined) {
-    database = openDatabaseSync("larkx-field-data.db");
-    database.execSync(
+  if (effectsStore === undefined) {
+    const db: SQLiteDatabase = openDatabaseSync("larkx-field-data.db");
+    db.execSync(
       "CREATE TABLE IF NOT EXISTS tool_effects (operation_id TEXT PRIMARY KEY, body TEXT NOT NULL)",
     );
+    effectsStore = {
+      get(operationId) {
+        const row = db.getFirstSync<{ body: string }>(
+          "SELECT body FROM tool_effects WHERE operation_id = ?",
+          [operationId],
+        );
+        return row === null ? undefined : row.body;
+      },
+      set(operationId, body) {
+        db.runSync(
+          "INSERT INTO tool_effects (operation_id, body) VALUES (?, ?) ON CONFLICT(operation_id) DO NOTHING",
+          [operationId, body],
+        );
+      },
+    };
   }
-  const db = database;
-  return {
-    get(operationId) {
-      const row = db.getFirstSync<{ body: string }>(
-        "SELECT body FROM tool_effects WHERE operation_id = ?",
-        [operationId],
-      );
-      return row === null ? undefined : row.body;
-    },
-    set(operationId, body) {
-      db.runSync(
-        "INSERT INTO tool_effects (operation_id, body) VALUES (?, ?) ON CONFLICT(operation_id) DO NOTHING",
-        [operationId, body],
-      );
-    },
-  };
+  return effectsStore;
 }
 
 /** Body stored for an operation id in the field-data database, if the tool wrote one. */
-export function storedFieldEffect(operationId: string): string | undefined {
-  return effects().get(operationId);
+export async function storedFieldEffect(operationId: string): Promise<string | undefined> {
+  const body = await effects().get(operationId);
+  return body;
 }
 
 export function readInspectionNotes() {
@@ -92,18 +93,20 @@ export function saveInspectionReport(gate?: FailureGate) {
       required: ["report"],
     },
     effects: "idempotent",
-    handler: (input, context) =>
-      holdAfterWrite(gate, "during-idempotent-tool", () => {
-        const report = textField(input, "report");
-        const stored = commitOnce(effects(), context.operationId, JSON.stringify({ report }));
-        const parsed = JSON.parse(stored.body) as { report?: unknown };
-        return {
-          saved: true,
-          deduplicated: stored.deduplicated,
-          operationId: context.operationId,
-          report: typeof parsed.report === "string" ? parsed.report : report,
-        };
-      }),
+    handler: async (input, context) => {
+      const report = textField(input, "report");
+      const stored = await commitOnce(effects(), context.operationId, JSON.stringify({ report }));
+      if (!stored.deduplicated) {
+        await gate?.reach("during-idempotent-tool");
+      }
+      const parsed = JSON.parse(stored.body) as { report?: unknown };
+      return {
+        saved: true,
+        deduplicated: stored.deduplicated,
+        operationId: context.operationId,
+        report: typeof parsed.report === "string" ? parsed.report : report,
+      };
+    },
   });
 }
 
@@ -119,11 +122,10 @@ export function recordPartReplacement(gate?: FailureGate) {
     effects: "non-idempotent",
     handler: async (input, context) => {
       const part = textField(input, "part");
-      const existing = effects().get(context.operationId);
-      if (existing !== undefined) {
+      const stored = await commitOnce(effects(), context.operationId, JSON.stringify({ part }));
+      if (stored.deduplicated) {
         return { recorded: false, duplicate: true, operationId: context.operationId, part };
       }
-      effects().set(context.operationId, JSON.stringify({ part }));
       await gate?.reach("during-non-idempotent-tool");
       return { recorded: true, duplicate: false, operationId: context.operationId, part };
     },
@@ -137,18 +139,6 @@ export function fieldTools(gate?: FailureGate) {
     saveInspectionReport(gate),
     recordPartReplacement(gate),
   ];
-}
-
-async function holdAfterWrite<T extends { readonly deduplicated: boolean }>(
-  gate: FailureGate | undefined,
-  boundary: FailureBoundary,
-  write: () => T,
-): Promise<T> {
-  const written = write();
-  if (!written.deduplicated) {
-    await gate?.reach(boundary);
-  }
-  return written;
 }
 
 function textField(input: unknown, key: string): string {
