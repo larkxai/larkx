@@ -83,8 +83,7 @@ function packedTarball(
   packageDir: string,
 ): string {
   const roots = [destination, packageDir, root, process.cwd()];
-  const printed = pack.stdout
-    .replace(/\u001b\[[0-9;]*m/g, "")
+  const printed = withoutAnsi(pack.stdout)
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.endsWith(".tgz"))
@@ -97,6 +96,19 @@ function packedTarball(
   const found = [...printed, ...discovered].find((path) => existsSync(path));
   expect(found, `${pack.stdout}\n${pack.stderr}\n${discovered.join("\n")}`).toBeTruthy();
   return found ?? "";
+}
+
+function withoutAnsi(text: string): string {
+  let visible = "";
+  for (let index = 0; index < text.length; index += 1) {
+    if (text.charCodeAt(index) !== 0x1b) {
+      visible += text[index];
+      continue;
+    }
+    const end = text.indexOf("m", index);
+    index = end === -1 ? text.length : end;
+  }
+  return visible;
 }
 
 function removePackedTarballs(packageDir: string): void {
