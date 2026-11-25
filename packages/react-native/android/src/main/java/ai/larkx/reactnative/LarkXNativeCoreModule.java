@@ -10,6 +10,7 @@ public class LarkXNativeCoreModule extends ReactContextBaseJavaModule {
     System.loadLibrary("larkxnative");
   }
 
+  private final Object gate = new Object();
   private long handle;
 
   public LarkXNativeCoreModule(ReactApplicationContext context) {
@@ -24,12 +25,16 @@ public class LarkXNativeCoreModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void invoke(String method, String argsJson, Promise promise) {
-    if (handle == 0) {
+    final long current;
+    synchronized (gate) {
+      current = handle;
+    }
+    if (current == 0L) {
       promise.reject("INVALID_ARGUMENT", "The native runtime was destroyed.");
       return;
     }
     try {
-      promise.resolve(nativeInvoke(handle, method, argsJson));
+      promise.resolve(nativeInvoke(current, method, argsJson));
     } catch (IllegalStateException error) {
       String message = error.getMessage() == null ? "NATIVE" : error.getMessage();
       int split = message.indexOf(": ");
@@ -41,9 +46,15 @@ public class LarkXNativeCoreModule extends ReactContextBaseJavaModule {
 
   @Override
   public void invalidate() {
-    if (handle != 0) {
-      nativeDestroy(handle);
-      handle = 0;
+    final long current;
+    synchronized (gate) {
+      current = handle;
+      handle = 0L;
+    }
+    if (current != 0L) {
+      // Blocks until invoke calls on other threads leave the session.
+      // The native registry also rejects a handle after this returns.
+      nativeDestroy(current);
     }
     super.invalidate();
   }

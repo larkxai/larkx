@@ -517,6 +517,187 @@ describe("native React Native host", () => {
     expect(model.invocations).toBe(1);
   });
 
+  it("does not call the model until result()", async () => {
+    const { runtime } = await openHost();
+    const model = scriptedModel([summary]);
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model,
+      instructions: "Help the user.",
+    });
+    const run = await agent.start({ message: "Summarize my notes", runId: "assistant-lazy" });
+    await delay(40);
+    expect(model.invocations).toBe(0);
+    expect(await run.getStatus()).toMatchObject({ status: "RUNNING", runId: "assistant-lazy" });
+    expect(await run.result()).toMatchObject({ message: "Summary: Example note" });
+    expect(model.invocations).toBe(1);
+  });
+
+  it("keeps one driver when start and resume race for a run id", async () => {
+    let calls = 0;
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { runtime } = await openHost();
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model: {
+        id: "scripted",
+        model: "scripted-1",
+        async complete() {
+          calls += 1;
+          await gate;
+          return summary;
+        },
+      },
+      instructions: "Help the user.",
+    });
+    const starting = Promise.all([
+      agent.start({ message: "Summarize my notes", runId: "assistant-shared" }),
+      agent.start({ message: "Summarize my notes", runId: "assistant-shared" }),
+    ]);
+    const [first, second] = await starting;
+    expect(second).toBe(first);
+    const [resumed, resumedAgain] = await Promise.all([
+      runtime.resume("assistant-shared"),
+      runtime.resume("assistant-shared"),
+    ]);
+    expect(resumed).toBe(first);
+    expect(resumedAgain).toBe(first);
+    const pending = Promise.all([first.result(), second.result(), resumed.result()]);
+    await waitFor(() => calls === 1);
+    await delay(30);
+    expect(calls).toBe(1);
+    release();
+    await pending;
+    expect(calls).toBe(1);
+  });
+
+  it("joins the active driver when start and resume overlap a running result", async () => {
+    let calls = 0;
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { runtime } = await openHost();
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model: {
+        id: "scripted",
+        model: "scripted-1",
+        async complete() {
+          calls += 1;
+          await gate;
+          return summary;
+        },
+      },
+      instructions: "Help the user.",
+    });
+    const run = await agent.start({ message: "Summarize my notes", runId: "assistant-live" });
+    const pending = run.result();
+    await waitFor(() => calls === 1);
+    const [again, resumed] = await Promise.all([
+      agent.start({ message: "Summarize my notes", runId: "assistant-live" }),
+      runtime.resume("assistant-live"),
+    ]);
+    expect(again).toBe(run);
+    expect(resumed).toBe(run);
+    const joined = Promise.all([pending, again.result(), resumed.result()]);
+    await delay(30);
+    expect(calls).toBe(1);
+    release();
+    await joined;
+    expect(calls).toBe(1);
+  });
+
+  it("rejects a different message for an attached run without a second driver", async () => {
+    const { runtime } = await openHost();
+    const model = scriptedModel([summary]);
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model,
+      instructions: "Help the user.",
+    });
+    const run = await agent.start({ message: "Summarize my notes", runId: "assistant-message" });
+    await expect(
+      agent.start({ message: "A different message", runId: "assistant-message" }),
+    ).rejects.toMatchObject({ code: "invalid_state_transition" });
+    expect(await run.result()).toMatchObject({ message: "Summary: Example note" });
+    expect(model.invocations).toBe(1);
+  });
+
+  it("round-trips multilingual text, emoji, and supplementary characters", async () => {
+    const text = "こんにちは Привет مرحبا 你好 😀 𝄞";
+    let toolText = "";
+    let calls = 0;
+    const { runtime } = await openHost();
+    const agent = runtime.createAgent({
+      name: "personal-assistant",
+      version: 1,
+      model: {
+        id: "scripted",
+        model: "scripted-1",
+        async complete(request) {
+          calls += 1;
+          const user = request.messages.find(
+            (message) =>
+              typeof message === "object" &&
+              message !== null &&
+              !Array.isArray(message) &&
+              message.role === "user",
+          );
+          const content =
+            typeof user === "object" && user !== null && "content" in user ? user.content : "";
+          expect(content).toBe(text);
+          if (calls === 1) {
+            return {
+              message: null,
+              finish: "tool_calls",
+              calls: [{ id: "call-1", name: "read_notes", arguments: { text } }],
+            };
+          }
+          return { message: text, finish: "stop", calls: [] };
+        },
+      },
+      instructions: "Help the user.",
+      tools: [
+        defineTool({
+          name: "read_notes",
+          description: "Read locally stored notes",
+          schema: {
+            type: "object",
+            properties: { text: { type: "string" } },
+            required: ["text"],
+          },
+          effects: "pure",
+          handler: (input) => {
+            toolText =
+              typeof input === "object" &&
+              input !== null &&
+              !Array.isArray(input) &&
+              "text" in input
+                ? String(input.text)
+                : "";
+            return { notes: [toolText] };
+          },
+        }),
+      ],
+    });
+    const run = await agent.start({ message: text, runId: "assistant-unicode" });
+    expect(await run.result()).toMatchObject({ message: text, toolCalls: 1 });
+    expect(toolText).toBe(text);
+    const history = await run.getHistory();
+    const stored = JSON.stringify(history.steps);
+    expect(stored).toContain("𝄞");
+    expect(stored).toContain("😀");
+    expect(stored).toContain("こんにちは");
+  });
+
   it("does not let a second owner drive the run", async () => {
     const directory = tempDirectory();
     const path = join(directory, "agent.db");

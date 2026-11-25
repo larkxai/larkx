@@ -30,6 +30,8 @@ endif()
 add_library(larkxnative SHARED
   "${CMAKE_CURRENT_LIST_DIR}/src/main/cpp/jni.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/../cpp/host_session.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../cpp/session_registry.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/../cpp/utf.cpp"
   "${LARKX_NATIVE}/core/src/json.cpp"
   "${LARKX_NATIVE}/core/src/transitions.cpp"
   "${LARKX_NATIVE}/core/src/reducer.cpp"
@@ -51,6 +53,8 @@ target_compile_definitions(larkxnative PRIVATE
   SQLITE_OMIT_DEPRECATED
   SQLITE_DQS=0
 )
+find_package(Threads REQUIRED)
+target_link_libraries(larkxnative PRIVATE Threads::Threads)
 target_compile_options(larkxnative PRIVATE
   $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Werror -Wpedantic -fexceptions -frtti>
   $<$<COMPILE_LANGUAGE:C>:-Wall -Wextra -Wno-unused-parameter>

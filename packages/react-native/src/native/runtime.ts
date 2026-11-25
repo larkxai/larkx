@@ -333,6 +333,8 @@ export class Runtime {
   private readonly sleeper: (milliseconds: number) => Promise<void>;
   private readonly agents = new Map<string, RegisteredAgent>();
   private readonly runs = new Map<string, Run>();
+  private readonly drivers = new Map<string, Run>();
+  private readonly runLocks = new Map<string, Promise<unknown>>();
   private generation = 0;
   private opened = false;
   private suspended = false;
@@ -456,18 +458,23 @@ export class Runtime {
   /** Attach to a run that was persisted earlier. Register the agent first. */
   async resume(runId: string): Promise<Run> {
     this.ensureOpen();
-    const existing = this.runs.get(runId);
-    if (existing && existing.generation === this.generation) {
-      return existing;
-    }
-    const info = await this.inspect(runId);
-    const agent = this.agentFor(info.workflowName, info.workflowVersion);
-    const run = new Run(this, runId, agent, this.generation);
-    if (info.status === "WAITING") {
-      run.notePaused();
-    }
-    this.runs.set(runId, run);
-    return run;
+    const generation = this.generation;
+    return this.lockRun(runId, async () => {
+      this.ensureGeneration(generation);
+      const existing = this.currentRun(runId);
+      if (existing !== undefined) {
+        return existing;
+      }
+      const info = await this.inspect(runId);
+      this.ensureGeneration(generation);
+      const agent = this.agentFor(info.workflowName, info.workflowVersion);
+      const run = new Run(this, runId, agent, generation);
+      if (info.status === "WAITING") {
+        run.notePaused();
+      }
+      this.runs.set(runId, run);
+      return run;
+    });
   }
 
   async close(): Promise<void> {
@@ -480,6 +487,8 @@ export class Runtime {
       run.dispose();
     }
     this.runs.clear();
+    this.drivers.clear();
+    this.runLocks.clear();
     this.agents.clear();
     this.suspended = false;
     const waiting = this.foreground;
@@ -501,7 +510,53 @@ export class Runtime {
     }
   }
 
-  track(run: Run): void {
+  currentRun(runId: string): Run | undefined {
+    const run = this.runs.get(runId);
+    if (run === undefined || run.generation !== this.generation) {
+      return undefined;
+    }
+    return run;
+  }
+
+  /**
+   * Serialize attach operations for one run id. The next caller waits for the
+   * previous body, including when that body fails.
+   */
+  lockRun<T>(runId: string, body: () => Promise<T>): Promise<T> {
+    const previous = this.runLocks.get(runId) ?? Promise.resolve();
+    const next = previous.then(body, body);
+    this.runLocks.set(
+      runId,
+      next.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    return next;
+  }
+
+  /** One looping driver per run id. A second Run object joins the first. */
+  acquireDriver(run: Run): boolean {
+    const current = this.drivers.get(run.runId);
+    if (current === run) {
+      return true;
+    }
+    if (current !== undefined && current.generation === run.generation) {
+      return false;
+    }
+    this.drivers.set(run.runId, run);
+    return true;
+  }
+
+  ownedDriver(runId: string): Run {
+    const driver = this.drivers.get(runId);
+    if (driver === undefined) {
+      throw permanent("The host driver for this run is missing.");
+    }
+    return driver;
+  }
+
+  adopt(run: Run): void {
     this.runs.set(run.runId, run);
   }
 
@@ -585,22 +640,35 @@ export class Agent {
     return this.registered.version;
   }
 
+  /**
+   * Persist the run and return its handle. This does not call the model.
+   * `run.result()` starts the one host driver for the run id. A second start
+   * with the same id returns that handle after the core checks the message.
+   */
   async start(input: StartInput): Promise<Run> {
-    await this.ready;
     if (input.message.trim().length === 0) {
       throw invalid("Agent input message must be a non-empty string.");
     }
     const runId = input.runId ?? createRunId();
-    await this.runtime.call("start", {
-      name: this.registered.name,
-      version: this.registered.version,
-      runId,
-      inputJson: JSON.stringify({ message: input.message }),
-      nowMs: this.runtime.now(),
+    const generation = this.runtime.generationId;
+    return this.runtime.lockRun(runId, async () => {
+      await this.ready;
+      this.runtime.ensureGeneration(generation);
+      const existing = this.runtime.currentRun(runId);
+      await this.runtime.call("start", {
+        name: this.registered.name,
+        version: this.registered.version,
+        runId,
+        inputJson: JSON.stringify({ message: input.message }),
+        nowMs: this.runtime.now(),
+      });
+      if (existing !== undefined) {
+        return existing;
+      }
+      const run = new Run(this.runtime, runId, this.registered, generation);
+      this.runtime.adopt(run);
+      return run;
     });
-    const run = new Run(this.runtime, runId, this.registered, this.runtime.generationId);
-    this.runtime.track(run);
-    return run;
   }
 }
 
@@ -641,6 +709,11 @@ export class Run {
     }
   }
 
+  /**
+   * Start the host driver, if this run does not already have one, and wait
+   * for the terminal result. The driver is per run id. Another handle for
+   * the same id waits on the same loop instead of calling the model again.
+   */
   result(): Promise<AgentResult> {
     if (this.settled) {
       return this.settled.ok
@@ -742,9 +815,25 @@ export class Run {
   }
 
   private start(): void {
-    if (this.driving || this.settled) {
+    if (this.driving !== null || this.settled !== null) {
       return;
     }
+    if (!this.runtime.acquireDriver(this)) {
+      const owner = this.runtime.ownedDriver(this.runId);
+      this.driving = owner.result().then(
+        (value) => {
+          this.finish({ ok: true, value });
+        },
+        (error: unknown) => {
+          this.finish({
+            ok: false,
+            error: error instanceof LarkxError ? error : nativeError(error),
+          });
+        },
+      );
+      return;
+    }
+    this.driving = Promise.resolve();
     this.driving = this.loop();
   }
 

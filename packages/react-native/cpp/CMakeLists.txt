@@ -35,3 +35,13 @@ target_compile_options(larkx_native PRIVATE -Wall -Wextra -Werror -Wpedantic)
 if(APPLE)
   target_link_options(larkx_native PRIVATE -undefined dynamic_lookup)
 endif()
+
+find_package(Threads REQUIRED)
+add_executable(larkx_host_tests host_tests.cpp utf.cpp session_registry.cpp host_session.cpp)
+target_include_directories(larkx_host_tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../native/abi/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../native/core/include"
+)
+target_link_libraries(larkx_host_tests PRIVATE larkx_core Threads::Threads)
+target_compile_options(larkx_host_tests PRIVATE -Wall -Wextra -Werror -Wpedantic)

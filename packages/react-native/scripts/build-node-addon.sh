@@ -7,4 +7,5 @@ if [ -n "${NODE_INCLUDE:-}" ]; then
 fi
 # shellcheck disable=SC2086
 cmake -S "$ROOT/cpp" -B "$ROOT/build" -DCMAKE_BUILD_TYPE=RelWithDebInfo $ARGS
-cmake --build "$ROOT/build" --target larkx_native --parallel
+cmake --build "$ROOT/build" --target larkx_native --target larkx_host_tests --parallel
+"$ROOT/build/larkx_host_tests"

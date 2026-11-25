@@ -23,7 +23,16 @@ Open the project in Expo Go on SDK 58, or in an Android or iOS emulator. This re
 
 The screen shows the run id, status, current step, stored outputs, operation ids, the handlers invoked in this JavaScript session, and the latest history events.
 
-The lower card, Native C++ core, is separate. It drives a scripted agent through `@larkxai/react-native/native`. Expo Go cannot load that module. Use a development build (`npx expo run:ios` or `npx expo run:android` after `npx expo prebuild`). The card prints `Execution backend: Native C++`, the ABI, the run id, and the operation ids, then closes and reopens the same run. A missing module shows the error and does not run the TypeScript engine. This repository has not executed that card on a simulator or a device.
+The lower card, Native C++ core, is separate. It drives a scripted agent through `@larkxai/react-native/native`. `start` persists the run. `result` runs the model and tools. Expo Go cannot load that module. Use a development build:
+
+```bash
+cd examples/react-native-workflow
+npx expo prebuild
+npx expo run:ios
+npx expo run:android
+```
+
+Autolinking picks up `LarkXNativeCore.podspec` and `LarkXNativePackage`. The card prints `Execution backend: Native C++`, the ABI, the run id, and the operation ids, then closes and reopens the same run. A missing module shows the error and does not run the TypeScript engine. This repository has not executed that card on a simulator or a device.
 
 Cloud sync is optional. Set `EXPO_PUBLIC_LARKX_CLOUD_ENDPOINT` and `EXPO_PUBLIC_LARKX_INGESTION_KEY` to show Connected, Offline, Pending synchronization, or Authentication error, plus the run id and a Sync action. Without those variables the card stays Disabled and no request is sent. The key is not in this repository. Reset deletes `larkx.db` and `larkx-workflow-telemetry.db` together.
 
