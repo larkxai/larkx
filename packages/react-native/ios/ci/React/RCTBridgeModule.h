@@ -1,9 +1,11 @@
-# Stub used only by packages/react-native/ios/ci-compile.sh.
-# The development build includes React-Core instead of this header.
+// Stub used only by packages/react-native/ios/ci-compile.sh.
+// The development build includes React-Core instead of this header.
+
+#import <Foundation/Foundation.h>
 
 #define RCT_EXPORT_MODULE(name) \
   +(NSString *)moduleName {     \
-    return @ #name;             \
+    return @#name;              \
   }
 
 #define RCT_EXPORT_METHOD(method) -(void)method

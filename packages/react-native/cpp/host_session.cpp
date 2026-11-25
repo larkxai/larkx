@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string_view>
 #include <utility>
 #include <vector>
 

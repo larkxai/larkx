@@ -40,6 +40,7 @@ add_library(larkxnative SHARED
 )
 
 target_include_directories(larkxnative PRIVATE
+  "${CMAKE_CURRENT_LIST_DIR}/../cpp"
   "${LARKX_NATIVE}/abi/include"
   "${LARKX_NATIVE}/core/include"
   "${SQLITE_SOURCE}"

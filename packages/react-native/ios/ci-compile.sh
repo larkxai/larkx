@@ -27,5 +27,5 @@ clang++ -dynamiclib \
   "$CORE/LarkXNativeCore.o" \
   "$CORE/host_session.o" \
   "$CORE/liblarkx_core.a" \
-  -lsqlite3 -lc++
+  -framework Foundation -lsqlite3 -lc++
 echo "Compiled $CORE/libLarkXNativeCore.dylib"
