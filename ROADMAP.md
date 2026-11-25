@@ -1,6 +1,110 @@
 # Roadmap
 
-LarkX is built in milestones. A milestone is done when the behavior exists in this repository and the automated checks that belong to it pass. Design notes are not implementations.
+LarkX is building durable orchestration for on-device AI agents. The near-term priority is one validated React Native SDK with hybrid agent capabilities, not three independent production SDKs.
+
+A capability is implemented when code and relevant automated checks exist. Mobile validation and publication are separate gates. Future milestones below are ordered by dependency, not fixed PR numbers.
+
+## Current delivery status
+
+| Milestone                                | Status                                     |
+| ---------------------------------------- | ------------------------------------------ |
+| Native C++ foundation (PR #24)           | Merged                                     |
+| Native autonomous agent runtime (PR #25) | Merged                                     |
+| React Native native host (PR #26)        | Implemented                                |
+| Cactus and mobile recovery demo (PR #28) | Merged; physical-device validation pending |
+| Durable remote delegation                | Next                                       |
+| A2A integration                          | Planned                                    |
+| Privacy and egress policies              | Planned                                    |
+| Native telemetry                         | Planned                                    |
+| Cloud integration                        | Planned                                    |
+| Developer preview release                | Planned                                    |
+| Standalone Swift and Kotlin SDKs         | Deferred                                   |
+
+## Next — Physical-device validation
+
+The [validation checklist](docs/validation/on-device-agent.md) must be completed on actual phones before claiming mobile durability or real local inference.
+
+- Build the complete React Native application for iOS and Android.
+- Run Cactus inference and autonomous tool selection.
+- Verify offline operation with an installed model.
+- Kill and relaunch at committed and interrupted operation boundaries.
+- Verify stable operation IDs, replay, deduplication and explicit reconciliation.
+- Record measured performance and platform limitations.
+
+Remote delegation development may proceed in parallel. Hardware validation remains a release gate.
+
+## Next — Durable remote agent delegation
+
+Implement a first-class RemoteAgent capability and a custom asynchronous HTTP task adapter. The device owns the parent run; remote agents are independently deployed.
+
+- Persist authorized delegation intent, stable client operation ID and outbox atomically before sending.
+- Persist the remote task ID separately on acceptance.
+- Recover pending submissions, poll accepted tasks and commit results before continuing local reasoning.
+- Model queued, submitting, accepted, working, input required, completed, failed, cancelled and unknown-outcome states.
+- Retry uncertain submissions only with verified deduplication or reconciliation; otherwise block for explicit reconciliation.
+- Enforce basic outbound authorization before sending, including retries and recovery.
+- Version protocol and storage changes and add crash-window conformance tests.
+- Use a reference remote agent for integration tests, not a hosted execution platform.
+
+## A2A interoperability
+
+- Pin the supported A2A protocol version.
+- Map discovery, submission, task status, artifacts, input-required interaction and cancellation to the shared delegation state machine.
+- Keep client operation, remote message, task and context identities distinct.
+- Declare peer capabilities explicitly; A2A alone does not guarantee idempotent submission.
+- Validate lost acknowledgements, delayed results and recovery after device process death.
+
+## Privacy-aware orchestration
+
+- Separate execution placement from permission to transmit data.
+- Default deny unauthorized SDK-managed egress.
+- Apply destination-specific allowlists, redaction and secure credential references.
+- Enforce policies for cloud models, remote tools and remote agents, including recovered operations.
+- Treat telemetry consent independently.
+- Do not claim control over arbitrary custom host code or network access.
+
+## Native telemetry
+
+- Version the cross-platform metadata contract and retain compatibility where practical.
+- Export run, model, tool, recovery, reconciliation and delegation metadata.
+- Exclude raw prompts, outputs, tool arguments, credentials and private data.
+- Persist delivery cursors and retry independently of agent execution.
+- Keep Cloud optional.
+
+## LarkX Cloud integration
+
+Implement in the separate Cloud repository after SDK contracts stabilize.
+
+- Strict server-side event payload allowlists.
+- Agent, run, device and installation views.
+- Remote delegation and recovery timelines.
+- Deduplicated logical-operation metrics.
+- Compatibility tests with the SDK.
+
+Cloud observes execution; it does not own parent runs or invent retries.
+
+## Developer preview release
+
+- Validate clean installation from packed npm artifacts.
+- Complete physical-device checks and document supported environments.
+- Publish stable preview interfaces, quick starts and local/hybrid examples.
+- Measure real performance and document recovery limitations.
+- Verify optional Cloud integration and update website/demo claims.
+
+## Deferred — Platform expansion
+
+- Standalone Swift SDK and Swift Package Manager distribution.
+- Standalone Kotlin SDK and Maven-compatible distribution.
+- Native background scheduling where operating systems permit it.
+- Resource-aware routing and distributed run migration only after a dedicated design.
+
+Keep the C++ core, C ABI and conformance fixtures platform-independent. React Native must not depend on the standalone SDKs.
+
+Agent hosting, deployment and managed workers are not part of the current product roadmap.
+
+## Historical TypeScript milestones
+
+The following M0–M4 milestones preserve the context of the existing shipped TypeScript engine. They do not imply native feature parity.
 
 ## M0 — Repository foundation
 
@@ -70,57 +174,6 @@ Not part of M3:
 - Billing, accounts, and enterprise permissions stay out of the public repository.
 - Automated coverage is in `tests/telemetry`. A physical-device timeline was not captured for this change. The procedure is in [docs/validation/m4-physical-device.md](docs/validation/m4-physical-device.md).
 
-## M5 — Developer experience and additional integrations
+## Native architecture reference
 
-Not started.
-
-- More examples, clearer errors, and subscription samples.
-- Release process: Changesets publishes `@larkxai/*` from `main` with the organization `NPM_TOKEN`. Android Maven and iOS Swift packages are separate repositories. The first successful npm publish confirms the `@larkxai` scope.
-- Further model providers after their SDKs are checked. Ollama is the first candidate for Node. Nothing here implies RunAnywhere or LangGraph.
-- Performance measurements. `benchmarks/` currently records that no numbers have been taken.
-
-## M6 — Hybrid execution
-
-Not started. The dispatch types in `@larkxai/protocol` are the contract to implement, not a working transport.
-
-- Persist the dispatch intent before sending it.
-- Stable operation ids across network retries.
-- HTTP transport, worker SDK, and a durable reference coordinator.
-- Deduplicate accepted tasks. Survive coordinator restart.
-- Recover results after the device reconnects.
-- Refuse a local fallback while a remote side effect might still complete.
-- Keep `device-only` as the default.
-
-The reference coordinator is a development tool. It is not LarkX Cloud.
-
-## M7 — Native runtime and Rust, if justified
-
-The shared execution direction is the C++ core under `native/`. A Rust core is only justified for pieces that profiling shows that core cannot meet. It would not execute TypeScript callbacks inside Rust.
-
-- Swift and Kotlin SDKs. Not started. They belong in `larkxai/ios` and `larkxai/android` and must not embed a JavaScript engine.
-- Native background scheduling.
-- Resource-aware routing once real capability adapters exist.
-- Multi-device ownership transfer and a reconciliation protocol that makes it safe.
-
-## Native core — Phase 1 and Phase 2
-
-Started in `native/`. This is not a shipped SDK and it does not replace `@larkxai/core`.
-
-Present in this tree:
-
-- C++20 reducer for the protocol version 1 state machines, ownership fences, step attempts, reconciliation, and outbox dedupe.
-- SQLite schema version 1 and C ABI version 2 in `native/abi/include/larkx.h`.
-- An agent loop: register an agent, start a run, drive model and tool requests, submit results, pause, cancel, and reconcile. Committed outputs are replayed. Interrupted non-idempotent tools block.
-- The frozen tables in `native/conformance/transitions.json`, checked by the native tests and by `tests/native/conformance-fixtures.test.ts`. The agent loop is checked by `native/core/tests/agent_tests.cpp`.
-- A pure Swift host in `examples/swift-agent`. The macOS CI job compiles and runs it. Linux CI does not.
-- A preview React Native host at `@larkxai/react-native/native`. It calls this core through a native module. The default package export is still the TypeScript engine.
-- Host build and `ctest` on Linux. The Node addon in `packages/react-native` links the same core for the React Native host tests.
-
-Not present:
-
-- A production Swift or Kotlin SDK.
-- Model provider adapters inside the core, including Cactus.
-- Remote-agent submission, A2A, or telemetry export.
-- A device or emulator recovery run. The React Native preview binding is not that proof.
-
-The plan, the ABI decisions, and the later phases are in [docs/native/migration.md](docs/native/migration.md). Cloud follow-ups that this phase does not implement are in [docs/native/cloud-changes.md](docs/native/cloud-changes.md).
+See [native migration](docs/native/migration.md), [Cloud follow-ups](docs/native/cloud-changes.md) and [physical-device validation](docs/validation/on-device-agent.md).

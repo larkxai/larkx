@@ -4,7 +4,7 @@ Instructions for people and coding agents changing LarkX.
 
 ## What this repository is
 
-LarkX is an independent durable execution engine for on-device and hybrid AI agents. The public repository holds the open protocol, the local runtime, storage adapters, and a small reference surface for later remote execution. The managed commercial control plane belongs in `larkxai/cloud`, not here.
+LarkX is an independent durable execution engine for on-device and hybrid AI agents. The public repository holds the open protocol, the local runtime, storage adapters, and a small reference surface for later remote execution. Optional Cloud observability belongs in `larkxai/cloud`, not here. The device owns the parent run; remote agents are independently deployed, not hosted by LarkX.
 
 ## What is implemented
 
@@ -16,7 +16,7 @@ LarkX is an independent durable execution engine for on-device and hybrid AI age
 - `@larkxai/react-native` — Expo SQLite driver, mobile ownership, lifecycle binding, local artifact copy, and a display hook. The default export is that TypeScript adapter. `@larkxai/react-native/native` is a preview host for the shared C++ core and does not replace it.
 - `@larkxai/testing` — fake clocks and storage conformance cases.
 - `examples/node-workflow` — the Node process-death demo.
-- `examples/react-native-workflow` — the Expo demo. The TypeScript workflow stays on screen. A second card drives a scripted agent through the C++ core when a development build is installed. Node tests do not prove it ran on a device.
+- `examples/react-native-workflow` — the Expo demo. The TypeScript workflow stays on screen. Native cards drive scripted and Cactus field-inspection agents through the C++ core in a development build; actual mobile execution is pending validation. Node tests do not prove it ran on a device.
 - `native/` — C++20 execution core and C ABI version 2. The agent loop drives model and tool requests and persists their results. The TypeScript engine remains the shipped runtime. See [docs/native/migration.md](docs/native/migration.md). A host `ctest` run is not an iOS or Android binary, and it does not compile `examples/swift-agent`.
 
 Do not add a package that only re-exports types or throws "not implemented" and then document it as shipped. Planned packages stay in [ROADMAP.md](ROADMAP.md) until they have behavior and tests.
@@ -34,7 +34,11 @@ Do not add a package that only re-exports types or throws "not implemented" and 
 - Do not store model chain-of-thought. The event journal rejects payload keys `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`.
 - Terminal workflow statuses (`COMPLETED`, `FAILED`, `CANCELLED`) have no exits. `FAILED` is not retried in place. `BLOCKED` moves only through reconcile.
 - Protocol version, storage schema version, and workflow definition version are three different numbers. A missing workflow version blocks the run. It is not replayed on a different version.
-- `close()` waits for in-flight steps, releases ownership, and must not be called from an engine hook.
+- Legacy TypeScript engine `close()` waits for in-flight steps and releases ownership. Native runtime closure retains persisted ownership; follow its host lifecycle contract.
+
+## Current implementation priority
+
+Follow [ROADMAP.md](ROADMAP.md): React Native physical-device validation, durable remote delegation with basic egress authorization, A2A, expanded privacy, native telemetry, Cloud integration and developer preview. Standalone Swift and Kotlin SDKs are deferred. Keep public SDKs independent and share the C++ core. Do not advertise planned capabilities as implemented.
 
 ## Tests
 
@@ -70,4 +74,4 @@ Node.js must be 22.13 or newer. The lockfile is pinned to pnpm 10.33.4.
 
 ## Publishing
 
-`.github/workflows/ci.yml` is the build. `.github/workflows/release.yml` publishes public packages from `main` after that build succeeds, including GitHub Releases and GitHub Packages. The npm scope is `@larkxai`. Changesets `access` is `public`. Do not commit a registry token. Do not publish the root package or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. One `NPM_TOKEN` covers the whole `@larkxai` scope. Android (`ai.larkx` on Maven Central) and iOS (Swift package `LarkX`) are separate repositories and do not use that token. `@larkxai/react-native` publishes from this repository until `larkxai/react-native` exists; do not publish that name from both. `@larkxai/node` requires Node.js 22.13 or newer. The telemetry exporter's default `sdkVersion` is the `@larkxai/telemetry` package version; `pnpm version-packages` keeps that constant aligned.
+`.github/workflows/ci.yml` is the build. `.github/workflows/release.yml` publishes public packages from `main` after that build succeeds, including GitHub Releases and GitHub Packages. The npm scope is `@larkxai`. Changesets `access` is `public`. Do not commit a registry token. Do not publish the root package or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. One `NPM_TOKEN` covers the whole `@larkxai` scope. Standalone Android and iOS SDKs are deferred. Their distribution and repository layout are later decisions. `@larkxai/react-native` publishes from this repository until `larkxai/react-native` exists; do not publish that name from both. `@larkxai/node` requires Node.js 22.13 or newer. The telemetry exporter's default `sdkVersion` is the `@larkxai/telemetry` package version; `pnpm version-packages` keeps that constant aligned.

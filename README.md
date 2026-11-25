@@ -6,69 +6,138 @@
 [![@larkxai/react-native](https://img.shields.io/npm/v/@larkxai/react-native?label=%40larkxai%2Freact-native)](https://www.npmjs.com/package/@larkxai/react-native)
 [![Apache-2.0](https://img.shields.io/github/license/larkxai/larkx)](./LICENSE)
 
-Durable execution for on-device AI agents.
+**Durable orchestration for on-device AI agents.**
 
-Build AI agents that recover from interruptions, continue offline, and coordinate execution between edge devices and the cloud.
+AI agents need more than inference. They make decisions, call tools, update application state and depend on services. On mobile devices, applications can be suspended or killed at any point. A lost connection or interrupted process should not mean starting the entire agent again.
 
-Cactus runs your models. LarkX runs your workflows.
+LarkX is an open-source, local-first execution runtime that persists agent progress on the device and recovers from interruptions. Its direction is hybrid orchestration: local agents collaborating with cloud models and independently deployed remote agents, without requiring a cloud coordinator to own the local run.
 
-**Status:** early implementation. Milestones M0 and M1 are covered by automated tests, including real Node.js process termination. M2 adds the React Native adapter. M3 adds durable agents and a Cactus adapter on that same engine. M4 adds an optional metadata-only exporter to LarkX Cloud. Public packages release to the `@larkxai` scope from `main`. The agent tests run on Node.js. The Cactus screen has not been executed on an emulator or a device in CI. Hybrid dispatch is specified and not implemented. The Cloud service stays in a private repository.
+**Inference engines run models. LarkX runs agents.**
 
-Website: [https://larkx.ai](https://larkx.ai)
+[Website](https://larkx.ai) · [Roadmap](ROADMAP.md) · [React Native SDK](packages/react-native/README.md) · [Native architecture](docs/native/migration.md)
 
-License: Apache-2.0
+## What you can build today
+
+- Durable local agents with model-driven tool selection.
+- React Native agents backed by the shared C++20 runtime and SQLite.
+- Local model integration through the optional Cactus adapter.
+- Replay of committed decisions and tool results, with explicit recovery policies for interrupted operations.
+- Existing TypeScript workflows and agents on Node.js and React Native.
+- Optional metadata-only telemetry for the existing TypeScript engine.
+
+**Developer preview:** the native core and React Native host are implemented and tested on host platforms. Native bridge compilation is covered by CI. Full mobile application builds, real Cactus inference, offline operation and killed-process recovery on physical phones remain unverified. Remote delegation, A2A, expanded privacy policies and native telemetry are planned, not available yet.
+
+## React Native native runtime
+
+Import this from `@larkxai/react-native/native`. It does not replace the default package export.
+
+```typescript
+import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native/native";
+
+const runtime = await createRuntime({ storage: sqlite() });
+const agent = runtime.createAgent({
+  name: "personal-assistant",
+  version: 1,
+  model: scriptedModel([
+    {
+      message: null,
+      finish: "tool_calls",
+      calls: [{ id: "call-1", name: "read_notes", arguments: {} }],
+    },
+    { message: "Summary: Example note", finish: "stop", calls: [] },
+  ]),
+  instructions: "Help the user manage daily tasks.",
+  tools: [
+    defineTool({
+      name: "read_notes",
+      description: "Read locally stored notes",
+      schema: { type: "object", properties: {} },
+      effects: "pure",
+      handler: async () => ({ notes: ["Example note"] }),
+    }),
+  ],
+});
+const run = await agent.start({ message: "Summarize my notes" });
+const result = await run.result();
+await runtime.close();
+```
+
+The example uses a scripted model for deterministic behavior. For real local inference, see the [Cactus adapter](packages/cactus/README.md) and [field-inspection demo](examples/react-native-workflow/README.md). The native entry point requires a development build, not Expo Go. Check the installed package version for availability; the default React Native export still uses the TypeScript runtime.
+
+### Recover a run
+
+Register the same agent definition and model adapter after application relaunch, then:
+
+```typescript
+await agent.whenRegistered();
+const runs = await runtime.listRuns();
+const recovered = await runtime.resume(runId);
+const result = await recovered.result();
+```
+
+Here `runId` is the ID selected from persisted runs. `agent.start()` persists and schedules execution; `run.result()` waits. Pass `defer: true` to start or resume without scheduling. A paused run requires explicit resume. Run listing currently uses separate snapshots and can miss a concurrently updated run.
+
+Follow the [physical-device validation checklist](docs/validation/on-device-agent.md) for offline inference, committed-step replay, interruption and reconciliation tests.
+
+## Architecture
+
+```mermaid
+flowchart TB
+  app[React Native application] --> sdk[Native TypeScript SDK]
+  sdk --> host[Shared C++ host session]
+  host --> abi[C ABI v2]
+  abi --> core[C++20 agent runtime]
+  core <--> db[(SQLite execution state)]
+  sdk --> model[Model adapters]
+  model --> cactus[Cactus local inference]
+  sdk --> tools[Application tools]
+  sdk -. planned .-> remote[Independently deployed remote agents]
+  core -. planned .-> telemetry[Native metadata exporter]
+  telemetry -. planned .-> cloud[Optional LarkX Cloud]
+  swift[Standalone Swift SDK - deferred] -.-> abi
+  kotlin[Standalone Kotlin SDK - deferred] -.-> abi
+```
+
+Solid paths are implemented in the source tree; dashed paths are planned. The device owns parent-run state. Host adapters perform inference, tools and platform I/O; the core owns the agent loop and durable execution. React Native does not depend on standalone Swift or Kotlin SDKs.
+
+The legacy TypeScript engine remains supported and is not replaced by the native preview.
+
+## Execution guarantees
+
+| Operation                                | Recovery behavior                                                 |
+| ---------------------------------------- | ----------------------------------------------------------------- |
+| Committed model decision or tool result  | Replay stored output without invoking the committed handler again |
+| Interrupted pure or idempotent operation | May retry; idempotent retries retain the operation ID             |
+| Interrupted non-idempotent operation     | Unknown outcome; block until explicit reconciliation              |
+| Ownership conflict                       | Epoch fencing rejects stale commits                               |
+
+Cancellation is cooperative and does not roll back committed effects. LarkX does not promise exactly-once external execution, uninterrupted execution while an app is killed, or resuming a model midway through a token stream. Local execution is not a sandbox for arbitrary application code. The existing device-only policy does not imply comprehensive egress enforcement or encrypted storage.
 
 ## Project status
 
-| Area                                                     | State                                                                               |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Execution protocol (`@larkxai/protocol`)                 | Implemented, version 1                                                              |
-| Local workflow runtime (`@larkxai/core`)                 | Implemented                                                                         |
-| Memory storage                                           | Implemented. Does not survive process exit                                          |
-| SQLite storage and Node adapter                          | Implemented. Node's built-in `node:sqlite` is experimental                          |
-| Replay, crash recovery, effect policies, ownership       | Implemented and tested on Node.js                                                   |
-| Durable agents, tools, model adapters (`@larkxai/agent`) | Implemented on the existing engine. Scripted model in CI. No device run for Cactus  |
-| React Native adapter                                     | TypeScript engine on Expo SQLite. Device and emulator runs are not in CI            |
-| React Native native runtime                              | Preview host for the C++ core at `@larkxai/react-native/native`. Not a device run   |
-| Cactus adapter (`@larkxai/cactus`)                       | Implemented against cactus-react-native 1.13.1. Native dev build only. Not run here |
-| Optional Cloud telemetry (`@larkxai/telemetry`)          | Implemented. Metadata only. Execution does not wait on it. Not a device run         |
-| Native C++ core (`native/`)                              | ABI 2 agent loop. Linux, macOS, and the Node addon run it. Not a device build       |
-| HTTP transport, worker SDK, reference coordinator        | Not implemented                                                                     |
-| Managed LarkX Cloud                                      | Ingestion lives in `larkxai/cloud`. This tree only sends the batch                  |
+| Capability                                       | Status                                            |
+| ------------------------------------------------ | ------------------------------------------------- |
+| TypeScript workflows, agents and SQLite recovery | Implemented; Node process-death tests             |
+| C++20 core, protocol 1, schema 1, ABI 2          | Implemented; host tests                           |
+| React Native native bindings                     | Preview; host tests and bridge compilation        |
+| Cactus native-backed agent demo                  | Implemented; physical-device inference pending    |
+| Durable remote delegation and A2A                | Planned                                           |
+| Expanded privacy and egress policies             | Planned                                           |
+| TypeScript telemetry exporter                    | Implemented; mobile verification pending          |
+| Native telemetry and updated Cloud integration   | Planned                                           |
+| Standalone Swift and Kotlin SDKs                 | Deferred; pure Swift host example tested on macOS |
 
-The unscoped npm name `larkx` belongs to an unrelated project. Publishable packages use the `@larkxai` scope. Examples are not published. Android and iOS ship from their own repositories. The release uses the organization secret `NPM_TOKEN`, described in [Contributing](CONTRIBUTING.md).
+## Install and legacy APIs
 
-## Problem
-
-An on-device agent does more than call a model. It loops, runs tools, writes application state, and sometimes calls a remote service. Phones and other edge devices suspend processes, drop the network, and kill apps before those results are saved.
-
-Server workflow engines assume a coordinator the device can reach. A local agent still has to start, advance, and recover when that coordinator is absent.
-
-## What LarkX does
-
-LarkX is an embedded, local-first durable execution engine.
-
-A workflow is ordinary TypeScript. Each meaningful operation runs inside a durable step. The runtime stores the step result before it moves on. After a crash it runs the workflow function again, returns the stored results for steps that already committed, and retries or blocks the interrupted step according to its effect class.
-
-Inference engines execute models. LarkX executes and preserves the workflows that use those models. The core has no dependency on a model provider.
-
-## Why durable agent execution matters
-
-Agent progress is a sequence of decisions and tool results. If that sequence lives only in memory, a killed process repeats work, drops a half-finished tool call, or runs an external effect twice.
-
-LarkX makes the step the recovery boundary. It does not restore a JavaScript stack, an operating-system thread, or a live inference session. It also does not promise exactly-once execution of arbitrary external effects. Effect classes say which retries are safe.
-
-## Install
-
-Node.js 22.13 or newer. `@larkxai/core` and `@larkxai/node` are published.
+The public npm scope is `@larkxai`; the unscoped name belongs to another project. Node.js 22.13+ is required for the Node adapter. Examples are not published.
 
 ```bash
 npm install @larkxai/core @larkxai/node
 ```
 
-`@larkxai/agent` is the durable agent loop. `@larkxai/react-native` is the Expo adapter and is published from this repository until `larkxai/react-native` exists. `@larkxai/cactus` and `@larkxai/telemetry` are optional. Android and iOS are separate repositories. Packages in `examples/` are demos and are not on npm.
+React Native users should follow the [package installation instructions](packages/react-native/README.md). Native preview availability depends on the installed release. The source checkout is the reference for the latest implementation.
 
-## Quick start
+## Legacy TypeScript workflow quick start
 
 The crash demo runs from a checkout of this repository.
 
@@ -90,7 +159,7 @@ The second process prints a completed result. The invocation log lists `normaliz
 
 The example README describes the other crash points, including a non-idempotent step that recovery refuses to retry. That demo is the small crash test. A document agent is the workflow below.
 
-## Workflow
+### Workflow
 
 An inspector finishes a visit and types one note: "Inspected the roof. Three tiles are loose above the north gutter." The app starts run `brief-1`. The workflow function begins at the top.
 
@@ -232,11 +301,9 @@ await engine.close();
 
 `ctx.now(key)` and `ctx.random(key)` are themselves durable local steps. Do not call `Date.now()` or `Math.random()` in workflow code outside a step.
 
-## Agents
+### Agents
 
 `reviewDocument` fixes the order: summary, then actions. `createAgent` is the other shape. The model decides which tool to call, and each decision is still one durable step. `createAgent` registers the workflow. Each model call is `model-<n>`. Each tool call is `tool-<n>-<m>`. Replay returns committed decisions and does not call the model or the tool again. The package README has the full example. The Node script is `examples/node-agent`. The engineering phone demo is `examples/react-native-agent`. The field inspection showcase is `examples/field-inspection-agent`, a four-stage on-device workflow.
-
-The React Native package also binds the shared C++ runtime at `@larkxai/react-native/native`. `agent.start()` persists the run and schedules that runtime. `run.result()` waits. `runtime.listRuns()` reads persisted runs after a relaunch. Each count and index call is its own snapshot. `cactusHostModel` adapts Cactus completions to that host and does not plan steps. Completions on one Cactus instance run one at a time. `examples/react-native-workflow` includes the field-inspection screen. The scripted agent and the local Cactus agent have different names. A local run is not recovered with the scripted model. Physical-device checks are listed in [docs/validation/on-device-agent.md](docs/validation/on-device-agent.md) and have not been run on a phone.
 
 Calling cloud or hybrid steps today fails with `permission_denied` under the default `device-only` policy, or with `unsupported_capability` when the policy is `cloud-allowed`. There is no remote dispatcher.
 
@@ -250,106 +317,13 @@ await ctx.step("plan", {
 });
 ```
 
-## Architecture
+## Further documentation
 
-```mermaid
-flowchart TB
-  subgraph implemented [Implemented in this repository]
-    app[Application workflow]
-    core["@larkxai/core"]
-    protocol["@larkxai/protocol"]
-    memory["@larkxai/storage-memory"]
-    sqlite["@larkxai/storage-sqlite"]
-    node["@larkxai/node"]
-    rn["@larkxai/react-native"]
-    agent["@larkxai/agent"]
-    cactus["@larkxai/cactus"]
-    telemetry["@larkxai/telemetry"]
-    app --> core
-    agent --> core
-    core --> protocol
-    core --> memory
-    core --> sqlite
-    node --> sqlite
-    node --> core
-    rn --> sqlite
-    rn --> core
-    cactus --> agent
-    telemetry --> core
-  end
-
-  subgraph later [Specified, not in this repository yet]
-    transport["@larkxai/transport-http"]
-    worker["@larkxai/worker"]
-    coordinator[Reference coordinator]
-    cloud[LarkX Cloud private repo]
-  end
-
-  core -.-> transport
-  transport -.-> coordinator
-  worker -.-> coordinator
-  coordinator -.-> cloud
-  telemetry -.-> cloud
-```
-
-Authoritative documents:
-
-- [Architecture RFC](rfcs/0001-architecture.md)
-- [Execution semantics RFC](rfcs/0002-execution-semantics.md)
-- [Execution model](docs/architecture/execution-model.md)
-- [Replay](docs/architecture/replay.md)
-- [State machines](docs/architecture/state-machines.md)
-- [Storage](docs/architecture/storage.md)
+- [Execution semantics](rfcs/0002-execution-semantics.md)
+- [Native migration and ABI](docs/native/migration.md)
 - [Side effects](docs/architecture/side-effects.md)
-- [Cloud observability specification](docs/cloud-observability-spec.md)
-- [Telemetry export](docs/architecture/telemetry.md)
-
-Agents and the model adapter are implemented: [agents](docs/architecture/agents.md), [model adapter](docs/architecture/model-adapter.md). Hybrid dispatch, mobile lifecycle, and a future Rust core: [hybrid](docs/architecture/hybrid-dispatch.md), [mobile](docs/architecture/mobile-lifecycle.md), [Rust](docs/architecture/rust-migration.md).
-
-## Execution guarantees and limitations
-
-Implemented for local steps:
-
-- A completed step's handler does not run again during replay.
-- The recorded JSON output is what replay returns.
-- An interrupted `pure` or `idempotent` step may run again. An idempotent step keeps the same `operationId`.
-- An interrupted `non-idempotent` step becomes `UNKNOWN_OUTCOME`. The run becomes `BLOCKED` until `reconcileStep`.
-- One owner executes a run at a time. A stale owner cannot commit. A dead Node process can be replaced immediately through a pid file; otherwise the lease must expire.
-- Cancellation is cooperative and does not roll back committed effects.
-- The default data policy is `device-only`.
-
-Not claimed:
-
-- Exactly-once external effects.
-- Continuous execution while the operating system has terminated the app.
-- Recovery of a JavaScript stack, thread, or native inference session.
-- Encrypted local databases, secure-enclave storage, or any regulatory certification.
-- Battery, thermal, or memory-aware routing.
-- Parallel steps. Execution is sequential.
-- React Native behavior on a phone or emulator. The adapter and the renovation agent are in the repository. The automated proof uses Node process death. That is not a substitute for a device. The Cactus screen was not run here.
-- Resuming a model from the middle of a token stream. Recovery repeats an uncommitted model step from the start.
-
-## Platform support
-
-| Platform                            | Support                                                                            |
-| ----------------------------------- | ---------------------------------------------------------------------------------- |
-| Node.js 22.13+                      | Local workflows, file SQLite, process-death tests, and the mobile ownership policy |
-| React Native, Expo SDK 58           | Workflow demo and renovation agent. Not executed here on an emulator or a device   |
-| Cactus native module                | Adapter compiled against 1.13.1. Requires a dev build, not Expo Go. Not run here   |
-| Browser                             | Not a target of this release                                                       |
-| Native iOS, Android, embedded, Rust | Design constraints only                                                            |
-
-## Integration support
-
-`@larkxai/agent` is the agent API. `@larkxai/cactus` is the first model adapter, against Cactus 1.13.1, and it is optional. The agent tests use a scripted model. Ollama is a possible later Node adapter. RunAnywhere and LangGraph are not scheduled.
-
-## Comparison
-
-LarkX is in the same family of problems as Temporal, DBOS, Restate, and Golem: durable steps, replay, and explicit side-effect boundaries. Those systems are built around a server or a service the worker can reach. LarkX's local runtime owns the workflow and must make progress with no network.
-
-LangGraph and similar agent frameworks orchestrate model and tool loops. They are not a substitute for a crash-safe step log on a device. `@larkxai/agent` sits on this engine and does not keep a second log.
-
-This table is positioning. It is not a benchmark, and it does not describe production adoption.
+- [Cloud observability](docs/cloud-observability-spec.md)
+- [Roadmap](ROADMAP.md)
 
 ## Development setup
 
@@ -363,10 +337,6 @@ pnpm test
 ```
 
 `pnpm test` builds the packages and runs Vitest. Tests import the built `dist` entry points. See [Contributing](CONTRIBUTING.md).
-
-## Roadmap
-
-[ROADMAP.md](ROADMAP.md) lists M0 through M7. M0 through M4 are in this tree. M3's Cactus screen and M4's physical-device sync still need a device run before they are called validated on hardware. The managed cloud service stays in a private repository.
 
 ## Contributing
 
