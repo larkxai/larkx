@@ -1,5 +1,6 @@
 #include "larkx.h"
 
+#include "larkx/agent.hpp"
 #include "larkx/core.hpp"
 #include "larkx/store.hpp"
 
@@ -647,4 +648,260 @@ larkx_code larkx_egress_allowed(const char* data_policy, const char* destination
   }
   *allowed = larkx::egress_allowed(policy, dest) ? 1 : 0;
   return ok(err);
+}
+
+struct larkx_runtime {
+  std::unique_ptr<larkx::Runtime> impl;
+};
+
+larkx::AgentRegistration registration_from(const larkx_agent_spec* spec) {
+  larkx::AgentRegistration agent;
+  agent.name = spec->name == nullptr ? "" : spec->name;
+  agent.version = spec->version;
+  agent.instructions = spec->instructions == nullptr ? "" : spec->instructions;
+  agent.model_id = spec->model_id == nullptr ? "" : spec->model_id;
+  agent.model_name = spec->model_name == nullptr ? "" : spec->model_name;
+  agent.tool_calling = spec->tool_calling != 0;
+  agent.max_iterations = spec->max_iterations;
+  agent.max_tool_calls = spec->max_tool_calls;
+  agent.max_invalid_tool_requests = spec->max_invalid_tool_requests;
+  agent.max_context_chars = spec->max_context_chars;
+  agent.model_max_attempts = spec->model_max_attempts;
+  agent.model_initial_interval_ms = spec->model_initial_interval_ms;
+  agent.model_max_interval_ms = spec->model_max_interval_ms;
+  agent.model_backoff = spec->model_backoff == nullptr ? "" : spec->model_backoff;
+  if (spec->tools != nullptr) {
+    for (int32_t index = 0; index < spec->tool_count; index += 1) {
+      const larkx_tool_spec& tool = spec->tools[index];
+      larkx::ToolRegistration item;
+      item.name = tool.name == nullptr ? "" : tool.name;
+      item.description = tool.description == nullptr ? "" : tool.description;
+      item.schema_json = tool.input_schema_json == nullptr ? "" : tool.input_schema_json;
+      item.effects = tool.effects == nullptr ? "" : tool.effects;
+      item.max_attempts = tool.max_attempts;
+      item.initial_interval_ms = tool.initial_interval_ms;
+      item.max_interval_ms = tool.max_interval_ms;
+      item.backoff = tool.backoff == nullptr ? "" : tool.backoff;
+      agent.tools.push_back(std::move(item));
+    }
+  }
+  return agent;
+}
+
+void fill_request(const larkx::ExecRequest& request, larkx_exec_request* out) {
+  std::memset(out, 0, sizeof(*out));
+  out->kind = request.kind;
+  out->attempt = request.attempt;
+  out->wait_until_ms = request.wait_until_ms;
+  out->has_wait_until = request.has_wait_until ? 1 : 0;
+  out->cancel_requested = request.cancel_requested ? 1 : 0;
+  copy_field(out->request_id, request.request_id);
+  copy_field(out->step_key, request.step_key);
+  copy_field(out->operation_id, request.operation_id);
+  copy_field(out->tool_name, request.tool_name);
+  copy_field(out->effect_type, request.effect_type);
+}
+
+larkx_code larkx_runtime_open(const char* path, uint32_t flags, const char* owner_id, int64_t lease_ms, larkx_runtime** out,
+                             larkx_error* err) {
+  if (out == nullptr || path == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Runtime open is missing a path or output."));
+  }
+  if ((flags & ~(LARKX_STORE_EXCLUSIVE_OWNERSHIP | LARKX_RUNTIME_MAY_STEAL)) != 0) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Unknown runtime flag."));
+  }
+  *out = nullptr;
+  auto runtime = std::make_unique<larkx_runtime>();
+  auto status = larkx::Runtime::open(path, (flags & LARKX_STORE_EXCLUSIVE_OWNERSHIP) != 0, (flags & LARKX_RUNTIME_MAY_STEAL) != 0,
+                                    owner_id == nullptr ? "" : owner_id, lease_ms, runtime->impl);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  *out = runtime.release();
+  return ok(err);
+}
+
+void larkx_runtime_close(larkx_runtime* runtime) { delete runtime; }
+
+larkx_code larkx_agent_register(larkx_runtime* runtime, const larkx_agent_spec* spec, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr || spec == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Agent registration is missing an argument."));
+  }
+  auto status = runtime->impl->register_agent(registration_from(spec));
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_agent_start(larkx_runtime* runtime, const char* agent_name, int32_t agent_version, const char* run_id,
+                            const char* input_json, int64_t now_ms, larkx_run_info* out, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr || out == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Agent start is missing an argument."));
+  }
+  larkx::Run run;
+  auto status = runtime->impl->start(agent_name == nullptr ? "" : agent_name, agent_version, run_id == nullptr ? "" : run_id,
+                                    input_json == nullptr ? "" : input_json, now_ms, run);
+  if (!run.run_id.empty()) {
+    const auto filled = fill_run(run, out, err);
+    if (filled != LARKX_OK) {
+      return filled;
+    }
+  }
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_drive(larkx_runtime* runtime, const char* run_id, int64_t now_ms, larkx_exec_request* out, char* detail_json,
+                          size_t detail_capacity, size_t* needed, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr || out == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Drive is missing an argument."));
+  }
+  larkx::ExecRequest request;
+  auto status = runtime->impl->drive(run_id == nullptr ? "" : run_id, now_ms, request);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  fill_request(request, out);
+  return copy_buffer(request.detail_json, detail_json, detail_capacity, needed, err);
+}
+
+larkx_code larkx_run_submit_model(larkx_runtime* runtime, const char* run_id, const char* request_id, const char* response_json,
+                                 const char* error_code, const char* error_message, int retryable, int64_t now_ms, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Model submit is missing a runtime."));
+  }
+  auto status = runtime->impl->submit_model(run_id == nullptr ? "" : run_id, request_id == nullptr ? "" : request_id,
+                                            response_json == nullptr ? "" : response_json, error_code == nullptr ? "" : error_code,
+                                            error_message == nullptr ? "" : error_message, retryable != 0, now_ms);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_submit_tool(larkx_runtime* runtime, const char* run_id, const char* request_id, const char* output_json,
+                                const char* error_code, const char* error_message, int retryable, int64_t now_ms, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Tool submit is missing a runtime."));
+  }
+  auto status = runtime->impl->submit_tool(run_id == nullptr ? "" : run_id, request_id == nullptr ? "" : request_id,
+                                           output_json == nullptr ? "null" : output_json, error_code == nullptr ? "" : error_code,
+                                           error_message == nullptr ? "" : error_message, retryable != 0, now_ms);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_submit_reconcile(larkx_runtime* runtime, const char* run_id, const char* request_id, const char* resolution,
+                                     const char* output_json, const char* message, int64_t now_ms, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Reconcile submit is missing a runtime."));
+  }
+  auto status = runtime->impl->submit_reconcile(run_id == nullptr ? "" : run_id, request_id == nullptr ? "" : request_id,
+                                                resolution == nullptr ? "" : resolution, output_json == nullptr ? "null" : output_json,
+                                                message == nullptr ? "" : message, now_ms);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_pause(larkx_runtime* runtime, const char* run_id, int64_t now_ms, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Pause is missing a runtime."));
+  }
+  auto status = runtime->impl->pause(run_id == nullptr ? "" : run_id, now_ms);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_resume(larkx_runtime* runtime, const char* run_id, int64_t now_ms, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Resume is missing a runtime."));
+  }
+  auto status = runtime->impl->resume_run(run_id == nullptr ? "" : run_id, now_ms);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_cancel(larkx_runtime* runtime, const char* run_id, int64_t now_ms, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Cancel is missing a runtime."));
+  }
+  auto status = runtime->impl->cancel(run_id == nullptr ? "" : run_id, now_ms);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_inspect(larkx_runtime* runtime, const char* run_id, larkx_run_info* out, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr || out == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Inspect is missing an argument."));
+  }
+  larkx::Run run;
+  auto status = runtime->impl->inspect(run_id == nullptr ? "" : run_id, run);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  return fill_run(run, out, err);
+}
+
+larkx_code larkx_run_result(larkx_runtime* runtime, const char* run_id, char* buffer, size_t capacity, size_t* needed, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Result is missing a runtime."));
+  }
+  std::string json;
+  auto status = runtime->impl->result_json(run_id == nullptr ? "" : run_id, json);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  return copy_buffer(json, buffer, capacity, needed, err);
+}
+
+larkx_code larkx_run_step_count(larkx_runtime* runtime, const char* run_id, int32_t* count, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr || count == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Step count is missing an argument."));
+  }
+  auto status = runtime->impl->step_count(run_id == nullptr ? "" : run_id, *count);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_step_at(larkx_runtime* runtime, const char* run_id, int32_t index, larkx_step_info* out, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr || out == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Step read is missing an argument."));
+  }
+  larkx::Step step;
+  auto status = runtime->impl->step_at(run_id == nullptr ? "" : run_id, index, step);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  std::memset(out, 0, sizeof(*out));
+  if (!copy_field(out->step_key, step.step_key) || !copy_field(out->status, larkx::to_string(step.status)) ||
+      !copy_field(out->execution_target, larkx::to_string(step.execution_target)) ||
+      !copy_field(out->selected_target, larkx::to_string(step.selected_target)) ||
+      !copy_field(out->effect_type, larkx::to_string(step.effect_type)) || !copy_field(out->operation_id, step.operation_id)) {
+    return fail(err, larkx::Status::fail(larkx::Code::Capacity, "Step field does not fit the ABI buffer."));
+  }
+  out->step_order = step.step_order;
+  out->attempt_count = step.attempt_count;
+  return ok(err);
+}
+
+larkx_code larkx_run_step_output(larkx_runtime* runtime, const char* run_id, const char* step_key, char* buffer, size_t capacity,
+                                size_t* needed, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Step output is missing a runtime."));
+  }
+  std::string json;
+  auto status = runtime->impl->step_output(run_id == nullptr ? "" : run_id, step_key == nullptr ? "" : step_key, json);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  return copy_buffer(json, buffer, capacity, needed, err);
+}
+
+larkx_code larkx_run_event_count(larkx_runtime* runtime, const char* run_id, int32_t* count, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr || count == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Event count is missing an argument."));
+  }
+  auto status = runtime->impl->event_count(run_id == nullptr ? "" : run_id, *count);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_event_payload(larkx_runtime* runtime, const char* run_id, int32_t index, char* buffer, size_t capacity,
+                                  size_t* needed, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Event payload is missing a runtime."));
+  }
+  std::string json;
+  auto status = runtime->impl->event_payload(run_id == nullptr ? "" : run_id, index, json);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  return copy_buffer(json, buffer, capacity, needed, err);
 }

@@ -14,6 +14,7 @@ add_library(larkx_core STATIC
   core/src/transitions.cpp
   core/src/reducer.cpp
   core/src/sqlite_store.cpp
+  core/src/agent.cpp
   core/src/abi.cpp
 )
 target_include_directories(larkx_core
@@ -31,3 +32,8 @@ target_compile_options(larkx_core_tests PRIVATE -Wall -Wextra -Werror -Wpedantic
 
 enable_testing()
 add_test(NAME larkx_core_tests COMMAND larkx_core_tests)
+
+add_executable(larkx_agent_tests core/tests/agent_tests.cpp)
+target_link_libraries(larkx_agent_tests PRIVATE larkx_core)
+target_compile_options(larkx_agent_tests PRIVATE -Wall -Wextra -Werror -Wpedantic)
+add_test(NAME larkx_agent_tests COMMAND larkx_agent_tests)

@@ -2,18 +2,22 @@
 #define LARKX_H
 
 /**
- * LarkX native core, C ABI version 1.
+ * LarkX native core, C ABI version 2.
  *
  * This header is the stable boundary for Swift, Kotlin, React Native, and
  * Node bindings. It does not expose C++ types. The caller owns every pointer
  * it passes in. The store owns the database connection. Strings written into
  * caller buffers are NUL-terminated when the call succeeds.
  *
- * ABI 1 is the execution foundation: protocol transitions, ownership fences,
- * step journaling, reconciliation, an offline outbox row, and egress decisions.
- * It does not run model adapters, submit remote tasks, or export telemetry.
- * Those stay behind host interfaces in later phases. The TypeScript engine
- * remains the shipped runtime until this core passes equivalent recovery tests.
+ * Version 1 of this header is the execution foundation: protocol transitions,
+ * ownership fences, step journaling, reconciliation, an outbox row, and egress
+ * decisions. Version 2 adds the agent runtime. The runtime returns an execution
+ * request and the host submits the result. The core does not call the host,
+ * a model SDK, or a device API.
+ *
+ * The TypeScript engine remains the shipped runtime until this core passes
+ * equivalent recovery tests. Remote-agent submission and telemetry export are
+ * not part of ABI 2.
  *
  * A store handle is safe to call from multiple threads. Calls are serialized.
  * Do not re-enter the same store from inside a future host callback.
@@ -26,7 +30,7 @@
 extern "C" {
 #endif
 
-#define LARKX_ABI_VERSION 1u
+#define LARKX_ABI_VERSION 2u
 #define LARKX_PROTOCOL_VERSION 1u
 #define LARKX_STORAGE_SCHEMA_VERSION 1u
 
@@ -356,6 +360,180 @@ larkx_code larkx_interrupted_resolution(const char* effect_type, char* out, size
  */
 larkx_code larkx_egress_allowed(
     const char* data_policy, const char* destination, int* allowed, larkx_error* err);
+
+/**
+ * ABI 2 agent runtime.
+ *
+ * The host registers an agent, starts a run, and then alternates
+ * larkx_run_drive with a submit call. Drive persists the step and operation id
+ * before it returns an invoke request. A request_id names that attempt. A
+ * second submit for an attempt that is no longer open is rejected.
+ *
+ * Closing the runtime does not release ownership. Reopen with the same owner
+ * id to recover. A RUNNING step that this process did not issue is an
+ * interrupt: pure and idempotent steps retry with the same operation id, and
+ * non-idempotent steps become UNKNOWN_OUTCOME.
+ *
+ * A model or idempotent tool can run again when the process dies after the
+ * attempt is begun and before the result is committed. That window cannot be
+ * closed from the device. Non-idempotent work is not repeated.
+ *
+ * Zero in a limit or model_max_attempts selects the default. A negative
+ * interval selects the default interval. Zero is a real interval.
+ */
+#define LARKX_RUNTIME_MAY_STEAL 2u
+
+typedef enum larkx_request_kind {
+  LARKX_REQUEST_INVOKE_MODEL = 1,
+  LARKX_REQUEST_INVOKE_TOOL = 2,
+  LARKX_REQUEST_RECONCILE = 3,
+  LARKX_REQUEST_WAIT = 4,
+  LARKX_REQUEST_COMPLETE = 5,
+  LARKX_REQUEST_BLOCKED = 6,
+  LARKX_REQUEST_FAILED = 7,
+  LARKX_REQUEST_CANCELLED = 8,
+  LARKX_REQUEST_PAUSED = 9
+} larkx_request_kind;
+
+typedef struct larkx_runtime larkx_runtime;
+
+typedef struct larkx_tool_spec {
+  const char* name;
+  const char* description;
+  const char* input_schema_json;
+  const char* effects;
+  int32_t max_attempts;
+  int64_t initial_interval_ms;
+  int64_t max_interval_ms;
+  const char* backoff;
+} larkx_tool_spec;
+
+typedef struct larkx_agent_spec {
+  const char* name;
+  int32_t version;
+  const char* instructions;
+  const char* model_id;
+  const char* model_name;
+  int tool_calling;
+  const larkx_tool_spec* tools;
+  int32_t tool_count;
+  int32_t max_iterations;
+  int32_t max_tool_calls;
+  int32_t max_invalid_tool_requests;
+  int32_t max_context_chars;
+  int32_t model_max_attempts;
+  int64_t model_initial_interval_ms;
+  int64_t model_max_interval_ms;
+  const char* model_backoff;
+} larkx_agent_spec;
+
+typedef struct larkx_exec_request {
+  int32_t kind;
+  char request_id[201];
+  char step_key[129];
+  char operation_id[201];
+  char tool_name[81];
+  int32_t attempt;
+  int64_t wait_until_ms;
+  int has_wait_until;
+  char effect_type[32];
+  int cancel_requested;
+} larkx_exec_request;
+
+larkx_code larkx_runtime_open(
+    const char* path,
+    uint32_t flags,
+    const char* owner_id,
+    int64_t lease_ms,
+    larkx_runtime** out,
+    larkx_error* err);
+void larkx_runtime_close(larkx_runtime* runtime);
+
+larkx_code larkx_agent_register(larkx_runtime* runtime, const larkx_agent_spec* spec, larkx_error* err);
+
+/**
+ * Persists the run identity before returning. Does not call a model.
+ * An existing run with the same id must have the same agent version and input.
+ */
+larkx_code larkx_agent_start(
+    larkx_runtime* runtime,
+    const char* agent_name,
+    int32_t agent_version,
+    const char* run_id,
+    const char* input_json,
+    int64_t now_ms,
+    larkx_run_info* out,
+    larkx_error* err);
+
+larkx_code larkx_run_drive(
+    larkx_runtime* runtime,
+    const char* run_id,
+    int64_t now_ms,
+    larkx_exec_request* out,
+    char* detail_json,
+    size_t detail_capacity,
+    size_t* needed,
+    larkx_error* err);
+
+larkx_code larkx_run_submit_model(
+    larkx_runtime* runtime,
+    const char* run_id,
+    const char* request_id,
+    const char* response_json,
+    const char* error_code,
+    const char* error_message,
+    int retryable,
+    int64_t now_ms,
+    larkx_error* err);
+
+larkx_code larkx_run_submit_tool(
+    larkx_runtime* runtime,
+    const char* run_id,
+    const char* request_id,
+    const char* output_json,
+    const char* error_code,
+    const char* error_message,
+    int retryable,
+    int64_t now_ms,
+    larkx_error* err);
+
+larkx_code larkx_run_submit_reconcile(
+    larkx_runtime* runtime,
+    const char* run_id,
+    const char* request_id,
+    const char* resolution,
+    const char* output_json,
+    const char* message,
+    int64_t now_ms,
+    larkx_error* err);
+
+larkx_code larkx_run_pause(larkx_runtime* runtime, const char* run_id, int64_t now_ms, larkx_error* err);
+larkx_code larkx_run_resume(larkx_runtime* runtime, const char* run_id, int64_t now_ms, larkx_error* err);
+larkx_code larkx_run_cancel(larkx_runtime* runtime, const char* run_id, int64_t now_ms, larkx_error* err);
+
+larkx_code larkx_run_inspect(larkx_runtime* runtime, const char* run_id, larkx_run_info* out, larkx_error* err);
+larkx_code larkx_run_result(
+    larkx_runtime* runtime, const char* run_id, char* buffer, size_t capacity, size_t* needed, larkx_error* err);
+larkx_code larkx_run_step_count(larkx_runtime* runtime, const char* run_id, int32_t* count, larkx_error* err);
+larkx_code larkx_run_step_at(
+    larkx_runtime* runtime, const char* run_id, int32_t index, larkx_step_info* out, larkx_error* err);
+larkx_code larkx_run_step_output(
+    larkx_runtime* runtime,
+    const char* run_id,
+    const char* step_key,
+    char* buffer,
+    size_t capacity,
+    size_t* needed,
+    larkx_error* err);
+larkx_code larkx_run_event_count(larkx_runtime* runtime, const char* run_id, int32_t* count, larkx_error* err);
+larkx_code larkx_run_event_payload(
+    larkx_runtime* runtime,
+    const char* run_id,
+    int32_t index,
+    char* buffer,
+    size_t capacity,
+    size_t* needed,
+    larkx_error* err);
 
 #ifdef __cplusplus
 }
