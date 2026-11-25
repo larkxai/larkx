@@ -629,6 +629,8 @@ class LocalEngine implements Engine {
     if (!last || last.status !== "RUNNING") {
       return state;
     }
+    // Frozen in native/conformance/transitions.json.
+    // pure and idempotent retry. non-idempotent becomes unknown.
     if (last.effectType === "non-idempotent") {
       const outcome = await this.storage.apply({
         type: "mark-unknown",

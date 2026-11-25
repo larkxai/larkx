@@ -23,3 +23,16 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm exec vitest run
+
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the native toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake libsqlite3-dev g++
+      - name: Configure
+        run: cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build native/build
+      - name: Test
+        run: ctest --test-dir native/build --output-on-failure
