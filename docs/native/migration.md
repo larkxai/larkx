@@ -1,8 +1,8 @@
 # Native core migration
 
-LarkX is moving from a TypeScript-first durable workflow engine to one shared native execution core, with Swift, Kotlin, and TypeScript bindings around it. This document is the architecture for that move. It also records what Phase 1 has actually built.
+LarkX is moving from a TypeScript-first durable workflow engine to one shared native execution core, with Swift, Kotlin, and TypeScript bindings around it. This document is the architecture for that move. It records what Phase 1 and Phase 2 have actually built.
 
-The TypeScript packages remain the shipped runtime. `native/` is the Phase 1 foundation: the protocol state machines, SQLite persistence, and a C ABI that a later binding can call. It does not run an agent, submit a remote task, or export telemetry. Do not describe it as a replacement, and do not delete `@larkxai/core` until the native core passes equivalent conformance and recovery tests.
+The TypeScript packages remain the shipped runtime. `native/` is the C++20 core. Phase 1 persists protocol transitions. Phase 2 runs an autonomous agent loop on that store: the core asks the host to invoke a model or a tool, and the host submits the result. It does not submit a remote task, export telemetry, or link an inference SDK. Do not describe it as a replacement, and do not delete `@larkxai/core` until a binding has matched the TypeScript crash tests on a device.
 
 `larkxai/cloud` is optional observability. Required Cloud follow-ups are listed in [cloud-changes.md](cloud-changes.md) and are not implemented here.
 
@@ -17,16 +17,16 @@ Four pillars stay in force:
 3. Privacy controls that are separate from placement. `device-only` is the default. An egress decision does not sandbox arbitrary native code that opens its own socket.
 4. Optional Cloud observability. Local execution never waits on a successful export.
 
-The public mental model, for every language, is Runtime, Agent, Run, Tool, RemoteAgent, and Model. `defineWorkflow` and `ctx.step` stay available as advanced primitives. Ordinary agent execution must not require the caller to assemble a workflow by hand. That loop is Phase 2. Phase 1 only stores the runs and steps the loop will use.
+The public mental model, for every language, is Runtime, Agent, Run, Tool, RemoteAgent, and Model. `defineWorkflow` and `ctx.step` stay available as advanced primitives. Ordinary agent execution does not require the caller to assemble a workflow by hand. The native loop keeps the workflow reducer as its execution primitive. RemoteAgent is specified in section 6 and is not implemented.
 
-Platform code stays outside the core. HTTP, model providers, native inference, camera and files, secure storage, application lifecycle, background scheduling, and connectivity are host adapters. The core sees completion, cancellation, and policy decisions through the C ABI. ABI version 1 has no callbacks, so the host drives each call and the core never re-enters it.
+Platform code stays outside the core. HTTP, model providers, native inference, camera and files, secure storage, application lifecycle, background scheduling, and connectivity are host adapters. The core returns an execution request. The host performs the platform work and submits the result. ABI version 2 has no callbacks, so the core does not re-enter the host.
 
 ```text
 native/
-  abi/include/larkx.h     C ABI version 1
+  abi/include/larkx.h     C ABI version 2
   core/include            C++20 interfaces used only inside the library
-  core/src                reducer, JSON, SQLite
-  core/tests              ABI tests
+  core/src                reducer, JSON, SQLite, agent loop
+  core/tests              store tests and agent-loop tests
   conformance/            frozen tables shared with the TypeScript tests
   cmake/toolchains/       iOS and Android files that fail closed here
 ```
@@ -47,7 +47,7 @@ Versions reported by the store:
 
 | Number         | Value | Meaning                                                 |
 | -------------- | ----- | ------------------------------------------------------- |
-| ABI            | 1     | This header.                                            |
+| ABI            | 2     | This header. Version 2 adds the agent runtime.          |
 | Protocol       | 1     | The TypeScript protocol state machines and event names. |
 | Storage schema | 1     | The same tables as `@larkxai/storage-sqlite`.           |
 
@@ -82,19 +82,56 @@ JSON is a small parser in the core: one mebibyte, depth 64, duplicate object key
 
 SQLite uses WAL, foreign keys, a five-second busy timeout, and `synchronous=NORMAL`. A failed WAL pragma does not fail the open. `schema_migrations.applied_at` is stored as 0. The artifacts table is created so the schema matches version 1; ABI 1 has no artifact calls. Writes copy the state, apply the reducer, and commit in one transaction. A rejected command rolls back, including its events.
 
-Remote-agent states are specified in section 6 and are not exposed by ABI 1. Adding them is a protocol and schema change.
+Remote-agent states are specified in section 6 and are not exposed by ABI 2. Adding them is a protocol and schema change.
+
+### Agent runtime
+
+`larkx_runtime_open` opens the same SQLite file as the store API. The runtime does not steal a live owner unless `LARKX_RUNTIME_MAY_STEAL` is set. `larkx_runtime_close` does not release ownership, so reopening with the same owner id continues the epoch when `lease_ms` is 0.
+
+An agent registration lives in process memory: name, version, instructions, model identity, tool schemas, effect classes, limits, and retry policy. The host registers it again after every open. The run stores the agent name as `workflow_name` and the agent version as `workflow_version`. The input is canonical JSON `{"message":"..."}` and the data policy is `device-only`.
+
+`larkx_agent_start` persists that identity and moves the run to `RUNNING` before it returns. It does not call a model. Waiting for the final result is `larkx_run_drive` until the request kind is complete, failed, cancelled, or blocked, then `larkx_run_result`.
+
+The host loop is:
+
+1. `larkx_run_drive` returns one request.
+2. The host performs that request, or waits until `wait_until_ms` when the kind is wait.
+3. The host submits a model response, a tool output, or a reconcile resolution.
+4. Repeat.
+
+Request kinds are invoke model, invoke tool, reconcile, wait, complete, blocked, failed, cancelled, and paused. The detail buffer is the only place a prompt, a tool argument, or a tool result is returned to the host. Event payloads stay metadata. They do not contain the user message, the instructions, or the model text.
+
+`request_id` is the attempt id. `operation_id` is deterministic from the run id and the step key, and a retry of that step reuses it. Event ids and attempt ids are also deterministic and unique across runs in one database. When `ev-{runId}-{n}` would exceed 200 characters, the run id is replaced by a 128-bit fingerprint. That fingerprint is stable. It is not a claim that a crafted collision is impossible.
+
+Step keys are `model-{iteration}` and `tool-{iteration}-{index}`. Model steps are idempotent. A tool uses the effect class from its registration. An unknown tool is recorded as `pure` and is not handed to the host. Invalid arguments are recorded the same way, using the registered effect class, and the host handler is not called.
+
+Limits use the TypeScript defaults when the field is 0: 8 iterations, 16 tool calls, 3 invalid tool requests, 12000 context characters, and a model retry of 2 attempts at 10 ms fixed. A negative interval selects the default interval. Zero is a real interval. Tool retries default to 3 attempts, 50 ms initial, 30000 ms maximum, exponential. Context length is the canonical JSON of the message array, which can differ in length from `JSON.stringify`.
+
+Pause moves a running workflow to `WAITING` and resume moves it back. Pause is rejected while a host request is in flight. Cancel sets `cancel_requested`. If no step is running, the next drive returns cancelled. If a step is running, drive returns the same invocation with `cancel_requested` set, and the host submits error code `cancelled_execution`.
+
+A duplicate or stale submit is `LARKX_ERR_STATE`. A submit whose owner epoch was stolen is `LARKX_ERR_OWNERSHIP`. A different agent version, or a different effect class on an already recorded step, is a state error and the run is not replayed on the new definition.
+
+Crash windows, where a repeated external call cannot be prevented:
+
+- The process dies after `larkx_run_drive` has begun an idempotent model or tool step and before the host submits a result. Recovery retries that step with the same operation id. The model may run again. The tool may run again. The core cannot tell whether the first call reached the provider.
+- The process dies in that same window for a non-idempotent tool. Recovery marks `UNKNOWN_OUTCOME`, blocks the run, and returns a reconcile request. The tool is not invoked again until the host resolves reconcile as retry, complete, or fail.
+- The process dies after the result is committed. Recovery replays the stored decision or tool result and does not return another invoke for that step.
+
+This is not exactly-once execution of a model or a tool.
+
+`examples/swift-agent` is a pure Swift host for this ABI. It does not use React Native or a JavaScript engine. `examples/swift-agent/run.sh` exits non-zero when `swiftc` is missing. The Linux tests compile and run the same ABI from C++. They are not an Apple run. The macOS CI job is the Swift compilation and the scripted recovery run. It is not an iOS device run.
 
 ## 3. TypeScript to native mapping
 
-| TypeScript                                                  | Native Phase 1                                                                           | Later                                                |
+| TypeScript                                                  | Native core                                                                              | Later                                                |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `@larkxai/protocol` transitions, effects, event names       | `transitions.cpp` and `conformance/transitions.json`                                     | New remote states need protocol version 2.           |
-| `reduceApply` in `@larkxai/core`                            | `reducer.cpp` for create, claim, begin, commit, resolve, mark unknown, reconcile, outbox | Agent loop commands stay in the host until Phase 2.  |
-| `prepareInterrupted`                                        | `larkx_interrupted_resolution` plus `larkx_step_mark_unknown` or `larkx_step_resolve`    | The host recovery loop that calls them is Phase 2.   |
+| `reduceApply` in `@larkxai/core`                            | `reducer.cpp` for create, claim, begin, commit, resolve, mark unknown, reconcile, outbox | The agent loop calls these. It does not add tables.  |
+| `prepareInterrupted`                                        | Drive classifies a `RUNNING` step this process did not issue                             | Same operation id on retry. Non-idempotent blocks.   |
 | `workflow_runs`, `workflow_steps`, attempts, events, outbox | `sqlite_store.cpp`, schema version 1                                                     | Artifact bytes and a proven byte-identical database. |
 | Node pid-file steal, mobile exclusive ownership             | `may_steal` and `LARKX_STORE_EXCLUSIVE_OWNERSHIP`                                        | Platform lifecycle still decides when to steal.      |
-| `createAgent` / `defineTool`                                | Not implemented                                                                          | Phase 2 Runtime, Agent, Run, Tool.                   |
-| Model and Cactus adapters                                   | Not implemented                                                                          | Host interfaces. The core must not link a model SDK. |
+| `createAgent` / `defineTool`                                | `larkx_agent_register`, `larkx_agent_start`, `larkx_run_drive`                           | Production Swift and Kotlin SDKs are Phase 3.        |
+| Model and Cactus adapters                                   | Host submits model JSON. The core does not link Cactus or another provider.              | Platform adapters live in the language bindings.     |
 | `@larkxai/telemetry`                                        | Not implemented                                                                          | Phase 5, using the existing cursor and allowlist.    |
 | Remote dispatch types                                       | Outbox insert and dedupe only                                                            | Phase 4 submission and recovery.                     |
 
@@ -109,7 +146,9 @@ The authoritative rows remain `workflow_runs` and `workflow_steps`. `workflow_ev
 - interrupt resolution
 - egress matrix
 
-`tests/native/conformance-fixtures.test.ts` fails if that file drifts from `@larkxai/protocol` or from schema version 1. `native/core/tests/core_tests.cpp` fails if the C ABI disagrees with the same file. The C++ tests also cover the recovery guarantees that can be stated without an agent loop:
+`tests/native/conformance-fixtures.test.ts` fails if that file drifts from `@larkxai/protocol` or from schema version 1. `native/core/tests/core_tests.cpp` fails if the C ABI disagrees with the same file. `native/core/tests/agent_tests.cpp` drives the C ABI through the same situations as `tests/agent/loop.test.ts`: a multi-turn tool loop, unknown and invalid tools that never reach the host, a malformed model response, iteration and invalid-tool limits, retries that keep the operation id, pause and cancel, replay of a committed model decision, a non-idempotent interrupt followed by reconcile, a duplicate submit, a stolen owner, an agent version mismatch, an effect-class change, and a context limit that fails before a model call. The TypeScript suite remains the reference for the shipped engine. The native tests compare observable statuses, step keys, operation ids, and error text. They do not execute the TypeScript interpreter.
+
+The C++ store tests also cover the recovery guarantees that can be stated without an agent loop:
 
 - a committed output is returned on replay, including after the file is reopened, and the handler is not invoked
 - an idempotent retry that changes the operation id is rejected; the original id is kept and the attempt count increases
@@ -182,10 +221,10 @@ Filtering happens before data leaves through an SDK-managed channel. Credentials
 
 The order is a dependency order. Later items are not implemented.
 
-1. Phase 1, this change. Freeze the tables, land the C ABI, the reducer, SQLite schema 1, the host tests, and the fail-closed toolchain files.
-2. Still before a binding. Vendor SQLite. Cross-compile on a machine with the Android NDK and on an Apple host. Those builds are not done in this change.
-3. Phase 2. Runtime, Agent, Run, and Tool on top of the ABI. Replay skips committed handlers. Recovery calls the interrupt classification. Operation ids and reconcile match the TypeScript crash tests.
-4. Phase 3. Swift, Kotlin, and React Native bindings, lifecycle hooks, and physical-device crash recovery. A simulator log is not that proof.
+1. Phase 1. Freeze the tables, land the C ABI, the reducer, SQLite schema 1, the host tests, and the fail-closed toolchain files. Done.
+2. Still before a production binding. Vendor SQLite. Cross-compile on a machine with the Android NDK and on an Apple host for an iOS binary. Those builds are not done.
+3. Phase 2. Runtime, Agent, Run, and Tool on the ABI. Replay skips committed model and tool steps. Recovery classifies interrupts. Operation ids and reconcile follow the TypeScript rules. A minimal Swift host is in `examples/swift-agent`. Production SDKs are not in this phase.
+4. Phase 3. Swift, Kotlin, and React Native bindings, lifecycle hooks, and physical-device crash recovery. A simulator log is not that proof. The macOS CI job is not that proof.
 5. Phase 4. RemoteAgent state machine, offline queue, custom HTTP, A2A, lost-ack handling, and egress checks on the bytes that would be sent.
 6. Phase 5. Versioned native telemetry, Cloud compatibility tests, examples, and package distribution. The Cloud edits in [cloud-changes.md](cloud-changes.md) land with that phase, not before the protocol version exists.
 
@@ -207,7 +246,8 @@ Decisions:
 Risks:
 
 - Canonical JSON may not be byte-identical to the TypeScript encoder for every number. Do not claim a shared database file is interchangeable until a fixture compares both writers.
-- The agent loop is still TypeScript. Two interpreters can drift until Phase 2 runs the same crash fixtures through the ABI.
+- The native agent loop and the TypeScript agent loop are both in this repository. The TypeScript engine is still what applications run. The loops can drift where canonical JSON length or default retry timing differs from `JSON.stringify` and the TypeScript clock. Compare behavior with the agent ABI tests when either side changes.
+- A model or idempotent tool can run more than once if the process dies after the attempt begins and before the result is committed. Do not describe that as exactly-once.
 - ABI structs and functions must not share a typedef name. The header uses `*_spec` typedefs for that reason. A later edit that collapses those names will fail to compile as C.
 - Cloud rejects sensitive keys recursively and then stores other payload extras. The SDK journal check is top-level, matching the TypeScript reducer. The allowlist tightening is a Cloud change, not a silent native change.
 - No iOS or Android binary has been produced. Toolchain files that fail closed are not a cross-compile.

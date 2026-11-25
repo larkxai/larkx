@@ -1,6 +1,6 @@
 # Cloud changes required later
 
-This note is for a later change in `larkxai/cloud`. Nothing in that repository is part of the native Phase 1 work. Local execution must keep working when Cloud is absent or the export fails.
+This note is for a later change in `larkxai/cloud`. Nothing in that repository is part of the native Phase 1 or Phase 2 work. Local execution must keep working when Cloud is absent or the export fails.
 
 ## Keep telemetry version 1 for the current journal
 

@@ -39,6 +39,7 @@ build/Release
 
 # Native core build tree
 native/build/
+native/build-swift/
 
 # Dependency directories
 node_modules/

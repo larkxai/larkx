@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,9 +35,10 @@ function readJson(path: string): PackageJson {
 }
 
 function packageDirs(parent: string): string[] {
-  return readdirSync(join(root, parent))
-    .map((name) => join(root, parent, name))
-    .filter((dir) => readFileSync(join(dir, "package.json"), "utf8").length > 0);
+  return readdirSync(join(root, parent), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(root, parent, entry.name))
+    .filter((dir) => existsSync(join(dir, "package.json")));
 }
 
 describe("npm publish layout", () => {

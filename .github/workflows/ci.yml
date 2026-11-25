@@ -36,3 +36,17 @@ jobs:
         run: cmake --build native/build
       - name: Test
         run: ctest --test-dir native/build --output-on-failure
+
+  native-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CMake
+        run: brew install cmake
+      - name: Configure, build, and test the core
+        run: |
+          cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build native/build
+          ctest --test-dir native/build --output-on-failure
+      - name: Run the Swift agent example
+        run: examples/swift-agent/run.sh

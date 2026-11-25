@@ -17,7 +17,7 @@ LarkX is an independent durable execution engine for on-device and hybrid AI age
 - `@larkxai/testing` — fake clocks and storage conformance cases.
 - `examples/node-workflow` — the Node process-death demo.
 - `examples/react-native-workflow` — the Expo demo. Node tests do not prove it ran on a device.
-- `native/` — C++20 execution core and C ABI version 1. Phase 1 foundation only. The TypeScript engine remains the shipped runtime. See [docs/native/migration.md](docs/native/migration.md). A host `ctest` run is not an iOS or Android binary.
+- `native/` — C++20 execution core and C ABI version 2. The agent loop drives model and tool requests and persists their results. The TypeScript engine remains the shipped runtime. See [docs/native/migration.md](docs/native/migration.md). A host `ctest` run is not an iOS or Android binary, and it does not compile `examples/swift-agent`.
 
 Do not add a package that only re-exports types or throws "not implemented" and then document it as shipped. Planned packages stay in [ROADMAP.md](ROADMAP.md) until they have behavior and tests.
 
