@@ -31,7 +31,7 @@ License: Apache-2.0
 | React Native adapter                                     | Implemented on the shared engine. Device and emulator runs are not in CI            |
 | Cactus adapter (`@larkxai/cactus`)                       | Implemented against cactus-react-native 1.13.1. Native dev build only. Not run here |
 | Optional Cloud telemetry (`@larkxai/telemetry`)          | Implemented. Metadata only. Execution does not wait on it. Not a device run         |
-| Native C++ core (`native/`)                              | Phase 1 foundation only. Not a replacement runtime and not an iOS or Android build  |
+| Native C++ core (`native/`)                              | ABI 2 agent loop. Not a replacement runtime and not an iOS or Android build         |
 | HTTP transport, worker SDK, reference coordinator        | Not implemented                                                                     |
 | Managed LarkX Cloud                                      | Ingestion lives in `larkxai/cloud`. This tree only sends the batch                  |
 

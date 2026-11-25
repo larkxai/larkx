@@ -101,22 +101,24 @@ The shared execution direction is the C++ core under `native/`. A Rust core is o
 - Resource-aware routing once real capability adapters exist.
 - Multi-device ownership transfer and a reconciliation protocol that makes it safe.
 
-## Native core — Phase 1
+## Native core — Phase 1 and Phase 2
 
 Started in `native/`. This is not a shipped SDK and it does not replace `@larkxai/core`.
 
 Present in this tree:
 
 - C++20 reducer for the protocol version 1 state machines, ownership fences, step attempts, reconciliation, and outbox dedupe.
-- SQLite schema version 1 and C ABI version 1 in `native/abi/include/larkx.h`.
-- The frozen tables in `native/conformance/transitions.json`, checked by the native tests and by `tests/native/conformance-fixtures.test.ts`.
+- SQLite schema version 1 and C ABI version 2 in `native/abi/include/larkx.h`.
+- An agent loop: register an agent, start a run, drive model and tool requests, submit results, pause, cancel, and reconcile. Committed outputs are replayed. Interrupted non-idempotent tools block.
+- The frozen tables in `native/conformance/transitions.json`, checked by the native tests and by `tests/native/conformance-fixtures.test.ts`. The agent loop is checked by `native/core/tests/agent_tests.cpp`.
+- A pure Swift host in `examples/swift-agent`. The macOS CI job compiles and runs it. Linux CI does not.
 - Host build and `ctest` on Linux. The iOS and Android toolchain files fail closed on a machine that cannot produce those binaries.
 
 Not present:
 
-- Runtime, Agent, and Run execution loop.
-- Model adapters, remote-agent submission, A2A, or telemetry export.
-- Swift, Kotlin, or React Native bindings.
+- A production Swift, Kotlin, or React Native SDK.
+- Model provider adapters inside the core, including Cactus.
+- Remote-agent submission, A2A, or telemetry export.
 - A device or emulator recovery run.
 
 The plan, the ABI decisions, and the later phases are in [docs/native/migration.md](docs/native/migration.md). Cloud follow-ups that this phase does not implement are in [docs/native/cloud-changes.md](docs/native/cloud-changes.md).
