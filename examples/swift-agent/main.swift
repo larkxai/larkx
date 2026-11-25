@@ -29,7 +29,7 @@ func text<T>(_ value: T) -> String {
 }
 
 func pointer(_ literal: StaticString) -> UnsafePointer<CChar> {
-  UnsafePointer(literal.utf8Start)
+  UnsafeRawPointer(literal.utf8Start).assumingMemoryBound(to: CChar.self)
 }
 
 func expect(_ condition: Bool, _ label: String) {
@@ -39,8 +39,8 @@ func expect(_ condition: Bool, _ label: String) {
   }
 }
 
-func openRuntime(_ path: String) -> UnsafeMutablePointer<larkx_runtime> {
-  var runtime: UnsafeMutablePointer<larkx_runtime>?
+func openRuntime(_ path: String) -> OpaquePointer {
+  var runtime: OpaquePointer?
   var error = larkx_error()
   let code = path.withCString { pathPointer in
     larkx_runtime_open(pathPointer, 0, pointer("swift-host"), 0, &runtime, &error)
@@ -49,7 +49,7 @@ func openRuntime(_ path: String) -> UnsafeMutablePointer<larkx_runtime> {
   return runtime!
 }
 
-func registerAgent(_ runtime: UnsafeMutablePointer<larkx_runtime>) {
+func registerAgent(_ runtime: OpaquePointer) {
   var tool = larkx_tool_spec()
   tool.name = pointer("get_note")
   tool.description = pointer("Read a note")
@@ -85,7 +85,7 @@ func registerAgent(_ runtime: UnsafeMutablePointer<larkx_runtime>) {
   must(code, error, "register")
 }
 
-func drive(_ runtime: UnsafeMutablePointer<larkx_runtime>, _ runId: StaticString, _ now: Int64) -> (larkx_exec_request, String) {
+func drive(_ runtime: OpaquePointer, _ runId: StaticString, _ now: Int64) -> (larkx_exec_request, String) {
   var request = larkx_exec_request()
   var detail = [CChar](repeating: 0, count: 65536)
   var needed: Int = 0
