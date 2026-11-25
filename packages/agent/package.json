@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/agent",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Durable agent loop on the LarkX workflow engine. No model provider and no platform SDK.",
   "license": "Apache-2.0",
   "type": "module",

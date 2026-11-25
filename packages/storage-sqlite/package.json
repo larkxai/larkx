@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/storage-sqlite",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "SQLite schema, migrations, and storage behavior for LarkX. Database drivers are injected.",
   "license": "Apache-2.0",
   "type": "module",

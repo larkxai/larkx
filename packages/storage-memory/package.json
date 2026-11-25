@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/storage-memory",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "In-memory LarkX storage adapter. State does not survive process termination.",
   "license": "Apache-2.0",
   "type": "module",

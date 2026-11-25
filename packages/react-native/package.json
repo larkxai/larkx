@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/react-native",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "React Native adapter for the LarkX engine, plus a preview binding to the shared C++ core.",
   "license": "Apache-2.0",
   "type": "module",
