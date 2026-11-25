@@ -29,7 +29,7 @@ LarkX is an open-source, local-first execution runtime that persists agent progr
 
 ## React Native native runtime
 
-Import this from `@larkxai/react-native/native`. It does not replace the exports above.
+Import this from `@larkxai/react-native/native`. It does not replace the default package export.
 
 ```typescript
 import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native/native";
@@ -104,28 +104,28 @@ The legacy TypeScript engine remains supported and is not replaced by the native
 
 ## Execution guarantees
 
-| Operation | Recovery behavior |
-| --- | --- |
-| Committed model decision or tool result | Replay stored output without invoking the committed handler again |
-| Interrupted pure or idempotent operation | May retry; idempotent retries retain the operation ID |
-| Interrupted non-idempotent operation | Unknown outcome; block until explicit reconciliation |
-| Ownership conflict | Epoch fencing rejects stale commits |
+| Operation                                | Recovery behavior                                                 |
+| ---------------------------------------- | ----------------------------------------------------------------- |
+| Committed model decision or tool result  | Replay stored output without invoking the committed handler again |
+| Interrupted pure or idempotent operation | May retry; idempotent retries retain the operation ID             |
+| Interrupted non-idempotent operation     | Unknown outcome; block until explicit reconciliation              |
+| Ownership conflict                       | Epoch fencing rejects stale commits                               |
 
 Cancellation is cooperative and does not roll back committed effects. LarkX does not promise exactly-once external execution, uninterrupted execution while an app is killed, or resuming a model midway through a token stream. Local execution is not a sandbox for arbitrary application code. The existing device-only policy does not imply comprehensive egress enforcement or encrypted storage.
 
 ## Project status
 
-| Capability | Status |
-| --- | --- |
-| TypeScript workflows, agents and SQLite recovery | Implemented; Node process-death tests |
-| C++20 core, protocol 1, schema 1, ABI 2 | Implemented; host tests |
-| React Native native bindings | Preview; host tests and bridge compilation |
-| Cactus native-backed agent demo | Implemented; physical-device inference pending |
-| Durable remote delegation and A2A | Planned |
-| Expanded privacy and egress policies | Planned |
-| TypeScript telemetry exporter | Implemented; mobile verification pending |
-| Native telemetry and updated Cloud integration | Planned |
-| Standalone Swift and Kotlin SDKs | Deferred; pure Swift host example tested on macOS |
+| Capability                                       | Status                                            |
+| ------------------------------------------------ | ------------------------------------------------- |
+| TypeScript workflows, agents and SQLite recovery | Implemented; Node process-death tests             |
+| C++20 core, protocol 1, schema 1, ABI 2          | Implemented; host tests                           |
+| React Native native bindings                     | Preview; host tests and bridge compilation        |
+| Cactus native-backed agent demo                  | Implemented; physical-device inference pending    |
+| Durable remote delegation and A2A                | Planned                                           |
+| Expanded privacy and egress policies             | Planned                                           |
+| TypeScript telemetry exporter                    | Implemented; mobile verification pending          |
+| Native telemetry and updated Cloud integration   | Planned                                           |
+| Standalone Swift and Kotlin SDKs                 | Deferred; pure Swift host example tested on macOS |
 
 ## Install and legacy APIs
 
@@ -317,7 +317,6 @@ await ctx.step("plan", {
 });
 ```
 
-
 ## Further documentation
 
 - [Execution semantics](rfcs/0002-execution-semantics.md)
@@ -338,7 +337,6 @@ pnpm test
 ```
 
 `pnpm test` builds the packages and runs Vitest. Tests import the built `dist` entry points. See [Contributing](CONTRIBUTING.md).
-
 
 ## Contributing
 
