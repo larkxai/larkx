@@ -1,57 +1,91 @@
-import { AppState } from "react-native";
-import * as Network from "expo-network";
+import { Directory, File, Paths } from "expo-file-system";
+import { NativeModules } from "react-native";
 
-import { createExpoSqliteDriver } from "./expo-sqlite-driver.js";
-import { bindMobileLifecycle, type MobileLifecycle, type Recoverable } from "./lifecycle.js";
-import { createMobileSqliteStorage } from "./storage.js";
+import {
+  createRuntime as openHostRuntime,
+  sqlite as sqliteFile,
+  type CreateRuntimeOptions,
+  type Runtime,
+  type SqliteStorage,
+} from "@larkxai/host";
 
-export { importDurableArtifact } from "./artifacts.js";
-export type { DurableFileSystem, ImportArtifactInput } from "./artifacts.js";
+export {
+  bindNativeAppState,
+  defineTool,
+  scriptedModel,
+  ToolFailure,
+  type Agent,
+  type AgentOptions,
+  type AgentResult,
+  type AppStateSource,
+  type HistoryEvent,
+  type HistoryStep,
+  type HostEvent,
+  type HostTransport,
+  type JsonSchema,
+  type Model,
+  type ModelContext,
+  type ModelRequest,
+  type ModelResponse,
+  type ReconcileInput,
+  type ResumeOptions,
+  type RetryPolicy,
+  type Run,
+  type RunHistory,
+  type RunStatus,
+  type Runtime,
+  type RuntimeDiagnostics,
+  type RuntimeVersions,
+  type ScriptedModel,
+  type SqliteStorage,
+  type StartInput,
+  type Tool,
+  type ToolCall,
+  type ToolContext,
+} from "@larkxai/host";
 
-export { createExpoSqliteDriver } from "./expo-sqlite-driver.js";
-export { createReactNativeEngine, openReactNativeEngine } from "./engine.js";
-export type { ReactNativeEngine, ReactNativeEngineOptions } from "./engine.js";
-
-export { useLarkxRun } from "./hooks.js";
-export type { WorkflowObservation } from "./hooks.js";
-
-export { bindMobileLifecycle } from "./lifecycle.js";
-export type { AppStateSource, MobileLifecycle, NetworkSource } from "./lifecycle.js";
-
-export { isLiveOwner, registerLiveOwner } from "./ownership.js";
-export { createMobileSqliteStorage } from "./storage.js";
-export type { MobileSqliteStorageOptions } from "./storage.js";
-
-export interface ReactNativeSqliteOptions {
-  readonly database: string;
+interface NativeCoreModule {
+  invoke(method: string, argsJson: string): Promise<string>;
 }
 
-/**
- * Storage for `createEngine` from `@larkxai/core`.
- * Register the engine owner with `registerLiveOwner` before starting work,
- * or use `openReactNativeEngine`, which does that itself.
- */
-export function reactNativeSqliteStorage(options: ReactNativeSqliteOptions) {
-  return createMobileSqliteStorage(createExpoSqliteDriver(options.database));
+export function applicationDatabase(name = "larkx.db"): string {
+  const directory = new Directory(Paths.document, "larkx");
+  if (!directory.exists) {
+    directory.create();
+  }
+  const file = new File(directory, name);
+  const uri = file.uri;
+  const path = uri.startsWith("file://") ? uri.slice("file://".length) : uri;
+  if (path.trim().length === 0) {
+    throw new Error("The application document directory did not yield a SQLite path.");
+  }
+  return path;
 }
 
-/**
- * Recover on foreground and read connectivity.
- * Leaving the foreground does not release ownership and does not mean the runtime is dead.
- * This does not schedule native background execution.
- */
-export function bindReactNativeLifecycle(
-  engine: Recoverable,
-  onConnectivity?: (online: boolean | null) => void,
-): MobileLifecycle {
-  return bindMobileLifecycle(engine, {
-    appState: AppState,
-    network: {
-      async getNetworkState() {
-        const state = await Network.getNetworkStateAsync();
-        return { isConnected: state.isConnected ?? null };
+/** SQLite file for the native runtime. Omit the path to use the application document directory. */
+export function sqlite(path?: string): SqliteStorage {
+  return sqliteFile(path ?? applicationDatabase());
+}
+
+export async function createRuntime(
+  options: Omit<CreateRuntimeOptions, "transport" | "storage"> & {
+    readonly storage?: SqliteStorage;
+  } = {},
+): Promise<Runtime> {
+  const native = NativeModules.LarkXNativeCore as NativeCoreModule | undefined;
+  if (native === undefined || typeof native.invoke !== "function") {
+    throw new Error(
+      "LarkXNativeCore is not installed. The C++ runtime needs a development build. Expo Go does not load this module.",
+    );
+  }
+  const module = native;
+  return openHostRuntime({
+    ...options,
+    storage: options.storage ?? sqlite(),
+    transport: {
+      invoke(method, args) {
+        return module.invoke(method, JSON.stringify(args));
       },
     },
-    ...(onConnectivity ? { onConnectivity } : {}),
   });
 }

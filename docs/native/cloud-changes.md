@@ -1,10 +1,10 @@
 # Cloud changes required later
 
-This note is for a later change in `larkxai/cloud`. Nothing in that repository is part of the native Phase 1 or Phase 2 work. Local execution must keep working when Cloud is absent or the export fails.
+Nothing in `larkxai/cloud` changes because this repository now runs only the C++ engine. `@larkxai/telemetry` can still post metadata-only batches. The C++ runtime does not call it. Local execution must keep working when Cloud is absent or the export fails.
 
-## Keep telemetry version 1 for the current journal
+## Keep telemetry version 1
 
-The TypeScript exporter already sends metadata-only batches to `POST /v1/telemetry/batches`. Those batches use telemetry version 1, protocol version 1, and storage schema version 1. The native core does not export telemetry yet. When it does, existing event types should stay on that contract:
+The exporter sends metadata-only batches to `POST /v1/telemetry/batches`. Those batches use telemetry version 1, protocol version 1, and storage schema version 1. When a native exporter exists, existing event types should stay on that contract:
 
 - `source` already carries `sdkVersion`, `platform`, `osName`, `osVersion`, and `deviceModel`.
 - Run lifecycle, step, attempt, recovery, and reconciliation events already have names in protocol version 1.

@@ -5,7 +5,7 @@ import {
   toCactusMessages,
 } from "@larkxai/cactus/adapter";
 import type { CactusLanguageModel } from "@larkxai/cactus";
-import { LarkxError } from "@larkxai/core";
+import { LarkxError } from "@larkxai/protocol";
 import { describe, expect, it } from "vitest";
 
 const completion = {

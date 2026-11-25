@@ -4,10 +4,13 @@ This file summarizes user-visible changes. Public packages share one version and
 
 ## Unreleased
 
-- `@larkxai/react-native` runs the existing engine on Expo SQLite, with mobile ownership, foreground recovery, and local artifact copies.
-- Storage can use exclusive ownership so an expired lease is not treated as a dead executor.
-- Stopping a run cancels its heartbeat timer instead of leaving that timer until the next interval.
-- `examples/react-native-workflow` is a local demo. It has not been executed on an emulator or a device in CI.
+- `@larkxai/node` and `@larkxai/react-native` are the only packages published from this repository. They bundle the host driver. `@larkxai/host`, `@larkxai/protocol`, `@larkxai/cactus`, and `@larkxai/telemetry` stay in the repository and are not published. Existing npm versions stay published.
+- The Node SDK builds its own native addon from packaged C++ sources. It does not load a file from the React Native package.
+- Cactus is imported from `@larkxai/react-native/cactus`. The root React Native import does not load it.
+- The TypeScript execution engine is removed. Import `createRuntime`, `defineTool`, `scriptedModel`, and `sqlite` from `@larkxai/node` or `@larkxai/react-native`.
+- `@larkxai/core`, `@larkxai/agent`, `@larkxai/storage-memory`, `@larkxai/storage-sqlite`, and `@larkxai/testing` are no longer published from this repository.
+- There is no migration from a TypeScript-engine database or from an earlier native preview database. Open a new SQLite file. The runtime stamps `application_id` `0x4C585254` and rejects any other file without modifying it.
+- The metadata telemetry client remains internal. The C++ runtime does not export it.
 
 ## 0.1.0
 

@@ -1,13 +1,30 @@
 # @larkxai/node
 
+Node.js SDK for the shared C++ runtime. It uses the same state machine as `@larkxai/react-native`.
+
 ```bash
 npm install @larkxai/node
+sh node_modules/@larkxai/node/scripts/build-native.sh
 ```
 
-Node.js adapter for the LarkX runtime.
+The build needs Node.js 22.13 or newer, CMake 3.20 or newer, a C++20 compiler, SQLite 3 development headers, and Node.js headers (`node_api.h`). Source builds cover Linux x64 and macOS arm64/x64. Prebuilt binaries are not published. Windows is not supported. A missing addon throws an error that repeats these requirements.
 
-`createNodeEngine({ database, workflows })` opens a SQLite file, migrates it, and returns a core engine. The driver is Node's built-in `node:sqlite` module. Node 22 still marks that module experimental and may print a warning when the process loads it.
+```typescript
+import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/node";
 
-When a new process opens the same database, it can reclaim a run immediately if the recorded owner's process id is no longer alive. A live process keeps its lease. Lease expiry is the fallback when the owner file and the database disagree. Local execution does not contact a remote lease service.
+const runtime = await createRuntime({ storage: sqlite("./agent.db") });
+const agent = runtime.createAgent({
+  name: "notes",
+  version: 1,
+  model: scriptedModel([{ message: "Done", finish: "stop", calls: [] }]),
+  instructions: "Be brief.",
+  tools: [],
+});
+const run = await agent.start({ message: "Summarize my notes" });
+console.log(await run.result());
+await runtime.close();
+```
 
-`createNodeSqliteStorage` is available when an application wants to construct `createEngine` itself.
+In this repository the build command is `sh packages/node/scripts/build-native.sh`. The script vendors nothing during a local build: CMake uses `native/` and `packages/react-native/cpp`. `prepack` copies those sources into the tarball so an installed package does not need the monorepo.
+
+This package does not contain a TypeScript execution engine and does not depend on React Native, Expo, or Cactus.

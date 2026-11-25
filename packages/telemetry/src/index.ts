@@ -1,4 +1,5 @@
-export { createCloudTelemetry, journalFromEngine } from "./exporter.js";
+export { createCloudTelemetry } from "./exporter.js";
+export type { JournalDocument } from "./journal.js";
 export type {
   CloudTelemetry,
   CloudTelemetryOptions,
@@ -18,7 +19,7 @@ export {
 } from "./project.js";
 
 export { createMemoryTelemetryStore, createSqliteTelemetryStore } from "./state.js";
-export type { TelemetryDocument, TelemetryStateStore } from "./state.js";
+export type { TelemetryDocument, TelemetrySql, TelemetryStateStore } from "./state.js";
 
 export {
   nodeInstallationMetadata,

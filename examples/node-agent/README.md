@@ -1,26 +1,18 @@
-# Node agent example
+# Node agent
 
-A scripted renovation agent on `createNodeEngine`. It does not download a model and it does not use the network. The model returns the same tool calls for the same committed tool count, which is what the process-death tests rely on.
+A scripted agent on the shared C++ runtime. It does not download a model and it does not use the network. The same script is the process-termination demo.
 
 ```bash
+pnpm install
 pnpm --filter @larkxai/example-node-agent build
-pnpm --filter @larkxai/example-node-agent start
+sh packages/node/scripts/build-native.sh
+node examples/node-agent/dist/main.js --database /tmp/larkx-agent.db --log /tmp/larkx-agent.log
 ```
 
-Pass a database path to keep the run:
+Flags:
 
-```bash
-node examples/node-agent/dist/main.js /tmp/larkx-agent.db
-```
+- `--crash-during model|read_notes|save_report|after_save` kills the process with `SIGKILL`. `model` kills before the decision is committed. `save_report` kills after the tool has recorded its effect and before the runtime commits the result. `after_save` kills on the next model call, after that tool result is committed.
+- `--resume` opens the same database and continues the run.
+- `--non-idempotent` marks `save_report` as non-idempotent. A kill inside that handler leaves the run `BLOCKED`. The process exits 2 and does not call the tool again. Reconcile is required before it can continue.
 
-The process prints the final message and the step keys. SIGKILL coverage is `tests/agent/restart.test.ts`, not this script. That test kills the process during a model step, during an idempotent tool, and during a non-idempotent tool, then opens the same SQLite file.
-
-Cloud export is optional and off by default. Set both variables to send metadata after the agent finishes. The script still prints the local result when Cloud is down. Do not commit the key.
-
-```bash
-export LARKX_CLOUD_ENDPOINT=https://cloud.example
-export LARKX_INGESTION_KEY=lkx_ing_...
-node examples/node-agent/dist/main.js /tmp/larkx-agent.db
-```
-
-A file database also stores the export checkpoint in `/tmp/larkx-agent.db.telemetry`. `:memory:` keeps that checkpoint in process memory. The printed `cloud` field is the flush phase. Prompts and tool results stay in the workflow database.
+`save_report` records its operation id in a sibling effects file and skips an id it has already recorded. The model reads the committed history, so a new process does not repeat a decision that was stored. `tests/crash-recovery/native-crash.test.ts` is the automated form of this demo. It is a host process kill, not a phone test.

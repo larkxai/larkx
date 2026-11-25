@@ -8,6 +8,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <unistd.h>
@@ -424,6 +425,61 @@ void test_exclusive_ownership() {
   std::remove(path.c_str());
 }
 
+std::string file_bytes(const std::string& path) {
+  std::ifstream input(path, std::ios::binary);
+  return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
+
+void test_database_identity() {
+  constexpr int kApplicationId = 0x4C585254;
+  const auto path = temp_db();
+  auto* created = open_store(path);
+  create_agent_run(created, "run-identity");
+  larkx_store_close(created);
+
+  sqlite3* db = nullptr;
+  sqlite3_stmt* stmt = nullptr;
+  CHECK(sqlite3_open(path.c_str(), &db) == SQLITE_OK);
+  CHECK(sqlite3_prepare_v2(db, "PRAGMA application_id", -1, &stmt, nullptr) == SQLITE_OK);
+  CHECK(sqlite3_step(stmt) == SQLITE_ROW);
+  CHECK(sqlite3_column_int(stmt, 0) == kApplicationId);
+  sqlite3_finalize(stmt);
+  sqlite3_close(db);
+
+  auto* reopened = open_store(path);
+  larkx_run_info info{};
+  larkx_error error{};
+  CHECK(larkx_run_load(reopened, "run-identity", &info, &error) == LARKX_OK);
+  CHECK(std::strcmp(info.status, "CREATED") == 0);
+  larkx_store_close(reopened);
+
+  const auto foreign = temp_db();
+  CHECK(sqlite3_open(foreign.c_str(), &db) == SQLITE_OK);
+  CHECK(sqlite3_exec(db,
+                     "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL);"
+                     "INSERT INTO schema_migrations (version, applied_at) VALUES (1, 0);"
+                     "CREATE TABLE workflow_runs (run_id TEXT PRIMARY KEY);",
+                     nullptr, nullptr, nullptr) == SQLITE_OK);
+  sqlite3_close(db);
+  const auto before = file_bytes(foreign);
+  larkx_store* rejected = nullptr;
+  CHECK(larkx_store_open(foreign.c_str(), 0, &rejected, &error) == LARKX_ERR_STORAGE);
+  CHECK(rejected == nullptr);
+  CHECK(std::strstr(error.message, "was not deleted") != nullptr);
+  CHECK(file_bytes(foreign) == before);
+  CHECK(sqlite3_open(foreign.c_str(), &db) == SQLITE_OK);
+  CHECK(sqlite3_prepare_v2(db, "PRAGMA application_id", -1, &stmt, nullptr) == SQLITE_OK);
+  CHECK(sqlite3_step(stmt) == SQLITE_ROW);
+  CHECK(sqlite3_column_int(stmt, 0) == 0);
+  sqlite3_finalize(stmt);
+  sqlite3_close(db);
+
+  std::remove(path.c_str());
+  std::remove((path + "-wal").c_str());
+  std::remove((path + "-shm").c_str());
+  std::remove(foreign.c_str());
+}
+
 void test_newer_schema_is_rejected() {
   const auto path = temp_db();
   auto* store = open_store(path);
@@ -450,6 +506,7 @@ int main() {
   test_sensitive_event_is_rejected();
   test_outbox_dedupe();
   test_exclusive_ownership();
+  test_database_identity();
   test_newer_schema_is_rejected();
   if (g_failed != 0) {
     std::fprintf(stderr, "%d checks failed\n", g_failed);

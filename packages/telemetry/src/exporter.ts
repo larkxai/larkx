@@ -1,4 +1,4 @@
-import type { Engine, JournalDocument } from "@larkxai/core";
+import type { JournalDocument } from "./journal.js";
 
 import { sanitizeInstallationMetadata, type InstallationMetadata } from "./metadata.js";
 import {
@@ -114,18 +114,6 @@ export interface CloudTelemetryOptions {
 }
 
 const RETRYABLE = new Set([408, 429, 500, 502, 503, 504]);
-
-export function journalFromEngine(engine: Engine): JournalSource {
-  return {
-    async listRuns() {
-      const runs = await engine.listRuns();
-      return runs.map((run) => ({ runId: run.runId, updatedAt: run.updatedAt }));
-    },
-    readJournal(runId) {
-      return engine.readJournal(runId);
-    },
-  };
-}
 
 export function createCloudTelemetry(options: CloudTelemetryOptions): CloudTelemetry {
   return new CloudExporter(options);

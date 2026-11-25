@@ -112,6 +112,10 @@ Status step_done(sqlite3_stmt* stmt, sqlite3* db) {
   return Status::success();
 }
 
+// SQLite application_id for databases created by this C++ runtime. ASCII "LXRT".
+// A file with any other id is left untouched. There is no migration from earlier files.
+constexpr int64_t kApplicationId = 0x4C585254;
+
 const char* kSchema = R"SQL(
 CREATE TABLE workflow_runs (
   run_id TEXT PRIMARY KEY,
@@ -201,6 +205,47 @@ CREATE INDEX idx_workflow_runs_status ON workflow_runs(status);
 CREATE INDEX idx_workflow_events_run ON workflow_events(run_id, sequence);
 )SQL";
 
+Status read_int(sqlite3* db, const char* sql, int64_t& out, bool& found) {
+  sqlite3_stmt* raw = nullptr;
+  if (sqlite3_prepare_v2(db, sql, -1, &raw, nullptr) != SQLITE_OK) {
+    return storage(sqlite3_errmsg(db));
+  }
+  Statement stmt(raw);
+  const int rc = sqlite3_step(stmt.get());
+  if (rc == SQLITE_ROW) {
+    out = sqlite3_column_int64(stmt.get(), 0);
+    found = true;
+    return Status::success();
+  }
+  if (rc != SQLITE_DONE) {
+    return storage(sqlite3_errmsg(db));
+  }
+  found = false;
+  return Status::success();
+}
+
+Status schema_version(sqlite3* db, int32_t& version) {
+  bool found = false;
+  int64_t value = 0;
+  if (auto status = read_int(
+          db, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'", value, found);
+      !status.ok()) {
+    return status;
+  }
+  if (!found) {
+    version = 0;
+    return Status::success();
+  }
+  found = false;
+  if (auto status =
+          read_int(db, "SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1", value, found);
+      !status.ok()) {
+    return status;
+  }
+  version = found ? static_cast<int32_t>(value) : 0;
+  return Status::success();
+}
+
 Status bind_delete(sqlite3* db, const char* sql, const std::string& run_id) {
   sqlite3_stmt* raw = nullptr;
   if (sqlite3_prepare_v2(db, sql, -1, &raw, nullptr) != SQLITE_OK) {
@@ -246,40 +291,49 @@ Status Store::migrate() {
   if (auto status = exec_sql(db_, "PRAGMA foreign_keys = ON;"); !status.ok()) {
     return status;
   }
-  exec_sql(db_, "PRAGMA journal_mode = WAL;");
   if (auto status = exec_sql(db_, "PRAGMA busy_timeout = 5000;"); !status.ok()) {
     return status;
   }
   if (auto status = exec_sql(db_, "PRAGMA synchronous = NORMAL;"); !status.ok()) {
     return status;
   }
-  Transaction tx(db_);
-  if (auto status = tx.begin(); !status.ok()) {
+
+  bool found = false;
+  int64_t application_id = 0;
+  if (auto status = read_int(db_, "PRAGMA application_id", application_id, found); !status.ok()) {
     return status;
   }
-  if (auto status = exec_sql(db_,
-                             "CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, "
-                             "applied_at INTEGER NOT NULL);");
+  if (!found) {
+    return storage("SQLite did not report an application_id.");
+  }
+  int64_t objects = 0;
+  if (auto status = read_int(db_, "SELECT 1 FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' LIMIT 1", objects,
+                             found);
       !status.ok()) {
     return status;
   }
-  sqlite3_stmt* raw = nullptr;
-  if (sqlite3_prepare_v2(db_, "SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1", -1, &raw,
-                         nullptr) != SQLITE_OK) {
-    return storage(sqlite3_errmsg(db_));
+  const bool fresh = application_id == 0 && !(found && objects == 1);
+  if (application_id != kApplicationId && !fresh) {
+    return storage(
+        "This SQLite file was not created by this LarkX runtime. "
+        "It was not migrated and it was not deleted. Open a new database file.");
   }
-  Statement query(raw);
-  int32_t version = 0;
-  const int rc = sqlite3_step(query.get());
-  if (rc == SQLITE_ROW) {
-    version = static_cast<int32_t>(sqlite3_column_int64(query.get(), 0));
-  } else if (rc != SQLITE_DONE) {
-    return storage(sqlite3_errmsg(db_));
-  }
-  if (version > 1) {
-    return storage("Database schema " + std::to_string(version) + " is newer than storage schema 1.");
-  }
-  if (version < 1) {
+
+  if (fresh) {
+    Transaction tx(db_);
+    if (auto status = tx.begin(); !status.ok()) {
+      return status;
+    }
+    const std::string identity = "PRAGMA application_id = " + std::to_string(kApplicationId) + ";";
+    if (auto status = exec_sql(db_, identity.c_str()); !status.ok()) {
+      return status;
+    }
+    if (auto status = exec_sql(db_,
+                               "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, "
+                               "applied_at INTEGER NOT NULL);");
+        !status.ok()) {
+      return status;
+    }
     if (auto status = exec_sql(db_, kSchema); !status.ok()) {
       return status;
     }
@@ -293,8 +347,25 @@ Status Store::migrate() {
     if (auto status = step_done(insert_stmt.get(), db_); !status.ok()) {
       return status;
     }
+    if (auto status = tx.commit(); !status.ok()) {
+      return status;
+    }
+  } else {
+    int32_t version = 0;
+    if (auto status = schema_version(db_, version); !status.ok()) {
+      return status;
+    }
+    if (version > 1) {
+      return storage("Database schema " + std::to_string(version) + " is newer than storage schema 1.");
+    }
+    if (version != 1) {
+      return storage(
+          "This LarkX database is not storage schema 1. "
+          "It was not migrated and it was not deleted. Open a new database file.");
+    }
   }
-  return tx.commit();
+  exec_sql(db_, "PRAGMA journal_mode = WAL;");
+  return Status::success();
 }
 
 Status Store::load_unlocked(const std::string& run_id, std::optional<State>& out) {

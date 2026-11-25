@@ -4,9 +4,9 @@ import {
   PROTOCOL_VERSION,
   SENSITIVE_EVENT_KEYS,
   STEP_TRANSITIONS,
+  STORAGE_SCHEMA_VERSION,
   WORKFLOW_TRANSITIONS,
 } from "@larkxai/protocol";
-import { STORAGE_SCHEMA_VERSION } from "@larkxai/storage-sqlite";
 import { describe, expect, it } from "vitest";
 
 interface Fixture {

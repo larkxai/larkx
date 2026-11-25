@@ -4,50 +4,48 @@ Instructions for people and coding agents changing LarkX.
 
 ## What this repository is
 
-LarkX is an independent durable execution engine for on-device and hybrid AI agents. The public repository holds the open protocol, the local runtime, storage adapters, and a small reference surface for later remote execution. Optional Cloud observability belongs in `larkxai/cloud`, not here. The device owns the parent run; remote agents are independently deployed, not hosted by LarkX.
+LarkX is an open-source, local-first durable orchestration runtime for on-device and hybrid AI agents. One C++ runtime owns orchestration and the SQLite execution record. `@larkxai/node` and `@larkxai/react-native` are the only published SDKs. They share one host driver. Optional Cloud observability belongs in `larkxai/cloud`, not here. This repository does not host remote agents.
 
 ## What is implemented
 
-- `@larkxai/protocol` — version 1 contracts, state machines, errors, dispatch types.
-- `@larkxai/core` — local workflow runtime: registration, steps, replay, recovery, ownership, history.
-- `@larkxai/storage-memory` — process-local storage.
-- `@larkxai/storage-sqlite` — schema version 1 and a driver-agnostic SQLite adapter.
-- `@larkxai/node` — `node:sqlite` driver, pid-file ownership reclaim, `createNodeEngine`.
-- `@larkxai/react-native` — Expo SQLite driver, mobile ownership, lifecycle binding, local artifact copy, and a display hook. The default export is that TypeScript adapter. `@larkxai/react-native/native` is a preview host for the shared C++ core and does not replace it.
-- `@larkxai/testing` — fake clocks and storage conformance cases.
-- `examples/node-workflow` — the Node process-death demo.
-- `examples/react-native-workflow` — the Expo demo. The TypeScript workflow stays on screen. Native cards drive scripted and Cactus field-inspection agents through the C++ core in a development build; actual mobile execution is pending validation. Node tests do not prove it ran on a device.
-- `native/` — C++20 execution core and C ABI version 2. The agent loop drives model and tool requests and persists their results. The TypeScript engine remains the shipped runtime. See [docs/native/migration.md](docs/native/migration.md). A host `ctest` run is not an iOS or Android binary, and it does not compile `examples/swift-agent`.
+- `native/` — the C++ runtime. ABI version 2. SQLite schema version 1. The agent loop asks the host to invoke a model or a tool and then commits the submitted result.
+- `@larkxai/protocol` — private workspace module. Version 1 states, errors, effect classes, and canonical JSON. Bundled into the public SDKs. Not published on its own.
+- `@larkxai/host` — private workspace module. The TypeScript driver. It does not plan steps. It must not import React Native, Node, Expo, or Cactus.
+- `@larkxai/node` — public Node SDK. It vendors the C++ sources and builds `packages/node/build/larkx_native.node` with `packages/node/scripts/build-native.sh`.
+- `@larkxai/react-native` — public React Native SDK. `createRuntime` comes from the package root. Cactus is `@larkxai/react-native/cactus`. Expo Go cannot load the native module.
+- `@larkxai/cactus` — private workspace module used by the React Native Cactus subpath. The C++ runtime does not import it. Node does not depend on it.
+- `@larkxai/telemetry` — private workspace module. Metadata batch contract and HTTP client. The C++ runtime does not feed it a journal.
+- `examples/node-agent` — scripted Node agent and the `SIGKILL` demo.
+- `examples/react-native-agent` — scripted agent, Cactus agent, and field inspection. Node tests do not prove it ran on a device.
+- `examples/swift-agent` — minimal Swift host for the C ABI. It is not a production Swift SDK.
 
-Do not add a package that only re-exports types or throws "not implemented" and then document it as shipped. Planned packages stay in [ROADMAP.md](ROADMAP.md) until they have behavior and tests.
+Do not add a public package that only re-exports types. Planned work stays in [ROADMAP.md](ROADMAP.md) until it has behavior and tests.
+
+`@larkxai/core`, `@larkxai/agent`, `@larkxai/storage-memory`, `@larkxai/storage-sqlite`, and `@larkxai/testing` are removed. Do not restore them. `@larkxai/host`, `@larkxai/protocol`, `@larkxai/cactus`, and `@larkxai/telemetry` stay in the repo and are not published. See [docs/obsolete-packages.md](docs/obsolete-packages.md).
 
 ## Invariants
 
-- `@larkxai/protocol`, `@larkxai/core`, `@larkxai/storage-memory`, and `@larkxai/storage-sqlite` must not import `node:*`, `react-native`, `fs`, `path`, or a database driver. ESLint and `tests/boundaries/imports.test.ts` enforce this.
-- The core must not depend on a model SDK or agent framework.
-- Memory and SQLite storage both persist by running the reducer in `@larkxai/core`. Do not special-case transitions in one adapter.
+- `@larkxai/protocol`, `@larkxai/host`, and `@larkxai/telemetry` must not import `node:*`, `react-native`, `fs`, `path`, a database driver, or a model provider. ESLint and `tests/boundaries/imports.test.ts` enforce this.
+- The C++ runtime must not depend on React Native, Node.js, Expo, Cactus, or another model SDK.
+- Published SDK artifacts must not depend on unpublished workspace packages. Bundle the host and protocol into `@larkxai/node` and `@larkxai/react-native`.
 - `workflow_runs` and `workflow_steps` are authoritative. `workflow_events` is an append-only journal in the same transaction. Replay does not fold events back into state.
-- Completed step handlers do not run again. Step keys are caller-supplied, not source locations.
+- The core assigns agent step keys. Completed model and tool steps are not executed again.
 - `pure` and `idempotent` interrupted steps may retry. `idempotent` retries keep the same `operationId`. `non-idempotent` interrupted steps become `UNKNOWN_OUTCOME` and the run becomes `BLOCKED`.
 - Do not describe external effects as exactly-once.
-- Default data policy is `device-only`. Cloud and hybrid steps must not run local handlers while pretending to dispatch.
+- Default data policy is `device-only`.
 - Do not store model chain-of-thought. The event journal rejects payload keys `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`.
-- Terminal workflow statuses (`COMPLETED`, `FAILED`, `CANCELLED`) have no exits. `FAILED` is not retried in place. `BLOCKED` moves only through reconcile.
-- Protocol version, storage schema version, and workflow definition version are three different numbers. A missing workflow version blocks the run. It is not replayed on a different version.
-- Legacy TypeScript engine `close()` waits for in-flight steps and releases ownership. Native runtime closure retains persisted ownership; follow its host lifecycle contract.
-
-## Current implementation priority
-
-Follow [ROADMAP.md](ROADMAP.md): React Native physical-device validation, durable remote delegation with basic egress authorization, A2A, expanded privacy, native telemetry, Cloud integration and developer preview. Standalone Swift and Kotlin SDKs are deferred. Keep public SDKs independent and share the C++ core. Do not advertise planned capabilities as implemented.
+- Terminal statuses (`COMPLETED`, `FAILED`, `CANCELLED`) have no exits. `FAILED` is not retried in place. `BLOCKED` moves only through reconcile.
+- Protocol version, storage schema version, and agent definition version are three different numbers. A run is not replayed on a different agent version.
+- Do not delete an existing application database as part of opening the runtime. New databases carry SQLite `application_id` `0x4C585254`. Reject any other id. Do not migrate a TypeScript-engine database or an earlier native preview database.
 
 ## Tests
 
 - `pnpm test` builds `dist` and runs Vitest. Package exports point at `dist`, so a stale build looks like a logic bug.
-- Crash tests spawn `examples/node-workflow/dist/main.js` and send `SIGKILL`. Do not replace them with a thrown exception.
-- Tests that use `createAutoClock` must set `leaseMs: 0`. The auto clock is not safe with heartbeats.
-- Node may print `ExperimentalWarning: SQLite is an experimental feature`. That is expected with `node:sqlite`.
-- A green Node suite is not mobile validation. The React Native package has Node tests for its ownership policy, artifact copy, and lifecycle binding, including `SIGKILL` against the mobile storage adapter backed by `node:sqlite`. `tests/react-native/native-core.test.ts` drives the real C++ core through a Node addon. Do not describe either as an emulator or device run.
-- Native core: `cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release && cmake --build native/build && ctest --test-dir native/build --output-on-failure`. Requires CMake, a C++20 compiler, and SQLite 3 development headers. Do not describe that host run as device recovery. Do not delete the TypeScript engine because this suite is green.
+- Crash tests spawn `examples/node-agent/dist/main.js` and send `SIGKILL`. Do not replace them with a thrown exception.
+- `tests/release/node-install.test.ts` packs `@larkxai/node`, installs it outside the repo, builds the addon there, and resumes a run.
+- `tests/react-native/native-core.test.ts` drives the C++ core through the Node addon. That is not an emulator or a device run.
+- Native core: `cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release && cmake --build native/build && ctest --test-dir native/build --output-on-failure`. A host `ctest` run does not compile `examples/swift-agent` and is not device recovery.
+- Do not describe host compilation, a green Node suite, or a CI iOS or Android library build as physical-device validation.
 
 ## Local commands
 
@@ -61,17 +59,19 @@ pnpm test
 cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
 cmake --build native/build
 ctest --test-dir native/build --output-on-failure
+sh packages/node/scripts/build-native.sh
+sh packages/react-native/scripts/build-host-tests.sh
 ```
 
 Node.js must be 22.13 or newer. The lockfile is pinned to pnpm 10.33.4.
 
 ## Changes that need extra care
 
-- State-machine edits belong in `@larkxai/protocol` and the reducer together. Update the transition tests.
+- State-machine edits belong in the C++ reducer and the protocol transition tables together. Update the native tests and `tests/protocol`.
 - JSON encoding is canonical and rejects `undefined`, `NaN`, infinities, `bigint`, functions, symbols, and class instances. `undefined` step results are stored as JSON `null`.
 - Ownership commits carry an epoch fence. A stolen or expired claim must not let the old owner write.
 - New execution targets need a durable outbox, dedupe on a stable operation id, and tests for lost acknowledgements. Do not add an in-memory HTTP server as the only proof of remote recovery.
 
 ## Publishing
 
-`.github/workflows/ci.yml` is the build. `.github/workflows/release.yml` publishes public packages from `main` after that build succeeds, including GitHub Releases and GitHub Packages. The npm scope is `@larkxai`. Changesets `access` is `public`. Do not commit a registry token. Do not publish the root package or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. One `NPM_TOKEN` covers the whole `@larkxai` scope. Standalone Android and iOS SDKs are deferred. Their distribution and repository layout are later decisions. `@larkxai/react-native` publishes from this repository until `larkxai/react-native` exists; do not publish that name from both. `@larkxai/node` requires Node.js 22.13 or newer. The telemetry exporter's default `sdkVersion` is the `@larkxai/telemetry` package version; `pnpm version-packages` keeps that constant aligned.
+`.github/workflows/ci.yml` is the build. `.github/workflows/release.yml` publishes `@larkxai/node` and `@larkxai/react-native` from `main` after that build succeeds, including GitHub Releases and GitHub Packages. The npm scope is `@larkxai`. Changesets `access` is `public`. The fixed group is only those two packages. Private workspace packages are not versioned or tagged. Do not commit a registry token. Do not publish the root package, a private workspace package, or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. One `NPM_TOKEN` covers the whole `@larkxai` scope. `@larkxai/node` requires Node.js 22.13 or newer. `pnpm version-packages` copies the `@larkxai/node` version into `SDK_VERSION` in `@larkxai/telemetry`.

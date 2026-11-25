@@ -1,6 +1,6 @@
 # RFC 0002 — Execution semantics
 
-Status: accepted for the 0.1.0 local runtime.
+Status: superseded as an API. `defineWorkflow` and caller-supplied step keys are gone. The effect classes, unknown-outcome rule, stable operation id, and ownership fence below are still the C++ runtime's rules. The current description is [docs/architecture/side-effects.md](../docs/architecture/side-effects.md) and [docs/architecture/replay.md](../docs/architecture/replay.md).
 
 ## Workflow function
 

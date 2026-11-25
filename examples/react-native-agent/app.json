@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "LarkX Agent",
-    "slug": "larkx-agent",
-    "scheme": "larkx-agent",
+    "name": "LarkX Workflow",
+    "slug": "larkx-workflow",
+    "scheme": "larkx",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.larkx.agent.demo"
+      "bundleIdentifier": "ai.larkx.workflow.demo"
     },
     "android": {
-      "package": "ai.larkx.agent.demo"
+      "package": "ai.larkx.workflow.demo"
     },
     "plugins": ["expo-sqlite"]
   }

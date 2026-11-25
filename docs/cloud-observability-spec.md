@@ -1,18 +1,18 @@
 # Cloud observability specification
 
-Status: `@larkxai/telemetry` implements the client side of this contract. Ingestion, accounts, and the dashboard stay in the private `larkxai/cloud` repository. This repository does not contain the Cloud API.
+Status: the batch contract is still what `@larkxai/telemetry` posts. The C++ runtime does not produce the journal. Native export is a later milestone. Sections that name `@larkxai/core`, `defineWorkflow`, the TypeScript storage adapters, or the removed crash tests describe that removed engine. They are historical context for the batch shape, not the current runtime. See [docs/architecture/telemetry.md](architecture/telemetry.md).
 
-M2 is the React Native adapter on the shared local engine. The automated checks for that adapter run on Node.js. They do not include an emulator or a device run. The journals below come from that shared engine: the Node example used by `tests/crash-recovery/crash.test.ts`, the same recovery rules covered by `tests/react-native/restart.test.ts`, and the effect-policy cases in `tests/engine/effects.test.ts`.
+Ingestion, accounts, and the dashboard stay in the private `larkxai/cloud` repository. This repository does not contain the Cloud API.
 
-Cloud is a passive observer. The local runtime remains the source of truth. Cloud must not start or resume a run, claim or renew ownership, retry a step, reconcile an unknown outcome, cancel a run, write a step result, or send a command back to a device. Hybrid execution and remote workers are out of scope. The dispatch types in `@larkxai/protocol` are a contract for a later milestone. This runtime does not send them.
+Cloud is a passive observer. It must not start or resume a run, claim ownership, retry a step, reconcile an unknown outcome, cancel a run, or write a step result. Remote workers are not part of this design.
 
 ## How to read this document
 
-Sections 1 through 8 describe the local runtime. Sections 9 through 13 are the export contract. `@larkxai/telemetry` sends that body. `larkxai/cloud` accepts it. Section 14 points at JSON fixtures: the `journal` object is a projection of stored rows, and each `telemetryBatches[].body` is the request body. Section 15 separates local execution from Cloud.
+Sections 1 through 8 describe the removed TypeScript runtime. They are historical. Sections 9 through 13 are the export contract `@larkxai/telemetry` still sends. `larkxai/cloud` accepts it. Section 14 points at JSON fixtures: the `journal` object is a projection of stored rows, and each `telemetryBatches[].body` is the request body. Section 15 separates local execution from Cloud.
 
 Fixture `purpose` values (`full-resync`, `committed-before-recovery`, `checkpoint-suffix`) are labels for the files. They are not fields of the request body.
 
-## 1. Current repository architecture
+## 1. Historical repository architecture
 
 LarkX 0.1.0 is a local durable execution engine. A workflow is a TypeScript function. Each durable operation is a step with a caller-supplied key. The runtime stores the step result before it continues. After a crash it calls the function again, returns stored results for completed steps, and either retries or blocks the interrupted step according to its effect class.
 

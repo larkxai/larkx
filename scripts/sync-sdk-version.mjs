@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-const pkg = JSON.parse(readFileSync("packages/telemetry/package.json", "utf8"));
+const pkg = JSON.parse(readFileSync("packages/node/package.json", "utf8"));
 if (typeof pkg.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(pkg.version)) {
-  throw new Error(`Unexpected telemetry package version: ${String(pkg.version)}`);
+  throw new Error(`Unexpected Node SDK version: ${String(pkg.version)}`);
 }
 
 const file = "packages/telemetry/src/project.ts";

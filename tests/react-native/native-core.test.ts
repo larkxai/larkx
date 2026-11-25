@@ -6,7 +6,6 @@ import { join } from "node:path";
 import { LarkxError } from "@larkxai/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createNodeTransport } from "../../packages/react-native/src/native/node-client.js";
 import {
   bindNativeAppState,
   createRuntime,
@@ -17,7 +16,8 @@ import {
   type HostTransport,
   type ModelResponse,
   type Runtime,
-} from "../../packages/react-native/src/native/runtime.js";
+} from "../../packages/host/src/runtime.js";
+import { createNodeTransport } from "../../packages/node/src/node-client.js";
 
 const notes = defineTool({
   name: "read_notes",
@@ -973,7 +973,7 @@ describe("native React Native host", () => {
 
   it("round-trips an embedded NUL through the node binding", () => {
     const require = createRequire(import.meta.url);
-    const addon = require("../../packages/react-native/build/larkx_native.node") as {
+    const addon = require("../../packages/node/build/larkx_native.node") as {
       createSession(): { invoke(method: string, argsJson: string): string };
     };
     const payload = "a\0b 😀 𝄞";

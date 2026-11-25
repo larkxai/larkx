@@ -1,0 +1,36 @@
+{
+  "name": "@larkxai/host",
+  "version": "0.1.2",
+  "private": true,
+  "description": "Host driver for the shared LarkX C++ runtime. It invokes the model or tool the core requests. It does not plan steps.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@larkxai/protocol": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/larkxai/larkx.git",
+    "directory": "packages/host"
+  },
+  "homepage": "https://github.com/larkxai/larkx/tree/main/packages/host#readme",
+  "bugs": {
+    "url": "https://github.com/larkxai/larkx/issues"
+  }
+}
