@@ -21,4 +21,4 @@ These modules remain in the repository as private workspace packages. Applicatio
 
 `@larkxai/node` and `@larkxai/react-native` keep their names. Their APIs changed. `createNodeEngine`, `defineWorkflow`, the Expo SQLite execution adapter, and the `@larkxai/react-native/native` entry point are gone. Install the current packages and import `createRuntime` from `@larkxai/node` or `@larkxai/react-native`.
 
-Open a new SQLite file for the C++ runtime. Pointing it at a TypeScript-engine database is unsupported. The runtime does not delete that file and does not migrate it. A file that already contains LarkX tables and has no native schema version is rejected and left in place. A schema version 1 file written by the removed engine cannot be distinguished from a native schema version 1 file, so leave those files closed and open a new path.
+Open a new SQLite file for the C++ runtime. Databases created by this runtime carry SQLite `application_id` `0x4C585254`. A TypeScript-engine file or an earlier native preview file does not, so it is rejected and left in place. The runtime does not delete it and does not migrate it.

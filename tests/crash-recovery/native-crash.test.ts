@@ -265,11 +265,15 @@ describe("C++ runtime process termination", () => {
     await runtime.close();
   });
 
-  it("rejects a database that already has LarkX tables and no native schema version", async () => {
+  it("rejects a database that does not have the runtime application id", async () => {
     const directory = mkdtempSync(join(tmpdir(), "larkx-legacy-db-"));
     const database = join(directory, "legacy.db");
     const created = new DatabaseSync(database);
-    created.exec("CREATE TABLE workflow_runs (run_id TEXT PRIMARY KEY)");
+    created.exec(
+      "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL);" +
+        "INSERT INTO schema_migrations (version, applied_at) VALUES (1, 0);" +
+        "CREATE TABLE workflow_runs (run_id TEXT PRIMARY KEY)",
+    );
     created.close();
     await expect(
       createRuntime({ storage: sqlite(database), ownerId: "node-agent", leaseMs: 0 }),
@@ -278,8 +282,10 @@ describe("C++ runtime process termination", () => {
     const table = check
       .prepare("SELECT name FROM sqlite_master WHERE name = 'workflow_runs'")
       .get() as { name: string } | undefined;
+    const identity = check.prepare("PRAGMA application_id").get() as { application_id: number };
     check.close();
     expect(table?.name).toBe("workflow_runs");
+    expect(identity.application_id).toBe(0);
   });
 });
 

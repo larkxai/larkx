@@ -183,7 +183,7 @@ await runtime.close();
 
 `runtime.observe` reports model requests, tool requests, commits, and the point where reconciliation is required.
 
-Open a new database file when moving an app from the removed TypeScript engine. This runtime does not delete or overwrite an existing application database. A SQLite file that already contains LarkX tables but has no native schema version is rejected. A file that the previous native release already marked as schema version 1 cannot be told apart from a TypeScript-engine file at that same version, so do not reuse those files either.
+Open a new database file. This runtime stamps SQLite `application_id` `LXRT` (`0x4C585254`) on files it creates. A file with any other id, including a database written by the removed TypeScript engine or an earlier native preview, is rejected and left unchanged. There is no migration.
 
 ## Architecture
 

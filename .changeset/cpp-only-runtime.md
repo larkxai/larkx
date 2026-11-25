@@ -9,4 +9,4 @@ Ship one C++ runtime behind two public SDKs. `@larkxai/node` and `@larkxai/react
 
 Import `createRuntime`, `defineTool`, `scriptedModel`, and `sqlite` from `@larkxai/node` or `@larkxai/react-native`. Cactus is `@larkxai/react-native/cactus`. There is no `/native` entry and no compatibility wrapper for the TypeScript workflow engine.
 
-Open a new SQLite file. This runtime does not migrate or delete a database created by the TypeScript engine. A file that already has LarkX tables and no native schema version is rejected.
+Open a new SQLite file. This runtime writes SQLite `application_id` `0x4C585254` and does not migrate or delete a database created by the TypeScript engine or by an earlier native preview. A file with any other id is rejected.

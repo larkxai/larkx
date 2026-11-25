@@ -36,7 +36,7 @@ Do not add a public package that only re-exports types. Planned work stays in [R
 - Do not store model chain-of-thought. The event journal rejects payload keys `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`.
 - Terminal statuses (`COMPLETED`, `FAILED`, `CANCELLED`) have no exits. `FAILED` is not retried in place. `BLOCKED` moves only through reconcile.
 - Protocol version, storage schema version, and agent definition version are three different numbers. A run is not replayed on a different agent version.
-- Do not delete an existing application database as part of opening the runtime. Do not migrate a TypeScript-engine database. Reject a file that already has LarkX tables and no native schema version.
+- Do not delete an existing application database as part of opening the runtime. New databases carry SQLite `application_id` `0x4C585254`. Reject any other id. Do not migrate a TypeScript-engine database or an earlier native preview database.
 
 ## Tests
 

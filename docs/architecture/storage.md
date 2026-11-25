@@ -1,6 +1,6 @@
 # Storage
 
-The C++ runtime owns SQLite. Schema version is 1, created by `Store::migrate` in `native/core/src/sqlite_store.cpp`. `workflow_runs` and `workflow_steps` are authoritative. `workflow_events` is an append-only journal written in the same transaction. Replay does not fold events back into state.
+The C++ runtime owns SQLite. Schema version is 1, created by `Store::migrate` in `native/core/src/sqlite_store.cpp`. New files are stamped with SQLite `application_id` `0x4C585254`. Any other id is rejected and left unchanged. `workflow_runs` and `workflow_steps` are authoritative. `workflow_events` is an append-only journal written in the same transaction. Replay does not fold events back into state.
 
 `sqlite(path)` in `@larkxai/node` and `@larkxai/react-native` passes that file to the core. There is no second storage engine and no in-memory adapter.
 
