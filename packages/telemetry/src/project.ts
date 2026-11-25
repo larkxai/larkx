@@ -10,7 +10,7 @@ import { STORAGE_SCHEMA_VERSION } from "@larkxai/storage-sqlite";
 
 export const TELEMETRY_VERSION = 1 as const;
 /** Reported as source.sdkVersion when the caller does not pass one. */
-export const SDK_VERSION = "0.1.1";
+export const SDK_VERSION = "0.1.2";
 export const MAX_BATCH_EVENTS = 500;
 export const MAX_BATCH_BYTES = 256 * 1024;
 

@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Platform-independent durable workflow engine for LarkX.",
   "license": "Apache-2.0",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/testing",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Deterministic clocks and storage conformance cases for LarkX adapters.",
   "license": "Apache-2.0",
   "type": "module",

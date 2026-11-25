@@ -1,5 +1,13 @@
 # @larkxai/node
 
+## 0.1.2
+
+### Patch Changes
+
+- @larkxai/core@0.1.2
+- @larkxai/protocol@0.1.2
+- @larkxai/storage-sqlite@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

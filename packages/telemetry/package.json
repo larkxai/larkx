@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/telemetry",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Optional metadata-only exporter from a LarkX journal to LarkX Cloud.",
   "license": "Apache-2.0",
   "type": "module",

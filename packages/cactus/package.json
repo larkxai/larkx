@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/cactus",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Cactus model adapter for LarkX agents. Optional. The agent loop does not import this package.",
   "license": "Apache-2.0",
   "type": "module",
