@@ -163,7 +163,7 @@ The TypeScript crash tests remain the behavioral reference for process death. A 
 
 ## 5. Platform bindings
 
-Bindings are later repositories. They call `larkx.h` and present an idiomatic Runtime, Agent, and Run. Pure Swift and Kotlin applications must not embed a JavaScript engine.
+The React Native preview binding is implemented in this repository. Standalone Swift and Kotlin SDKs are deferred until after the developer preview; their final repository layout is a later decision. They call `larkx.h` and present an idiomatic Runtime, Agent, and Run. Pure Swift and Kotlin applications must not embed a JavaScript engine.
 
 Each binding owns:
 
@@ -177,7 +177,7 @@ The core does not claim that execution continues after the operating system has 
 
 Distribution pins a core version. The iOS package, the Android artifact, and the React Native package each record the ABI version they were built against. An ABI bump is a new header and a new major for those bindings. Protocol and schema versions stay independent of that number.
 
-Before the first binding, vendor the SQLite amalgamation. The Linux CI job may keep linking the system library.
+Android builds use the pinned SQLite amalgamation; iOS links the Apple SDK SQLite library. The Linux CI job may keep linking the system library.
 
 `cmake -S native -B build-android -DCMAKE_TOOLCHAIN_FILE=native/cmake/toolchains/android.cmake` fails on this repository's Linux CI because `ANDROID_NDK` is unset. The iOS file fails when the host is not Apple. Those files are the intended cross-compile entry points. They are not evidence that an iOS or Android binary has been produced.
 
@@ -224,9 +224,9 @@ The order is a dependency order. Later items are not implemented.
 1. Phase 1. Freeze the tables, land the C ABI, the reducer, SQLite schema 1, the host tests, and the fail-closed toolchain files. Done.
 2. Still before a production binding. The Android NDK job compiles `liblarkxnative.so` with the pinned SQLite amalgamation. The macOS job compiles the iOS bridge against the Apple SDK `libsqlite3` and links it to this core. Those jobs are not a device or simulator run, and a Linux checkout does not produce either binary.
 3. Phase 2. Runtime, Agent, Run, and Tool on the ABI. Replay skips committed model and tool steps. Recovery classifies interrupts. Operation ids and reconcile follow the TypeScript rules. A minimal Swift host is in `examples/swift-agent`. Production SDKs are not in this phase.
-4. Phase 3. Swift and Kotlin production SDKs, and physical-device crash recovery. A preview React Native host is in `@larkxai/react-native/native`. It is a native module over this core, not a Swift or Kotlin wrapper, and it does not replace `@larkxai/core`. A simulator log is not device proof. The macOS CI job is not that proof.
-5. Phase 4. RemoteAgent state machine, offline queue, custom HTTP, A2A, lost-ack handling, and egress checks on the bytes that would be sent.
-6. Phase 5. Versioned native telemetry, Cloud compatibility tests, examples, and package distribution. The Cloud edits in [cloud-changes.md](cloud-changes.md) land with that phase, not before the protocol version exists.
+4. Phase 3. React Native preview and Cactus integration are implemented. Physical-device validation is pending. Standalone Swift and Kotlin production SDKs are deferred until after the developer preview.
+5. Phase 4. Durable RemoteAgent state machine, offline queue, custom asynchronous HTTP and basic outbound authorization; then A2A and expanded privacy policies.
+6. Phase 5. Versioned native telemetry, Cloud compatibility and integration, examples and developer preview distribution. Standalone platform SDKs follow when justified by demand.
 
 Out of scope until a later design: agent hosting, deployment, managed workers, billing, moving a parent run off the device, device-to-device ownership transfer, and a custom inference engine. Serializable run state, definition versions, and ownership epochs stay in the schema so a future move remains possible.
 
