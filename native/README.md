@@ -1,6 +1,6 @@
 # Native core
 
-This directory is the C++20 execution core. It is not a Swift, Kotlin, or React Native SDK, and it does not replace `@larkxai/core`. The TypeScript engine remains the shipped runtime.
+This directory is the C++20 execution core. It is not a Swift or Kotlin SDK, and it does not replace `@larkxai/core`. The TypeScript engine remains the shipped runtime. `@larkxai/react-native/native` is a preview host that links this core. The package's default export stays the TypeScript adapter.
 
 ABI version 2, in `abi/include/larkx.h`, persists protocol transitions and runs an agent loop. `larkx_run_drive` returns one request. The host invokes the model or the tool and submits the result. The core does not call the host, a model SDK, or a device API. It does not submit a remote task or export telemetry.
 
@@ -16,7 +16,7 @@ cmake --build native/build
 ctest --test-dir native/build --output-on-failure
 ```
 
-The Linux job links the system `libsqlite3`. Before the first Swift or Kotlin binding, the core should vendor the SQLite amalgamation so those SDKs do not depend on a platform SQLite.
+The Linux job and the Node test addon link the system `libsqlite3`. The Android React Native library compiles the pinned SQLite amalgamation `3450100` because the NDK does not ship SQLite. The iOS pod links `libsqlite3` from the Apple SDK. There is one copy of the execution sources, under `native/`.
 
 `cmake/toolchains/android.cmake` stops when `ANDROID_NDK` is unset. `cmake/toolchains/ios.cmake` stops when the host is not Apple. Neither binary is produced by the Linux tests.
 

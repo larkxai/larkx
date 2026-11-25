@@ -22,6 +22,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
+      - name: Install the native toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake libsqlite3-dev g++
+      - name: Build the Node native addon
+        run: sh packages/react-native/scripts/build-node-addon.sh
       - run: pnpm exec vitest run
 
   native:
@@ -50,3 +54,26 @@ jobs:
           ctest --test-dir native/build --output-on-failure
       - name: Run the Swift agent example
         run: examples/swift-agent/run.sh
+      - name: Compile the React Native iOS bridge
+        run: sh packages/react-native/ios/ci-compile.sh
+
+  native-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CMake
+        run: sudo apt-get update && sudo apt-get install -y cmake unzip curl
+      - name: Install the Android NDK
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/ndk.zip" https://dl.google.com/android/repository/android-ndk-r26d-linux.zip
+          unzip -q "$RUNNER_TEMP/ndk.zip" -d "$RUNNER_TEMP"
+          echo "ANDROID_NDK=$RUNNER_TEMP/android-ndk-r26d" >> "$GITHUB_ENV"
+      - name: Build the React Native JNI library
+        run: |
+          cmake -S packages/react-native/android -B packages/react-native/build-android \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
+            -DANDROID_STL=c++_shared \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build packages/react-native/build-android

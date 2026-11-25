@@ -40,6 +40,68 @@ An expired lease does not, by itself, let another owner take a run while the ori
 
 `readJournal` is forwarded from the shared engine. `createExpoSqliteDriver` opens a second database for exporter state. Cloud sync itself is `@larkxai/telemetry`, not this package. Call `setActive(false)` when the app leaves the foreground. The adapter does not schedule native background uploads.
 
+## Native C++ runtime (preview)
+
+Import this from `@larkxai/react-native/native`. It does not replace the exports above.
+
+```typescript
+import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native/native";
+
+const runtime = await createRuntime({ storage: sqlite() });
+const agent = runtime.createAgent({
+  name: "personal-assistant",
+  version: 1,
+  model: scriptedModel([
+    {
+      message: null,
+      finish: "tool_calls",
+      calls: [{ id: "call-1", name: "read_notes", arguments: {} }],
+    },
+    { message: "Summary: Example note", finish: "stop", calls: [] },
+  ]),
+  instructions: "Help the user manage daily tasks.",
+  tools: [
+    defineTool({
+      name: "read_notes",
+      description: "Read locally stored notes",
+      schema: { type: "object", properties: {} },
+      effects: "pure",
+      handler: async () => ({ notes: ["Example note"] }),
+    }),
+  ],
+});
+const run = await agent.start({ message: "Summarize my notes" });
+const result = await run.result();
+await runtime.close();
+```
+
+`sqlite()` with no path uses the application document directory. The C++ core opens that file. Execution state, model decisions, and tool results stay in that SQLite database. The TypeScript file drives `larkx_run_drive`: it performs the requested model or tool call and submits the result. It does not choose the next step.
+
+Register the agent again before `runtime.resume(runId)`. `run.pause()`, `run.resume()`, and `run.cancel()` are the run controls. `run.getStatus()` and `run.getHistory()` read the stored run. `bindNativeAppState(runtime, AppState)` waits for the foreground before starting a model or tool call. Backgrounding does not close the runtime and does not release ownership. A killed process leaves the database. The next launch with the same owner continues from the committed steps.
+
+This needs a development build. Expo Go does not load the module. If `LarkXNativeCore` is missing, `createRuntime` throws and does not open the TypeScript engine.
+
+The screen in `examples/react-native-workflow` has a Native C++ card. It prints the backend, ABI, protocol, schema, run id, status, model and tool counts, and operation ids, then closes and reopens the same run. That card was not executed on a simulator or a device in CI.
+
+### Install and test
+
+From the repository:
+
+```bash
+pnpm install
+pnpm --filter @larkxai/react-native build
+sh packages/react-native/scripts/build-node-addon.sh
+pnpm exec vitest run tests/react-native/native-core.test.ts
+```
+
+The addon links the shared core and system `libsqlite3`. Set `NODE_INCLUDE` to the Node headers when `node_api.h` is not beside the Node binary. `LARKX_NATIVE_ADDON` overrides the addon path.
+
+iOS: `LarkXNativeCore.podspec` compiles the core sources and links the Apple SDK `libsqlite3`. Run `pod install` inside a development build. `packages/react-native/ios/ci-compile.sh` compiles that bridge on macOS. It does not boot a simulator.
+
+Android: `packages/react-native/android` builds `liblarkxnative.so` with CMake and the NDK. The NDK has no SQLite, so the build downloads SQLite amalgamation 3450100 and checks SHA-256 `5592243caf28b2cdef41e6ab58d25d653dfc53deded8450eb66072c929f030c4`. Gradle is not configured in the Linux tests because the React Native dependency is not installed there. The CI job compiles the `.so`.
+
+`pnpm pack` vendors `native/abi`, `native/core/include`, and `native/core/src` into the package. The git tree keeps those sources under `native/`.
+
 ## What this package does not do
 
 - Native background scheduling.

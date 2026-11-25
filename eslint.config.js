@@ -13,7 +13,7 @@ const platformAgnostic = [
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "coverage/**", ".turbo/**"],
+    ignores: ["**/dist/**", "**/node_modules/**", "coverage/**", ".turbo/**", "**/build/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
