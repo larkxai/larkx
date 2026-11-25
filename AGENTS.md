@@ -17,6 +17,7 @@ LarkX is an independent durable execution engine for on-device and hybrid AI age
 - `@larkxai/testing` — fake clocks and storage conformance cases.
 - `examples/node-workflow` — the Node process-death demo.
 - `examples/react-native-workflow` — the Expo demo. Node tests do not prove it ran on a device.
+- `native/` — C++20 execution core and C ABI version 1. Phase 1 foundation only. The TypeScript engine remains the shipped runtime. See [docs/native/migration.md](docs/native/migration.md). A host `ctest` run is not an iOS or Android binary.
 
 Do not add a package that only re-exports types or throws "not implemented" and then document it as shipped. Planned packages stay in [ROADMAP.md](ROADMAP.md) until they have behavior and tests.
 
@@ -42,6 +43,7 @@ Do not add a package that only re-exports types or throws "not implemented" and 
 - Tests that use `createAutoClock` must set `leaseMs: 0`. The auto clock is not safe with heartbeats.
 - Node may print `ExperimentalWarning: SQLite is an experimental feature`. That is expected with `node:sqlite`.
 - A green Node suite is not mobile validation. The React Native package has Node tests for its ownership policy, artifact copy, and lifecycle binding, including `SIGKILL` against the mobile storage adapter backed by `node:sqlite`. Do not describe that as an emulator or device run.
+- Native core: `cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release && cmake --build native/build && ctest --test-dir native/build --output-on-failure`. Requires CMake, a C++20 compiler, and SQLite 3 development headers. Do not describe that host run as device recovery. Do not delete the TypeScript engine because this suite is green.
 
 ## Local commands
 
@@ -52,6 +54,9 @@ pnpm typecheck
 pnpm lint
 pnpm format:check
 pnpm test
+cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
+cmake --build native/build
+ctest --test-dir native/build --output-on-failure
 ```
 
 Node.js must be 22.13 or newer. The lockfile is pinned to pnpm 10.33.4.
