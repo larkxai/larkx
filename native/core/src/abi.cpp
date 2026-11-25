@@ -671,6 +671,7 @@ larkx::AgentRegistration registration_from(const larkx_agent_spec* spec) {
   agent.model_initial_interval_ms = spec->model_initial_interval_ms;
   agent.model_max_interval_ms = spec->model_max_interval_ms;
   agent.model_backoff = spec->model_backoff == nullptr ? "" : spec->model_backoff;
+  agent.allow_remote = spec->allow_remote != 0;
   if (spec->tools != nullptr) {
     for (int32_t index = 0; index < spec->tool_count; index += 1) {
       const larkx_tool_spec& tool = spec->tools[index];
@@ -684,6 +685,24 @@ larkx::AgentRegistration registration_from(const larkx_agent_spec* spec) {
       item.max_interval_ms = tool.max_interval_ms;
       item.backoff = tool.backoff == nullptr ? "" : tool.backoff;
       agent.tools.push_back(std::move(item));
+    }
+  }
+  if (spec->remote_agents != nullptr) {
+    for (int32_t index = 0; index < spec->remote_count; index += 1) {
+      const larkx_remote_spec& remote = spec->remote_agents[index];
+      larkx::RemoteRegistration item;
+      item.name = remote.name == nullptr ? "" : remote.name;
+      item.description = remote.description == nullptr ? "" : remote.description;
+      item.schema_json = remote.input_schema_json == nullptr ? "" : remote.input_schema_json;
+      item.endpoint = remote.endpoint == nullptr ? "" : remote.endpoint;
+      item.capabilities.dedupe = remote.dedupe != 0;
+      item.capabilities.lookup = remote.lookup != 0;
+      item.capabilities.durable_task = remote.durable_task != 0;
+      item.capabilities.poll = remote.poll != 0;
+      item.capabilities.cancel = remote.cancel != 0;
+      item.capabilities.persistent = remote.persistent != 0;
+      item.poll_interval_ms = remote.poll_interval_ms;
+      agent.remote_agents.push_back(std::move(item));
     }
   }
   return agent;
@@ -794,6 +813,29 @@ larkx_code larkx_run_submit_reconcile(larkx_runtime* runtime, const char* run_id
                                                 resolution == nullptr ? "" : resolution, output_json == nullptr ? "null" : output_json,
                                                 message == nullptr ? "" : message, now_ms);
   return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_submit_delegation(larkx_runtime* runtime, const char* run_id, const char* request_id, const char* body_json,
+                                      int64_t now_ms, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Delegation submit is missing a runtime."));
+  }
+  auto status = runtime->impl->submit_delegation(run_id == nullptr ? "" : run_id, request_id == nullptr ? "" : request_id,
+                                                 body_json == nullptr ? "" : body_json, now_ms);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_delegations(larkx_runtime* runtime, const char* run_id, char* buffer, size_t capacity, size_t* needed,
+                                larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Delegation read is missing a runtime."));
+  }
+  std::string json;
+  auto status = runtime->impl->delegations_json(run_id == nullptr ? "" : run_id, json);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  return copy_buffer(json, buffer, capacity, needed, err);
 }
 
 larkx_code larkx_run_pause(larkx_runtime* runtime, const char* run_id, int64_t now_ms, larkx_error* err) {

@@ -136,6 +136,30 @@ const char* to_string(OutboxStatus status) {
   return "";
 }
 
+const char* to_string(DelegationState state) {
+  switch (state) {
+    case DelegationState::Queued:
+      return "QUEUED";
+    case DelegationState::Submitting:
+      return "SUBMITTING";
+    case DelegationState::Accepted:
+      return "ACCEPTED";
+    case DelegationState::Working:
+      return "WORKING";
+    case DelegationState::InputRequired:
+      return "INPUT_REQUIRED";
+    case DelegationState::Completed:
+      return "COMPLETED";
+    case DelegationState::Failed:
+      return "FAILED";
+    case DelegationState::Cancelled:
+      return "CANCELLED";
+    case DelegationState::UnknownOutcome:
+      return "UNKNOWN_OUTCOME";
+  }
+  return "";
+}
+
 bool parse_workflow_status(std::string_view text, WorkflowStatus& out) {
   constexpr std::array<std::pair<std::string_view, WorkflowStatus>, 8> table{{
       {"CREATED", WorkflowStatus::Created},
@@ -215,6 +239,21 @@ bool parse_outbox_status(std::string_view text, OutboxStatus& out) {
       {"accepted", OutboxStatus::Accepted},
       {"delivered", OutboxStatus::Delivered},
       {"failed", OutboxStatus::Failed},
+  }};
+  return parse_token(text, table, out);
+}
+
+bool parse_delegation_state(std::string_view text, DelegationState& out) {
+  constexpr std::array<std::pair<std::string_view, DelegationState>, 9> table{{
+      {"QUEUED", DelegationState::Queued},
+      {"SUBMITTING", DelegationState::Submitting},
+      {"ACCEPTED", DelegationState::Accepted},
+      {"WORKING", DelegationState::Working},
+      {"INPUT_REQUIRED", DelegationState::InputRequired},
+      {"COMPLETED", DelegationState::Completed},
+      {"FAILED", DelegationState::Failed},
+      {"CANCELLED", DelegationState::Cancelled},
+      {"UNKNOWN_OUTCOME", DelegationState::UnknownOutcome},
   }};
   return parse_token(text, table, out);
 }

@@ -5,6 +5,7 @@ import type { CactusModel } from "@larkxai/react-native/cactus";
 import {
   applicationDatabase,
   createRuntime,
+  remoteAgent,
   sqlite,
   type HostEvent,
   type ModelRequest,
@@ -53,6 +54,11 @@ export function FieldInspection() {
   const [boundary, setBoundary] = useState<FailureBoundary | null>(null);
   const [held, setHeld] = useState<FailureBoundary | null>(null);
   const [busy, setBusy] = useState(false);
+  const [endpoint, setEndpoint] = useState("");
+  const [online, setOnline] = useState(true);
+  const onlineRef = useRef(true);
+  const endpointRef = useRef("");
+  const registeredEndpoint = useRef("");
 
   useEffect(() => {
     let active = true;
@@ -86,7 +92,10 @@ export function FieldInspection() {
     registeredMode.current = null;
     agentRef.current = null;
     const started = Date.now();
-    const runtime = await createRuntime({ storage: sqlite(DATABASE) });
+    const runtime = await createRuntime({
+      storage: sqlite(DATABASE),
+      isOnline: () => onlineRef.current,
+    });
     push(`Runtime opened in ${String(Date.now() - started)} ms.`);
     runtime.observe((event) => {
       push(formatEvent(event));
@@ -195,26 +204,55 @@ export function FieldInspection() {
 
   async function ensureAgent(runtime: Runtime): Promise<Agent> {
     const existing = agentRef.current;
+    const remoteEndpoint = endpointRef.current.trim();
     if (existing !== null) {
       if (registeredMode.current !== mode) {
         throw new Error("Relaunch the app before switching between scripted and local mode.");
+      }
+      if (registeredEndpoint.current !== remoteEndpoint) {
+        throw new Error("Relaunch the app before changing the remote endpoint.");
       }
       return existing;
     }
     const model =
       mode === "scripted"
-        ? scriptedInspectionModel(gateRef.current)
+        ? scriptedInspectionModel(gateRef.current, remoteEndpoint.length > 0)
         : localInspectionModel(cactusRef.current, gateRef.current);
     const agent = runtime.createAgent({
       name: agentNameForMode(mode),
       version: AGENT_VERSION,
       model,
-      instructions: INSTRUCTIONS,
+      instructions:
+        remoteEndpoint.length === 0
+          ? INSTRUCTIONS
+          : `${INSTRUCTIONS} When a replacement part is required, call procurement-agent with only the objective, equipment, and component. Do not send the inspection notes.`,
       tools: fieldTools(gateRef.current),
+      ...(remoteEndpoint.length === 0
+        ? {}
+        : {
+            remoteAgents: [
+              remoteAgent({
+                name: "procurement-agent",
+                description: "Find compatible replacement parts and suppliers.",
+                schema: {
+                  type: "object",
+                  properties: {
+                    objective: { type: "string" },
+                    equipment: { type: "string" },
+                    component: { type: "string" },
+                  },
+                  required: ["objective", "equipment", "component"],
+                  additionalProperties: false,
+                },
+                transport: { type: "http", endpoint: remoteEndpoint, pollIntervalMs: 1000 },
+              }),
+            ],
+          }),
     });
     await agent.whenRegistered();
     agentRef.current = agent;
     registeredMode.current = mode;
+    registeredEndpoint.current = remoteEndpoint;
     return agent;
   }
 
@@ -324,6 +362,34 @@ export function FieldInspection() {
         </Pressable>
       </View>
       <TextInput value={message} onChangeText={setMessage} style={styles.input} />
+      <Text style={styles.label}>
+        Remote procurement endpoint. Leave empty for a local-only run. On a phone use the computer's
+        LAN address, such as http://192.168.1.20:8787. Do not use localhost.
+      </Text>
+      <TextInput
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={(value) => {
+          endpointRef.current = value;
+          setEndpoint(value);
+        }}
+        placeholder="http://192.168.1.20:8787"
+        placeholderTextColor="#7f9086"
+        value={endpoint}
+        style={styles.input}
+      />
+      <Pressable
+        onPress={() => {
+          onlineRef.current = !onlineRef.current;
+          setOnline(onlineRef.current);
+          push(onlineRef.current ? "Network marked available." : "Network marked unavailable.");
+        }}
+        style={styles.action}
+      >
+        <Text style={styles.actionText}>
+          {online ? "Network available" : "Waiting for network"}
+        </Text>
+      </Pressable>
       <View style={styles.row}>
         <Pressable disabled={busy} onPress={() => void startAgent()} style={styles.action}>
           <Text style={styles.actionText}>Start</Text>
@@ -386,14 +452,14 @@ export function FieldInspection() {
   );
 }
 
-function scriptedInspectionModel(gate: FailureGate) {
+function scriptedInspectionModel(gate: FailureGate, delegate: boolean) {
   return {
     id: "scripted",
     model: "scripted-field-inspector",
     capabilities: { toolCalling: true },
     async complete(request: ModelRequest) {
       await gate.reach("during-model");
-      return scriptedInspectionResponse(request.messages);
+      return scriptedInspectionResponse(request.messages, { delegate });
     },
   };
 }
@@ -434,14 +500,26 @@ function boundaryOf(type: HostEvent["type"]): FailureBoundary | null {
 function formatEvent(event: HostEvent): string {
   const attempt = event.attempt === undefined ? "" : ` attempt ${String(event.attempt)}`;
   const operation = event.operationId === undefined ? "" : ` ${event.operationId}`;
-  return `${event.type}${event.stepKey === undefined ? "" : ` ${event.stepKey}`}${operation}${attempt}`;
+  const action = event.action === undefined ? "" : ` ${event.action}`;
+  const task = event.taskId === undefined ? "" : ` task ${event.taskId}`;
+  const waiting = event.waitingFor === undefined ? "" : ` ${event.waitingFor}`;
+  return `${event.type}${action}${waiting}${event.stepKey === undefined ? "" : ` ${event.stepKey}`}${operation}${task}${attempt}`;
 }
 
 async function formatRun(runtime: Runtime, run: Run): Promise<string> {
   const status = await run.getStatus();
   const history = await run.getHistory();
+  const delegations = await run.getDelegations();
   const attempts = history.steps.reduce((sum, step) => sum + step.attemptCount, 0);
-  const operations = history.steps.map((step) => `${step.stepKey} ${step.operationId}`).join(", ");
+  const operations = history.steps
+    .map((step) => `${step.executionTarget} ${step.stepKey} ${step.operationId}`)
+    .join(", ");
+  const remote = delegations
+    .map(
+      (item) =>
+        `${item.state} op ${item.operationId} task ${item.taskId ?? "none"}${item.cancelIntent ? " cancel" : ""}`,
+    )
+    .join(", ");
   const retries = history.steps.filter((step) => step.attemptCount > 1).length;
   return [
     formatDiagnostics(runtime.diagnostics(), runtime.versions),
@@ -453,6 +531,7 @@ async function formatRun(runtime: Runtime, run: Run): Promise<string> {
     `attempts ${String(attempts)}`,
     `retried steps ${String(retries)}`,
     operations.length === 0 ? "operation ids: none" : `operation ids: ${operations}`,
+    remote.length === 0 ? "delegations: none" : `delegations: ${remote}`,
   ].join(" · ");
 }
 

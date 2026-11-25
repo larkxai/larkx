@@ -2,6 +2,7 @@
 
 #include "larkx/core.hpp"
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -38,6 +39,7 @@ class Store {
   Status mark_unknown(const MarkUnknownInput& input, const std::string& run_id);
   Status reconcile(const ReconcileInput& input, const std::string& run_id);
   Status insert_outbox(const OutboxInput& input, bool& deduplicated, int32_t& count);
+  Status apply(const std::string& run_id, const std::function<Status(State&)>& fn);
 
  private:
   Store(sqlite3* db, bool exclusive);

@@ -1,6 +1,15 @@
 import type { EffectType, JsonObject, JsonValue } from "@larkxai/protocol";
 import { isErrorCode, LarkxError, type ErrorCode } from "@larkxai/protocol";
 
+import {
+  performHttpDelegation,
+  resolvedCapabilities,
+  transportId,
+  type DelegationCommand,
+  type DelegationView,
+  type RemoteAgent,
+} from "./remote.js";
+
 /**
  * Host loop for the shared C++ runtime.
  * `larkx_run_drive` decides the next action. This module invokes the model or
@@ -20,6 +29,7 @@ const RequestKind = {
   Failed: 7,
   Cancelled: 8,
   Paused: 9,
+  Delegate: 10,
 } as const;
 
 export interface SqliteStorage {
@@ -155,6 +165,7 @@ export interface HistoryStep {
   readonly effectType: string;
   readonly operationId: string;
   readonly attemptCount: number;
+  readonly executionTarget: string;
   readonly output: JsonValue | null;
 }
 
@@ -190,6 +201,11 @@ export interface CreateRuntimeOptions {
   readonly maySteal?: boolean;
   readonly now?: () => number;
   readonly sleep?: (milliseconds: number) => Promise<void>;
+  /**
+   * Host network probe. Return false only when the request has not been sent.
+   * The default assumes the network is available.
+   */
+  readonly isOnline?: () => boolean | Promise<boolean>;
 }
 
 export interface AgentOptions {
@@ -198,6 +214,8 @@ export interface AgentOptions {
   readonly model: Model;
   readonly instructions: string;
   readonly tools?: readonly Tool[];
+  /** Registered remote agents. A non-empty list authorizes remote delegation. */
+  readonly remoteAgents?: readonly RemoteAgent[];
   readonly maxIterations?: number;
   readonly maxToolCalls?: number;
   readonly maxInvalidToolRequests?: number;
@@ -236,12 +254,19 @@ export interface HostEvent {
     | "before-completion"
     | "run-completed"
     | "run-failed"
-    | "run-paused";
+    | "run-paused"
+    | "remote-requested"
+    | "remote-response"
+    | "remote-waiting";
   readonly runId: string;
   readonly stepKey?: string;
   readonly operationId?: string;
   readonly attempt?: number;
   readonly status?: string;
+  readonly action?: string;
+  readonly outcome?: string;
+  readonly taskId?: string;
+  readonly waitingFor?: string;
   readonly atMs: number;
 }
 
@@ -276,6 +301,7 @@ interface RegisteredAgent {
   readonly version: number;
   readonly model: Model;
   readonly tools: ReadonlyMap<string, Tool>;
+  readonly remotes: ReadonlyMap<string, RemoteAgent>;
 }
 
 type Settlement =
@@ -387,6 +413,7 @@ export class Runtime {
   private readonly maySteal: boolean;
   private readonly clock: () => number;
   private readonly sleeper: (milliseconds: number) => Promise<void>;
+  private readonly isOnline: () => boolean | Promise<boolean>;
   private readonly agents = new Map<string, RegisteredAgent>();
   private readonly runs = new Map<string, Run>();
   private readonly drivers = new Map<string, Run>();
@@ -424,6 +451,7 @@ export class Runtime {
     this.sleeper =
       options.sleep ??
       ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    this.isOnline = options.isOnline ?? (() => true);
     this.versions = this.versionsReady;
   }
 
@@ -473,6 +501,13 @@ export class Runtime {
       }
       tools.set(tool.name, tool);
     }
+    const remotes = new Map<string, RemoteAgent>();
+    for (const remote of options.remoteAgents ?? []) {
+      if (tools.has(remote.name) || remotes.has(remote.name)) {
+        throw invalid(`Remote agent "${remote.name}" collides with another capability.`);
+      }
+      remotes.set(remote.name, remote);
+    }
     const key = agentKey(options.name, options.version);
     if (this.agents.has(key)) {
       throw invalid(
@@ -484,6 +519,7 @@ export class Runtime {
       version: options.version,
       model: options.model,
       tools,
+      remotes,
     };
     this.agents.set(key, registered);
     const ready = this.call("registerAgent", {
@@ -512,6 +548,23 @@ export class Runtime {
         modelInitialIntervalMs: options.modelRetry?.initialIntervalMs ?? -1,
         modelMaxIntervalMs: options.modelRetry?.maxIntervalMs ?? -1,
         modelBackoff: options.modelRetry?.backoff ?? "",
+        remoteAgents: [...remotes.values()].map((remote) => {
+          const capabilities = resolvedCapabilities(remote.transport.capabilities);
+          return {
+            name: remote.name,
+            description: remote.description,
+            schema: remote.schema as unknown as JsonValue,
+            endpoint: remote.transport.endpoint,
+            pollIntervalMs: remote.transport.pollIntervalMs ?? 0,
+            dedupe: capabilities.dedupe,
+            lookup: capabilities.lookup,
+            durableTask: capabilities.taskId,
+            poll: capabilities.poll,
+            cancel: capabilities.cancel,
+            persistent: capabilities.persistent,
+          };
+        }),
+        allowRemote: remotes.size > 0,
       },
     }).then(
       () => undefined,
@@ -741,6 +794,10 @@ export class Runtime {
     return this.clock();
   }
 
+  online(): Promise<boolean> {
+    return Promise.resolve(this.isOnline());
+  }
+
   sleep(milliseconds: number): Promise<void> {
     if (milliseconds <= 0) {
       return Promise.resolve();
@@ -965,6 +1022,29 @@ export class Run {
     waiting.resolve(input);
   }
 
+  async getDelegations(): Promise<readonly DelegationView[]> {
+    this.runtime.ensureGeneration(this.generation);
+    const parsed = JSON.parse(
+      await this.runtime.call("delegations", { runId: this.runId }),
+    ) as unknown;
+    if (!Array.isArray(parsed)) {
+      throw permanent("Delegation list was not an array.");
+    }
+    return parsed.map((item) => {
+      const record = readRecord(item, "Delegation");
+      const taskId = record.taskId;
+      return {
+        cancelIntent: readBoolean(record, "cancelIntent"),
+        endpoint: readString(record, "endpoint"),
+        operationId: readString(record, "operationId"),
+        remoteAgent: readString(record, "remoteAgent"),
+        state: readString(record, "state"),
+        stepKey: readString(record, "stepKey"),
+        taskId: typeof taskId === "string" ? taskId : null,
+      };
+    });
+  }
+
   async getStatus(): Promise<RunStatus> {
     this.runtime.ensureGeneration(this.generation);
     return this.runtime.inspect(this.runId);
@@ -1075,10 +1155,21 @@ export class Run {
         throw errorFromDetail(request);
       case RequestKind.Cancelled:
         throw cancelled("Execution cancelled.");
-      case RequestKind.Wait:
+      case RequestKind.Wait: {
+        const waiting = readWaiting(request.detailJson);
+        if (waiting !== undefined) {
+          await this.runtime.emit({
+            ...this.event("remote-waiting", request),
+            waitingFor: waiting,
+          });
+        }
         if (request.hasWaitUntil && request.waitUntilMs > this.runtime.now()) {
           await this.runtime.sleep(request.waitUntilMs - this.runtime.now());
         }
+        return;
+      }
+      case RequestKind.Delegate:
+        await this.invokeDelegation(request);
         return;
       case RequestKind.Reconcile:
         await this.runtime.emit(this.event("reconcile-required", request));
@@ -1156,6 +1247,84 @@ export class Run {
       this.inflight = null;
       await this.pauseIfRequested();
     }
+  }
+
+  private async invokeDelegation(request: DriveRequest): Promise<void> {
+    await this.beforeHostWork();
+    const detail = readRecord(JSON.parse(request.detailJson) as unknown, "Delegation request");
+    const command = readDelegation(detail);
+    const remote = this.agent.remotes.get(command.remoteAgent);
+    const authorized =
+      remote !== undefined &&
+      remote.transport.endpoint === command.endpoint &&
+      transportId(remote.transport.endpoint) === command.transportId;
+    if (!authorized || remote === undefined) {
+      await this.submitDelegation(request, {
+        action: command.action,
+        outcome: "unauthorized",
+        message: "The remote destination is not authorized.",
+      });
+      return;
+    }
+    const controller = new AbortController();
+    this.inflight = controller;
+    try {
+      await this.runtime.emit({
+        ...this.event("remote-requested", request),
+        action: command.action,
+        ...(command.taskId !== undefined ? { taskId: command.taskId } : {}),
+      });
+      const report = await performHttpDelegation({
+        command,
+        transport: remote.transport,
+        signal: controller.signal,
+        online: () => this.runtime.online(),
+      });
+      if (!this.alive()) {
+        return;
+      }
+      await this.runtime.emit({
+        ...this.event("remote-response", request),
+        action: command.action,
+        outcome: report.outcome,
+        ...(report.taskId !== undefined ? { taskId: report.taskId } : {}),
+      });
+      await this.submitDelegation(request, { action: command.action, ...report });
+    } catch (error) {
+      if (!this.alive()) {
+        return;
+      }
+      const failure = error instanceof LarkxError ? error : permanent(messageOf(error));
+      await this.submitDelegation(request, {
+        action: command.action,
+        outcome: "invalid",
+        message: failure.message,
+      });
+    } finally {
+      this.inflight = null;
+      await this.pauseIfRequested();
+    }
+  }
+
+  private async submitDelegation(
+    request: DriveRequest,
+    body: {
+      readonly action: string;
+      readonly outcome: string;
+      readonly taskId?: string;
+      readonly result?: JsonValue;
+      readonly message?: string;
+    },
+  ): Promise<void> {
+    if (!this.alive()) {
+      return;
+    }
+    await this.runtime.call("submitDelegation", {
+      runId: this.runId,
+      requestId: request.requestId,
+      bodyJson: JSON.stringify(body),
+      nowMs: this.runtime.now(),
+    });
   }
 
   private async invokeTool(request: DriveRequest): Promise<void> {
@@ -1556,6 +1725,38 @@ function readStep(text: string): Omit<HistoryStep, "output"> {
     effectType: readString(value, "effectType"),
     operationId: readString(value, "operationId"),
     attemptCount: readNumber(value, "attemptCount"),
+    executionTarget: readString(value, "executionTarget"),
+  };
+}
+
+function readWaiting(detailJson: string): string | undefined {
+  if (detailJson.trim().length === 0) {
+    return undefined;
+  }
+  try {
+    const value = JSON.parse(detailJson) as unknown;
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      return undefined;
+    }
+    const waiting = (value as { readonly waitingFor?: unknown }).waitingFor;
+    return typeof waiting === "string" ? waiting : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function readDelegation(value: { readonly [key: string]: JsonValue }): DelegationCommand {
+  const taskId = value.taskId;
+  const input = value.input ?? null;
+  return {
+    action: readString(value, "action"),
+    endpoint: readString(value, "endpoint"),
+    input,
+    operationId: readString(value, "operationId"),
+    pollIntervalMs: readNumber(value, "pollIntervalMs"),
+    remoteAgent: readString(value, "remoteAgent"),
+    ...(typeof taskId === "string" ? { taskId } : {}),
+    transportId: readString(value, "transportId"),
   };
 }
 

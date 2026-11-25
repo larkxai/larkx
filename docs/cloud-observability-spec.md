@@ -120,11 +120,11 @@ Attempt: `STARTED`, `COMPLETED`, `FAILED`, `INTERRUPTED`, `CANCELLED`.
 
 Effects: `pure`, `idempotent`, `non-idempotent`.
 
-Execution targets in the type system: `local`, `cloud`, `hybrid`. Selected targets: `local`, `cloud`. This runtime only begins steps with `executionTarget: "local"` and `selectedTarget: "local"`.
+Execution targets in the type system: `local`, `cloud`, `hybrid`. A remote delegation step is `hybrid`. Other steps stay `local`.
 
 Data policies: `device-only`, `cloud-allowed`. `strictestDataPolicy` returns `device-only` if either side is `device-only`. The engine default is `device-only`. A workflow may set its own policy. The stored run gets the stricter of the two.
 
-A `cloud` or `hybrid` step under `device-only` throws `permission_denied` before `begin-step`. Under `cloud-allowed` it throws `unsupported_capability` with the message that this runtime executes local steps only. Neither path writes an outbox row or a `REMOTE_*` event. `local` does not mean offline. A local handler may use the network. That use is invisible to the journal except through the handler's success or failure.
+A hybrid delegation under `device-only` is rejected before a request is sent. Registering a remote agent stores the run as `cloud-allowed` and writes the outbox row in the same transaction as the delegation. `REMOTE_*` events carry ids and the endpoint, not the arguments or the result. `local` does not mean offline. A local handler may use the network. That use is invisible to the journal except through the handler's success or failure.
 
 ### Errors
 
@@ -688,7 +688,7 @@ Unchanged rules:
 - Payloads continue to reject `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`.
 - New event names are added to `EVENT_TYPES` first. They need a new `telemetryVersion`.
 - Existing type names and their current payloads keep their meaning.
-- `REMOTE_*` and `WORKFLOW_WAITING` stay unused until a hybrid milestone emits them. Cloud must not execute them.
+- `REMOTE_*` events now record delegation ids. They still must not carry prompts, arguments, or results. Cloud must not execute the remote agent.
 
 Local agent execution does not read Cloud credentials. This repository contains the exporter. It does not contain the ingestion service or the dashboard.
 

@@ -30,4 +30,4 @@ The run stopped because continuing would guess. An unknown non-idempotent outcom
 
 ## Data policy
 
-`device-only` is the default. Remote work is not implemented.
+`device-only` is the default. Registering a remote agent authorizes delegation to that endpoint. See [Remote delegation](../architecture/remote-delegation.md).

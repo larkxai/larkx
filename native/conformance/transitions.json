@@ -1,6 +1,6 @@
 {
   "protocolVersion": 1,
-  "storageSchemaVersion": 1,
+  "storageSchemaVersion": 2,
   "workflowTransitions": {
     "CREATED": ["RUNNING", "CANCELLED", "BLOCKED"],
     "RUNNING": ["WAITING", "RECOVERING", "COMPLETED", "FAILED", "CANCELLED", "BLOCKED"],

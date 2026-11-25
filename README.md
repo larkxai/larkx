@@ -185,6 +185,36 @@ await runtime.close();
 
 Open a new database file. This runtime stamps SQLite `application_id` `LXRT` (`0x4C585254`) on files it creates. A file with any other id, including a database written by the removed TypeScript engine or an earlier native preview, is rejected and left unchanged. There is no migration.
 
+## Hybrid delegation
+
+A local agent can hand one task to an independent remote agent and keep the parent run locally. This is not a local model, and it is not a local agent calling a cloud model. The remote agent has its own runtime. LarkX stores the delegation, then the host sends it.
+
+```typescript
+import { createRuntime, remoteAgent, sqlite } from "@larkxai/node";
+
+const procurement = remoteAgent({
+  name: "procurement-agent",
+  description: "Find compatible replacement parts and suppliers.",
+  transport: { type: "http", endpoint: "http://127.0.0.1:8787" },
+});
+
+const runtime = await createRuntime({ storage: sqlite("./agent.db") });
+const agent = runtime.createAgent({
+  name: "field-assistant",
+  version: 1,
+  model,
+  instructions: "Inspect equipment and identify replacement parts.",
+  tools: [readInspectionNotes, getEquipmentDetails, saveReport],
+  remoteAgents: [procurement],
+});
+const run = await agent.start({
+  message: "Inspect pump P-104 and recommend replacement parts.",
+});
+console.log(await run.result());
+```
+
+The same `remoteAgent` export is on `@larkxai/react-native`. Registering a remote agent is the authorization to send those arguments to that endpoint. The default with no remote agents remains device-only. The client operation id and the remote task id are stored separately. A known task is polled after a restart and is not submitted again. If the peer cannot be looked up and does not dedupe, a lost acknowledgement blocks the parent instead of creating another task. Cancellation of the local run does not roll back a remote effect. A2A is not implemented. The protocol is [docs/architecture/remote-delegation.md](docs/architecture/remote-delegation.md).
+
 ## Architecture
 
 ```mermaid
@@ -196,9 +226,10 @@ flowchart LR
   core --> db["SQLite"]
   driver --> model["Model adapter"]
   driver --> tools["Application tools"]
+  driver --> remote["Remote agent"]
 ```
 
-The C++ runtime owns orchestration, the SQLite record, replay, retries, operation ids, ownership fencing, cancellation, unknown outcomes, and reconciliation. The host driver performs the model or tool call the runtime requested and submits the result. It does not plan the next step and it does not keep a second database.
+The C++ runtime owns orchestration, the SQLite record, replay, retries, operation ids, ownership fencing, cancellation, unknown outcomes, reconciliation, and remote delegation state. The host driver performs the model call, tool call, or HTTP request the runtime asked for and submits the result. It does not plan the next step and it does not keep a second database.
 
 React Native and Node.js use that same core and the same driver. Cactus, other model adapters, and application tools stay outside the core. LarkX Cloud does not own local execution state. Remote agents are deployed by the application, not by this repository.
 
@@ -210,6 +241,7 @@ React Native and Node.js use that same core and the same driver. Cactus, other m
 - Ownership writes carry an epoch. A stale owner cannot commit.
 - Cancellation is explicit. A committed step stays committed.
 - An external effect is not exactly-once. The process can die after the effect and before the commit.
+- A remote task is not exactly-once. Recovery follows the capabilities stored with the delegation.
 
 ## Current capabilities and limitations
 
@@ -220,11 +252,12 @@ Implemented:
 - Scripted models for tests and the examples.
 - Optional Cactus adapter in `@larkxai/react-native/cactus`, including the per-model queue.
 - Process-death tests that kill the Node example with `SIGKILL` and reopen the database.
+- Durable delegation to an independent remote agent over the HTTP task protocol, including lost acknowledgements, offline queueing, cancellation, and a reference fixture.
 
 Not implemented, and not claimed by a green host test:
 
-- A development build on a physical iPhone or Android phone, real Cactus download and inference, offline tool calling, force-quit recovery, and mobile lifecycle behavior. The checklist is [docs/validation/on-device-agent.md](docs/validation/on-device-agent.md).
-- Remote agent delegation, A2A, egress policies, native telemetry export, and LarkX Cloud.
+- A development build on a physical iPhone or Android phone, real Cactus download and inference, offline tool calling, force-quit recovery, mobile lifecycle behavior, and a phone reaching the reference remote fixture. The checklist is [docs/validation/on-device-agent.md](docs/validation/on-device-agent.md).
+- A2A, destination-specific redaction, native telemetry export, and LarkX Cloud.
 - Production Swift and Kotlin SDKs.
 
 The metadata telemetry client remains in the repository. The C++ runtime does not call it.
@@ -234,6 +267,8 @@ The metadata telemetry client remains in the repository. The C++ runtime does no
 | Example                                                    | What it shows                                                                                      |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | [examples/node-agent](examples/node-agent/README.md)       | Scripted agent, local tools, SQLite, and process termination                                       |
+| [examples/node-hybrid](examples/node-hybrid/README.md)     | Local field agent delegating to the reference remote task fixture                                  |
+| [examples/remote-task](examples/remote-task/README.md)     | HTTP task fixture used by the hybrid example. Not a hosted product                                 |
 | [examples/react-native-agent](examples/react-native-agent) | Scripted agent, Cactus download and init, field inspection, idempotent and non-idempotent recovery |
 | [examples/swift-agent](examples/swift-agent)               | Small Swift program that calls the C ABI. It is not a Swift SDK                                    |
 

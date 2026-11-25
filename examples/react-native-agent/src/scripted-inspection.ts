@@ -8,13 +8,23 @@ const REPORT =
  * A recovered run continues at the first tool that is not already in the transcript.
  * This is a script, not a local model decision.
  */
-export function scriptedInspectionResponse(messages: readonly unknown[]): ModelResponse {
+export function scriptedInspectionResponse(
+  messages: readonly unknown[],
+  options?: { readonly delegate?: boolean },
+): ModelResponse {
   const called = toolNames(messages);
   if (!called.has("read_inspection_notes")) {
     return call("call-notes", "read_inspection_notes", {});
   }
   if (!called.has("get_equipment_details")) {
     return call("call-spec", "get_equipment_details", { equipmentId: "pump-12" });
+  }
+  if (options?.delegate === true && !called.has("procurement-agent")) {
+    return call("call-remote", "procurement-agent", {
+      objective: "Find a compatible mechanical seal for pump 12",
+      equipment: "Industrial water pump",
+      component: "Mechanical seal",
+    });
   }
   if (!called.has("save_inspection_report")) {
     return call("call-report", "save_inspection_report", { report: REPORT });

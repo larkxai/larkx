@@ -576,6 +576,205 @@ void test_run_list_returns_persisted_runs() {
   std::remove(path.c_str());
 }
 
+larkx_remote_spec procurement(int dedupe, int lookup, int poll, int cancel) {
+  larkx_remote_spec remote{};
+  remote.name = "procurement-agent";
+  remote.description = "Find compatible replacement parts.";
+  remote.input_schema_json =
+      "{\"additionalProperties\":false,\"properties\":{\"objective\":{\"type\":\"string\"}},\"required\":[\"objective\"],\"type\":\"object\"}";
+  remote.endpoint = "http://127.0.0.1:8787";
+  remote.dedupe = dedupe;
+  remote.lookup = lookup;
+  remote.durable_task = 1;
+  remote.poll = poll;
+  remote.cancel = cancel;
+  remote.persistent = 1;
+  remote.poll_interval_ms = 50;
+  return remote;
+}
+
+void register_remote_agent(larkx_runtime* runtime, const larkx_remote_spec* remote, int count, const char* name = "field") {
+  larkx_agent_spec spec{};
+  spec.name = name;
+  spec.version = 1;
+  spec.instructions = "Inspect equipment.";
+  spec.model_id = "scripted";
+  spec.model_name = "scripted-1";
+  spec.tool_calling = 1;
+  spec.remote_agents = remote;
+  spec.remote_count = count;
+  spec.allow_remote = count > 0 ? 1 : 0;
+  larkx_error error{};
+  const auto code = larkx_agent_register(runtime, &spec, &error);
+  if (code != LARKX_OK) {
+    std::fprintf(stderr, "register remote: %s\n", error.message);
+  }
+  CHECK(code == LARKX_OK);
+}
+
+void submit_remote(larkx_runtime* runtime, const char* run_id, const char* request, const char* body, int64_t now = 40) {
+  larkx_error error{};
+  const auto code = larkx_run_submit_delegation(runtime, run_id, request, body, now, &error);
+  if (code != LARKX_OK) {
+    std::fprintf(stderr, "submit delegation: %s\n", error.message);
+  }
+  CHECK(code == LARKX_OK);
+}
+
+Drive delegate_after_model(larkx_runtime* runtime, const char* run_id) {
+  const auto model = drive(runtime, run_id, 20);
+  CHECK(model.request.kind == LARKX_REQUEST_INVOKE_MODEL);
+  CHECK(contains(model.detail, "procurement-agent"));
+  submit_model(runtime, run_id, model.request.request_id,
+               "{\"message\":null,\"finish\":\"tool_calls\",\"calls\":[{\"id\":\"remote-1\",\"name\":\"procurement-agent\","
+               "\"arguments\":{\"objective\":\"Find a seal\"}}]}");
+  return drive(runtime, run_id, 30);
+}
+
+void test_remote_delegation_commits_before_the_parent_continues() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  const auto remote = procurement(1, 1, 1, 1);
+  register_remote_agent(runtime, &remote, 1);
+  const auto started = start_run(runtime, "field", 1, "field-1", "Inspect pump P-104");
+  CHECK(std::strcmp(started.data_policy, "cloud-allowed") == 0);
+  const auto request = delegate_after_model(runtime, "field-1");
+  CHECK(request.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(request.detail, "\"action\":\"submit\""));
+  CHECK(contains(request.detail, "Find a seal"));
+  CHECK(!contains(request.detail, "Inspect pump P-104"));
+  CHECK(!contains(request.detail, "messages"));
+  const std::string operation = request.request.operation_id;
+  CHECK(!operation.empty());
+  larkx_runtime_close(runtime);
+
+  auto* recovered = open_runtime(path);
+  register_remote_agent(recovered, &remote, 1);
+  const auto again = drive(recovered, "field-1", 35);
+  CHECK(again.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(std::strcmp(again.request.operation_id, operation.c_str()) == 0);
+  CHECK(contains(again.detail, "\"action\":\"lookup\""));
+  submit_remote(recovered, "field-1", again.request.request_id,
+                "{\"action\":\"lookup\",\"outcome\":\"not_found\"}");
+  const auto resubmit = drive(recovered, "field-1", 40);
+  CHECK(resubmit.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(resubmit.detail, "\"action\":\"submit\""));
+  CHECK(std::strcmp(resubmit.request.operation_id, operation.c_str()) == 0);
+  submit_remote(recovered, "field-1", resubmit.request.request_id,
+                "{\"action\":\"submit\",\"outcome\":\"accepted\",\"taskId\":\"task-789\"}");
+  const auto waiting = drive(recovered, "field-1", 40);
+  CHECK(waiting.request.kind == LARKX_REQUEST_WAIT);
+  CHECK(contains(waiting.detail, "remote"));
+  const auto poll = drive(recovered, "field-1", 100);
+  CHECK(poll.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(poll.detail, "\"action\":\"poll\""));
+  CHECK(contains(poll.detail, "task-789"));
+  CHECK(!contains(poll.detail, "\"action\":\"submit\""));
+  submit_remote(recovered, "field-1", poll.request.request_id,
+                "{\"action\":\"poll\",\"outcome\":\"completed\",\"taskId\":\"task-789\",\"result\":{\"supplier\":\"Example Industrial Supply\"}}",
+                110);
+  const auto continued = drive(recovered, "field-1", 120);
+  CHECK(continued.request.kind == LARKX_REQUEST_INVOKE_MODEL);
+  CHECK(contains(continued.detail, "Example Industrial Supply"));
+  submit_model(recovered, "field-1", continued.request.request_id, "{\"message\":\"Seal quoted.\",\"finish\":\"stop\",\"calls\":[]}");
+  const auto done = drive(recovered, "field-1", 130);
+  CHECK(done.request.kind == LARKX_REQUEST_COMPLETE);
+  char listed[1024];
+  size_t needed = 0;
+  larkx_error error{};
+  CHECK(larkx_run_delegations(recovered, "field-1", listed, sizeof(listed), &needed, &error) == LARKX_OK);
+  CHECK(contains(listed, "\"state\":\"COMPLETED\""));
+  CHECK(contains(listed, operation.c_str()));
+  CHECK(contains(listed, "task-789"));
+  int32_t events = 0;
+  CHECK(larkx_run_event_count(recovered, "field-1", &events, &error) == LARKX_OK);
+  bool saw_result_event = false;
+  for (int32_t index = 0; index < events; index += 1) {
+    char payload[1024];
+    CHECK(larkx_run_event_payload(recovered, "field-1", index, payload, sizeof(payload), &needed, &error) == LARKX_OK);
+    CHECK(!contains(payload, "Example Industrial Supply"));
+    CHECK(!contains(payload, "Find a seal"));
+    if (contains(payload, "task-789")) {
+      saw_result_event = true;
+    }
+  }
+  CHECK(saw_result_event);
+  larkx_runtime_close(recovered);
+  std::remove(path.c_str());
+}
+
+void test_remote_lost_ack_without_lookup_or_dedupe_blocks() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  const auto remote = procurement(0, 0, 1, 0);
+  register_remote_agent(runtime, &remote, 1);
+  start_run(runtime, "field", 1, "lost-1", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "lost-1");
+  CHECK(request.request.kind == LARKX_REQUEST_DELEGATE);
+  larkx_runtime_close(runtime);
+  auto* recovered = open_runtime(path);
+  register_remote_agent(recovered, &remote, 1);
+  const auto blocked = drive(recovered, "lost-1", 50);
+  CHECK(blocked.request.kind == LARKX_REQUEST_RECONCILE);
+  larkx_error error{};
+  CHECK(larkx_run_submit_reconcile(recovered, "lost-1", blocked.request.request_id, "retry", "null", "try again", 60, &error) !=
+        LARKX_OK);
+  CHECK(larkx_run_submit_reconcile(recovered, "lost-1", blocked.request.request_id, "complete",
+                                  "{\"saved\":true}", "resolved locally", 60, &error) == LARKX_OK);
+  const auto model = drive(recovered, "lost-1", 70);
+  CHECK(model.request.kind == LARKX_REQUEST_INVOKE_MODEL);
+  larkx_runtime_close(recovered);
+  std::remove(path.c_str());
+}
+
+void test_remote_cancel_and_stale_owner() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  const auto remote = procurement(1, 1, 1, 1);
+  register_remote_agent(runtime, &remote, 1);
+  start_run(runtime, "field", 1, "cancel-1", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "cancel-1");
+  submit_remote(runtime, "cancel-1", request.request.request_id,
+                "{\"action\":\"submit\",\"outcome\":\"offline\"}");
+  const auto waiting = drive(runtime, "cancel-1", 40);
+  CHECK(waiting.request.kind == LARKX_REQUEST_WAIT);
+  CHECK(contains(waiting.detail, "network"));
+  larkx_error error{};
+  CHECK(larkx_run_cancel(runtime, "cancel-1", 45, &error) == LARKX_OK);
+  const auto cancelled = drive(runtime, "cancel-1", 45);
+  CHECK(cancelled.request.kind == LARKX_REQUEST_CANCELLED);
+
+  auto* second = open_runtime(path, "owner-b");
+  register_remote_agent(second, &remote, 1);
+  const auto denied = larkx_run_submit_delegation(second, "cancel-1", "stale", "{\"action\":\"poll\",\"outcome\":\"completed\"}", 50, &error);
+  CHECK(denied == LARKX_ERR_OWNERSHIP);
+  larkx_runtime_close(second);
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
+void test_remote_failure_is_not_a_successful_result() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  const auto remote = procurement(1, 1, 1, 0);
+  register_remote_agent(runtime, &remote, 1);
+  start_run(runtime, "field", 1, "fail-1", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "fail-1");
+  submit_remote(runtime, "fail-1", request.request.request_id,
+                "{\"action\":\"submit\",\"outcome\":\"accepted\",\"taskId\":\"task-1\"}");
+  const auto poll = drive(runtime, "fail-1", 100);
+  CHECK(contains(poll.detail, "\"action\":\"poll\""));
+  submit_remote(runtime, "fail-1", poll.request.request_id,
+                "{\"action\":\"poll\",\"outcome\":\"failed\",\"taskId\":\"task-1\",\"message\":\"Supplier search failed.\"}", 110);
+  const auto failed = drive(runtime, "fail-1", 120);
+  CHECK(failed.request.kind == LARKX_REQUEST_FAILED);
+  CHECK(contains(failed.detail, "Supplier search failed."));
+  larkx_error error{};
+  CHECK(larkx_run_cancel(runtime, "fail-1", 130, &error) != LARKX_OK);
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
 void test_context_limit_does_not_invoke_the_model() {
   const auto path = temp_db();
   auto* runtime = open_runtime(path);
@@ -591,7 +790,7 @@ void test_context_limit_does_not_invoke_the_model() {
 }  // namespace
 
 int main() {
-  CHECK(larkx_abi_version() == 2);
+  CHECK(larkx_abi_version() == 3);
   test_single_turn_persists_before_the_model_runs();
   test_dynamic_tool_calls_keep_stable_keys();
   test_invalid_tools_do_not_ask_the_host_to_execute_them();
@@ -604,6 +803,10 @@ int main() {
   test_agent_version_and_effect_compatibility();
   test_open_attempt_can_be_submitted_after_reopen();
   test_context_limit_does_not_invoke_the_model();
+  test_remote_delegation_commits_before_the_parent_continues();
+  test_remote_lost_ack_without_lookup_or_dedupe_blocks();
+  test_remote_cancel_and_stale_owner();
+  test_remote_failure_is_not_a_successful_result();
   test_run_list_returns_persisted_runs();
   if (g_failed != 0) {
     std::fprintf(stderr, "%d checks failed\n", g_failed);

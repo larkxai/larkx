@@ -32,6 +32,8 @@ await runtime.close();
 
 `sqlite()` with no argument stores `larkx.db` under the application document directory. Pass `sqlite("/path/to/agent.db")` to choose a file. The runtime does not delete an existing database.
 
+`remoteAgent` registers an independent remote agent. Pass its endpoint as a LAN URL when the phone and the reference fixture are on the same network. Do not use `localhost` for that path. The protocol is [docs/architecture/remote-delegation.md](../../docs/architecture/remote-delegation.md).
+
 `createRuntime` requires `NativeModules.LarkXNativeCore`. Expo Go does not load it. Use a development build. There is no JavaScript fallback and no `/native` entry.
 
 The package carries the JavaScript bundle, TypeScript declarations, the C++ host session, the C ABI headers, CMake, the Android and iOS projects, the podspec, and Expo autolinking. `prepack` copies the shared C++ sources into `vendor/larkx`, so a published install does not need this repository's directory layout.

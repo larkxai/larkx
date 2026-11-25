@@ -4,17 +4,17 @@ LarkX stores workflow inputs, step outputs, and error records on the device. Tre
 
 ## What this release does
 
-- The default data policy is `device-only`. A cloud or hybrid step fails with `permission_denied` and does not run its handler.
-- `cloud-allowed` still does not send data anywhere. Those steps fail with `unsupported_capability` because no transport is implemented.
-- The event journal rejects payload fields named `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`. Step records still store outputs. `getHistory()` is not a redacted export of step results.
-- Remote dispatch types require a tenant, an application id, and a data policy, and they reject `device-only`. Nothing in this release transmits them.
+- The default data policy is `device-only`. An agent with no registered remote agents does not send a delegation.
+- Registering a remote agent authorizes one endpoint and the arguments of that call. The conversation, local history, files, and artifacts are not added. A different endpoint on recovery is rejected. Credentials are resolved by the host and are not written to SQLite.
+- These checks do not sandbox an ordinary application tool. A local tool can use the network by itself.
+- The event journal rejects payload fields named `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`. Delegation events store ids, not the request body or the result. Step records still store outputs. `getHistory()` is not a redacted export of step results.
 - Ownership fencing stops a stale in-process owner from committing. It is not an authentication system.
 
 ## What this release does not do
 
 - It does not encrypt the SQLite file, use a secure enclave, or protect the database from a process that can read the file.
 - It does not claim GDPR, HIPAA, SOC 2, or any other compliance status.
-- It does not authenticate devices, workers, or users. Those controls belong with a future transport and with the private cloud service.
+- It does not authenticate devices, workers, or users. The host supplies request headers. Cancelling the local run does not roll back a remote task that the peer already accepted.
 - It does not cancel or roll back an external effect that already happened.
 - It does not stop a workflow author from putting secrets inside a step result. Callers should avoid that.
 

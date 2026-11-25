@@ -27,4 +27,6 @@ await runtime.close();
 
 In this repository the build command is `sh packages/node/scripts/build-native.sh`. The script vendors nothing during a local build: CMake uses `native/` and `packages/react-native/cpp`. `prepack` copies those sources into the tarball so an installed package does not need the monorepo.
 
+`remoteAgent` registers an independent remote agent. The same call is on `@larkxai/react-native`. The protocol is [docs/architecture/remote-delegation.md](../../docs/architecture/remote-delegation.md). A working pair of processes is [examples/node-hybrid](../../examples/node-hybrid/README.md) and [examples/remote-task](../../examples/remote-task/README.md).
+
 This package does not contain a TypeScript execution engine and does not depend on React Native, Expo, or Cactus.

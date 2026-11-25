@@ -42,4 +42,15 @@ The field screen uses `larkx-field.db` for runs and `larkx-field-data.db` for to
 3. Start a run whose tool is non-idempotent and force-quit inside the handler.
 4. Resume. The run stays blocked until reconcile. The handler must not run again on its own.
 
+## Remote procurement fixture
+
+These steps have not been run on a phone.
+
+1. Start `examples/remote-task` on a computer and note that computer's LAN address. Bind is all interfaces. Confirm `GET http://<lan-address>:8787/_tasks` from another machine on the same network.
+2. On the phone, open Field inspection, set the endpoint to `http://<lan-address>:8787`, and leave Network available selected. Do not enter `localhost` or `127.0.0.1`. Those names are the phone.
+3. Start a scripted run. The timeline should show a hybrid step, a client operation id, and a different remote task id. The saved report should mention the simulated supplier.
+4. Start again, mark the network unavailable, and confirm the timeline says it is waiting for the network. Mark the network available and confirm the same operation continues.
+5. After the timeline shows an accepted task id, force-quit the app. Confirm the fixture still has that task. Relaunch, recover the run, and confirm the local agent continues without a second task.
+6. Cancel a run after acceptance. If the fixture supports cancel, its task becomes cancelled. The screen must not claim that a remote effect was rolled back.
+
 Record the device, OS, and run id after a real run. Until that note exists, do not describe this checklist as completed.

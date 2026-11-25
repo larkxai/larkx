@@ -201,8 +201,71 @@ CREATE TABLE artifacts (
   size_bytes INTEGER NOT NULL,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE delegations (
+  run_id TEXT NOT NULL,
+  step_key TEXT NOT NULL,
+  operation_id TEXT NOT NULL,
+  remote_agent TEXT NOT NULL,
+  endpoint TEXT NOT NULL,
+  transport_id TEXT NOT NULL,
+  input_json TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN (
+    'QUEUED','SUBMITTING','ACCEPTED','WORKING','INPUT_REQUIRED','COMPLETED','FAILED','CANCELLED','UNKNOWN_OUTCOME')),
+  task_id TEXT,
+  result_json TEXT,
+  cap_dedupe INTEGER NOT NULL,
+  cap_lookup INTEGER NOT NULL,
+  cap_task INTEGER NOT NULL,
+  cap_poll INTEGER NOT NULL,
+  cap_cancel INTEGER NOT NULL,
+  cap_persistent INTEGER NOT NULL,
+  poll_interval_ms INTEGER NOT NULL,
+  poll_epoch INTEGER NOT NULL,
+  poll_inflight INTEGER NOT NULL,
+  poll_failures INTEGER NOT NULL,
+  cancel_intent INTEGER NOT NULL,
+  inflight_action TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (run_id, step_key),
+  UNIQUE (run_id, operation_id),
+  FOREIGN KEY (run_id, step_key) REFERENCES workflow_steps(run_id, step_key)
+);
 CREATE INDEX idx_workflow_runs_status ON workflow_runs(status);
 CREATE INDEX idx_workflow_events_run ON workflow_events(run_id, sequence);
+)SQL";
+
+const char* kDelegationTable = R"SQL(
+CREATE TABLE delegations (
+  run_id TEXT NOT NULL,
+  step_key TEXT NOT NULL,
+  operation_id TEXT NOT NULL,
+  remote_agent TEXT NOT NULL,
+  endpoint TEXT NOT NULL,
+  transport_id TEXT NOT NULL,
+  input_json TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN (
+    'QUEUED','SUBMITTING','ACCEPTED','WORKING','INPUT_REQUIRED','COMPLETED','FAILED','CANCELLED','UNKNOWN_OUTCOME')),
+  task_id TEXT,
+  result_json TEXT,
+  cap_dedupe INTEGER NOT NULL,
+  cap_lookup INTEGER NOT NULL,
+  cap_task INTEGER NOT NULL,
+  cap_poll INTEGER NOT NULL,
+  cap_cancel INTEGER NOT NULL,
+  cap_persistent INTEGER NOT NULL,
+  poll_interval_ms INTEGER NOT NULL,
+  poll_epoch INTEGER NOT NULL,
+  poll_inflight INTEGER NOT NULL,
+  poll_failures INTEGER NOT NULL,
+  cancel_intent INTEGER NOT NULL,
+  inflight_action TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (run_id, step_key),
+  UNIQUE (run_id, operation_id),
+  FOREIGN KEY (run_id, step_key) REFERENCES workflow_steps(run_id, step_key)
+);
 )SQL";
 
 Status read_int(sqlite3* db, const char* sql, int64_t& out, bool& found) {
@@ -338,7 +401,7 @@ Status Store::migrate() {
       return status;
     }
     sqlite3_stmt* insert = nullptr;
-    if (sqlite3_prepare_v2(db_, "INSERT INTO schema_migrations (version, applied_at) VALUES (1, ?)", -1, &insert,
+    if (sqlite3_prepare_v2(db_, "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?)", -1, &insert,
                            nullptr) != SQLITE_OK) {
       return storage(sqlite3_errmsg(db_));
     }
@@ -355,12 +418,33 @@ Status Store::migrate() {
     if (auto status = schema_version(db_, version); !status.ok()) {
       return status;
     }
-    if (version > 1) {
-      return storage("Database schema " + std::to_string(version) + " is newer than storage schema 1.");
+    if (version > 2) {
+      return storage("Database schema " + std::to_string(version) + " is newer than storage schema 2.");
     }
-    if (version != 1) {
+    if (version == 1) {
+      Transaction tx(db_);
+      if (auto status = tx.begin(); !status.ok()) {
+        return status;
+      }
+      if (auto status = exec_sql(db_, kDelegationTable); !status.ok()) {
+        return status;
+      }
+      sqlite3_stmt* upgrade = nullptr;
+      if (sqlite3_prepare_v2(db_, "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?)", -1, &upgrade,
+                             nullptr) != SQLITE_OK) {
+        return storage(sqlite3_errmsg(db_));
+      }
+      Statement upgrade_stmt(upgrade);
+      sqlite3_bind_int64(upgrade_stmt.get(), 1, 0);
+      if (auto status = step_done(upgrade_stmt.get(), db_); !status.ok()) {
+        return status;
+      }
+      if (auto status = tx.commit(); !status.ok()) {
+        return status;
+      }
+    } else if (version != 2) {
       return storage(
-          "This LarkX database is not storage schema 1. "
+          "This LarkX database is not storage schema 2. "
           "It was not migrated and it was not deleted. Open a new database file.");
     }
   }
@@ -562,6 +646,56 @@ Status Store::load_unlocked(const std::string& run_id, std::optional<State>& out
     message.updated_at = sqlite3_column_int64(messages.get(), 9);
     state.outbox.push_back(std::move(message));
   }
+
+  sqlite3_stmt* delegation_raw = nullptr;
+  if (sqlite3_prepare_v2(db_,
+                         "SELECT run_id, step_key, operation_id, remote_agent, endpoint, transport_id, input_json, "
+                         "state, task_id, result_json, cap_dedupe, cap_lookup, cap_task, cap_poll, cap_cancel, "
+                         "cap_persistent, poll_interval_ms, poll_epoch, poll_inflight, poll_failures, cancel_intent, "
+                         "inflight_action, created_at, updated_at FROM delegations WHERE run_id = ? "
+                         "ORDER BY created_at ASC, step_key ASC",
+                         -1, &delegation_raw, nullptr) != SQLITE_OK) {
+    return storage(sqlite3_errmsg(db_));
+  }
+  Statement delegations(delegation_raw);
+  bind_text(delegations.get(), 1, run_id);
+  while (true) {
+    const int delegation_rc = sqlite3_step(delegations.get());
+    if (delegation_rc == SQLITE_DONE) {
+      break;
+    }
+    if (delegation_rc != SQLITE_ROW) {
+      return storage(sqlite3_errmsg(db_));
+    }
+    Delegation row;
+    row.run_id = column_text(delegations.get(), 0);
+    row.step_key = column_text(delegations.get(), 1);
+    row.operation_id = column_text(delegations.get(), 2);
+    row.remote_agent = column_text(delegations.get(), 3);
+    row.endpoint = column_text(delegations.get(), 4);
+    row.transport_id = column_text(delegations.get(), 5);
+    row.input_json = column_text(delegations.get(), 6);
+    if (!parse_delegation_state(column_text(delegations.get(), 7), row.state)) {
+      return storage("Stored delegation state is invalid.");
+    }
+    row.task_id = column_optional_text(delegations.get(), 8);
+    row.result_json = column_optional_text(delegations.get(), 9);
+    row.capabilities.dedupe = sqlite3_column_int64(delegations.get(), 10) != 0;
+    row.capabilities.lookup = sqlite3_column_int64(delegations.get(), 11) != 0;
+    row.capabilities.durable_task = sqlite3_column_int64(delegations.get(), 12) != 0;
+    row.capabilities.poll = sqlite3_column_int64(delegations.get(), 13) != 0;
+    row.capabilities.cancel = sqlite3_column_int64(delegations.get(), 14) != 0;
+    row.capabilities.persistent = sqlite3_column_int64(delegations.get(), 15) != 0;
+    row.poll_interval_ms = sqlite3_column_int64(delegations.get(), 16);
+    row.poll_epoch = static_cast<int32_t>(sqlite3_column_int64(delegations.get(), 17));
+    row.poll_inflight = sqlite3_column_int64(delegations.get(), 18) != 0;
+    row.poll_failures = static_cast<int32_t>(sqlite3_column_int64(delegations.get(), 19));
+    row.cancel_intent = sqlite3_column_int64(delegations.get(), 20) != 0;
+    row.inflight_action = column_text(delegations.get(), 21);
+    row.created_at = sqlite3_column_int64(delegations.get(), 22);
+    row.updated_at = sqlite3_column_int64(delegations.get(), 23);
+    state.delegations.push_back(std::move(row));
+  }
   out = std::move(state);
   return Status::success();
 }
@@ -620,6 +754,9 @@ Status Store::persist(const State& before, const State& after) {
   }
   if (sqlite3_changes(db_) != 1) {
     return storage("Failed to update run " + run.run_id + ".");
+  }
+  if (auto status = bind_delete(db_, "DELETE FROM delegations WHERE run_id = ?", run.run_id); !status.ok()) {
+    return status;
   }
   if (auto status = bind_delete(db_, "DELETE FROM step_attempts WHERE run_id = ?", run.run_id); !status.ok()) {
     return status;
@@ -728,7 +865,51 @@ Status Store::persist(const State& before, const State& after) {
       return status;
     }
   }
+  for (const auto& row : after.delegations) {
+    sqlite3_stmt* raw = nullptr;
+    if (sqlite3_prepare_v2(db_,
+                           "INSERT INTO delegations (run_id, step_key, operation_id, remote_agent, endpoint, "
+                           "transport_id, input_json, state, task_id, result_json, cap_dedupe, cap_lookup, cap_task, "
+                           "cap_poll, cap_cancel, cap_persistent, poll_interval_ms, poll_epoch, poll_inflight, "
+                           "poll_failures, cancel_intent, inflight_action, created_at, updated_at) "
+                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           -1, &raw, nullptr) != SQLITE_OK) {
+      return storage(sqlite3_errmsg(db_));
+    }
+    Statement stmt(raw);
+    bind_text(stmt.get(), 1, row.run_id);
+    bind_text(stmt.get(), 2, row.step_key);
+    bind_text(stmt.get(), 3, row.operation_id);
+    bind_text(stmt.get(), 4, row.remote_agent);
+    bind_text(stmt.get(), 5, row.endpoint);
+    bind_text(stmt.get(), 6, row.transport_id);
+    bind_text(stmt.get(), 7, row.input_json);
+    bind_text(stmt.get(), 8, to_string(row.state));
+    bind_optional_text(stmt.get(), 9, row.task_id);
+    bind_optional_text(stmt.get(), 10, row.result_json);
+    sqlite3_bind_int64(stmt.get(), 11, row.capabilities.dedupe ? 1 : 0);
+    sqlite3_bind_int64(stmt.get(), 12, row.capabilities.lookup ? 1 : 0);
+    sqlite3_bind_int64(stmt.get(), 13, row.capabilities.durable_task ? 1 : 0);
+    sqlite3_bind_int64(stmt.get(), 14, row.capabilities.poll ? 1 : 0);
+    sqlite3_bind_int64(stmt.get(), 15, row.capabilities.cancel ? 1 : 0);
+    sqlite3_bind_int64(stmt.get(), 16, row.capabilities.persistent ? 1 : 0);
+    sqlite3_bind_int64(stmt.get(), 17, row.poll_interval_ms);
+    sqlite3_bind_int64(stmt.get(), 18, row.poll_epoch);
+    sqlite3_bind_int64(stmt.get(), 19, row.poll_inflight ? 1 : 0);
+    sqlite3_bind_int64(stmt.get(), 20, row.poll_failures);
+    sqlite3_bind_int64(stmt.get(), 21, row.cancel_intent ? 1 : 0);
+    bind_text(stmt.get(), 22, row.inflight_action);
+    sqlite3_bind_int64(stmt.get(), 23, row.created_at);
+    sqlite3_bind_int64(stmt.get(), 24, row.updated_at);
+    if (auto status = step_done(stmt.get(), db_); !status.ok()) {
+      return status;
+    }
+  }
   return Status::success();
+}
+
+Status Store::apply(const std::string& run_id, const std::function<Status(State&)>& fn) {
+  return mutate(run_id, [&](State& state) { return fn(state); });
 }
 
 Status Store::insert_new_run(const State& state) {
