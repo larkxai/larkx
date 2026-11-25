@@ -1,6 +1,7 @@
 {
   "name": "@larkxai/cactus",
   "version": "0.1.2",
+  "private": true,
   "description": "Optional Cactus model adapter. The C++ runtime does not import this package.",
   "license": "Apache-2.0",
   "type": "module",
@@ -54,8 +55,5 @@
   "homepage": "https://github.com/larkxai/larkx/tree/main/packages/cactus#readme",
   "bugs": {
     "url": "https://github.com/larkxai/larkx/issues"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

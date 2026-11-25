@@ -1,10 +1,6 @@
 # @larkxai/cactus
 
-Optional Cactus adapter. The C++ runtime does not import this package.
-
-```bash
-npm install @larkxai/cactus
-```
+Optional Cactus adapter. This package is private. Application code imports `cactusModel` from `@larkxai/react-native/cactus`. The C++ runtime does not import this package, and `@larkxai/node` does not depend on it.
 
 The adapter is written against `cactus-react-native` 1.13.1:
 

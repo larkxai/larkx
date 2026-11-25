@@ -1,4 +1,4 @@
-import { closeSync, fsyncSync, openSync, writeSync } from "node:fs";
+import { closeSync, existsSync, fsyncSync, openSync, readFileSync, writeSync } from "node:fs";
 
 import { createRuntime, defineTool, sqlite, type ModelResponse } from "@larkxai/node";
 
@@ -57,8 +57,9 @@ async function main(): Promise<void> {
       properties: { report: { type: "string" } },
       required: ["report"],
     },
-    handler: () => {
+    handler: (_input, context) => {
       record(args.log, "save_report");
+      recordOnce(`${args.log}.effects`, context.operationId);
       if (args.crashDuring === "save_report") {
         stop();
       }
@@ -78,6 +79,9 @@ async function main(): Promise<void> {
           stop();
         }
         const text = JSON.stringify(request.messages);
+        if (args.crashDuring === "after_save" && text.includes("save_report")) {
+          stop();
+        }
         if (text.includes("save_report")) {
           return summary;
         }
@@ -142,6 +146,14 @@ function record(log: string, line: string): void {
   writeSync(fd, `${line}\n`);
   fsyncSync(fd);
   closeSync(fd);
+}
+
+function recordOnce(log: string, line: string): void {
+  const existing = existsSync(log) ? readFileSync(log, "utf8") : "";
+  if (existing.split("\n").includes(line)) {
+    return;
+  }
+  record(log, line);
 }
 
 function stop(): never {

@@ -7,9 +7,9 @@ From the repository root:
 ```bash
 pnpm install
 pnpm --filter @larkxai/react-native build
-pnpm --filter @larkxai/example-react-native-workflow exec expo prebuild
-pnpm --filter @larkxai/example-react-native-workflow exec expo run:ios
-pnpm --filter @larkxai/example-react-native-workflow exec expo run:android
+pnpm --filter @larkxai/example-react-native-agent exec expo prebuild
+pnpm --filter @larkxai/example-react-native-agent exec expo run:ios
+pnpm --filter @larkxai/example-react-native-agent exec expo run:android
 ```
 
 `expo prebuild` and `expo run:ios` / `expo run:android` have not been run in this repository's CI. Expo Go cannot load `LarkXNativeCore` or Cactus.

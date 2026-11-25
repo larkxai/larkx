@@ -280,6 +280,22 @@ Status Store::migrate() {
     return storage("Database schema " + std::to_string(version) + " is newer than storage schema 1.");
   }
   if (version < 1) {
+    sqlite3_stmt* existing = nullptr;
+    if (sqlite3_prepare_v2(
+            db_, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'workflow_runs'", -1, &existing,
+            nullptr) != SQLITE_OK) {
+      return storage(sqlite3_errmsg(db_));
+    }
+    Statement existing_stmt(existing);
+    const int existing_rc = sqlite3_step(existing_stmt.get());
+    if (existing_rc == SQLITE_ROW) {
+      return storage(
+          "This SQLite file already contains LarkX tables but has no native schema version. "
+          "It was not migrated and it was not deleted. Open a new database file.");
+    }
+    if (existing_rc != SQLITE_DONE) {
+      return storage(sqlite3_errmsg(db_));
+    }
     if (auto status = exec_sql(db_, kSchema); !status.ok()) {
       return status;
     }

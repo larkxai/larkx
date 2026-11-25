@@ -4,10 +4,13 @@ This file summarizes user-visible changes. Public packages share one version and
 
 ## Unreleased
 
-- The TypeScript execution engine is removed. `@larkxai/node` and `@larkxai/react-native` drive the shared C++ runtime. Import `createRuntime`, `defineTool`, and `sqlite` from the package root.
-- `@larkxai/core`, `@larkxai/agent`, `@larkxai/storage-memory`, `@larkxai/storage-sqlite`, and `@larkxai/testing` are no longer published from this repository. Existing npm versions stay published.
-- There is no migration from a TypeScript-engine database. Open a new SQLite file. The runtime does not delete an existing database.
-- `@larkxai/telemetry` keeps the metadata batch contract. The C++ runtime does not export it yet.
+- `@larkxai/node` and `@larkxai/react-native` are the only packages published from this repository. They bundle the host driver. `@larkxai/host`, `@larkxai/protocol`, `@larkxai/cactus`, and `@larkxai/telemetry` stay in the repository and are not published. Existing npm versions stay published.
+- The Node SDK builds its own native addon from packaged C++ sources. It does not load a file from the React Native package.
+- Cactus is imported from `@larkxai/react-native/cactus`. The root React Native import does not load it.
+- The TypeScript execution engine is removed. Import `createRuntime`, `defineTool`, `scriptedModel`, and `sqlite` from `@larkxai/node` or `@larkxai/react-native`.
+- `@larkxai/core`, `@larkxai/agent`, `@larkxai/storage-memory`, `@larkxai/storage-sqlite`, and `@larkxai/testing` are no longer published from this repository.
+- There is no migration from a TypeScript-engine database. Open a new SQLite file. The runtime does not delete an existing database. A file that already has LarkX tables and no native schema version is rejected.
+- The metadata telemetry client remains internal. The C++ runtime does not export it.
 
 ## 0.1.0
 

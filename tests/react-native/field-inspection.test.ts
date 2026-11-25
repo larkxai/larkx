@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { recoveryMismatch } from "../../examples/react-native-workflow/src/agent-identity.js";
+import { recoveryMismatch } from "../../examples/react-native-agent/src/agent-identity.js";
 import {
   commitOnce,
   type EffectStore,
-} from "../../examples/react-native-workflow/src/field-effects.js";
-import { scriptedInspectionResponse } from "../../examples/react-native-workflow/src/scripted-inspection.js";
+} from "../../examples/react-native-agent/src/field-effects.js";
+import { scriptedInspectionResponse } from "../../examples/react-native-agent/src/scripted-inspection.js";
 
 describe("field inspection demo", () => {
   it("stores an idempotent effect once for an operation id", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FailureGate } from "../../examples/react-native-workflow/src/failure-gate.js";
+import { FailureGate } from "../../examples/react-native-agent/src/failure-gate.js";
 
 describe("development failure gate", () => {
   it("holds only the armed boundary", async () => {

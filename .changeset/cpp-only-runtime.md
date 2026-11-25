@@ -1,16 +1,12 @@
 ---
-"@larkxai/cactus": major
-"@larkxai/host": major
-"@larkxai/node": major
-"@larkxai/protocol": major
-"@larkxai/react-native": major
-"@larkxai/telemetry": major
+"@larkxai/node": minor
+"@larkxai/react-native": minor
 ---
 
-Remove the TypeScript execution engine. `@larkxai/react-native` and `@larkxai/node` both drive the shared C++ runtime.
+Ship one C++ runtime behind two public SDKs. `@larkxai/node` and `@larkxai/react-native` bundle the host driver and no longer depend on separately published packages.
 
-The React Native public import is `createRuntime`, `defineTool`, and `sqlite` from `@larkxai/react-native`. There is no `/native` entry and no compatibility wrapper for `createEngine`, `defineWorkflow`, or `createNodeEngine`.
+`@larkxai/host`, `@larkxai/protocol`, `@larkxai/cactus`, and `@larkxai/telemetry` stay in the repository as private modules. Existing npm versions of those names, and of `@larkxai/core`, `@larkxai/agent`, `@larkxai/storage-memory`, `@larkxai/storage-sqlite`, and `@larkxai/testing`, stay published. This release does not unpublish them.
 
-`@larkxai/core`, `@larkxai/agent`, `@larkxai/storage-memory`, `@larkxai/storage-sqlite`, and `@larkxai/testing` are no longer published from this repository. Existing npm versions stay published. Open a new SQLite file. This runtime does not migrate or delete a database created by the TypeScript engine.
+Import `createRuntime`, `defineTool`, `scriptedModel`, and `sqlite` from `@larkxai/node` or `@larkxai/react-native`. Cactus is `@larkxai/react-native/cactus`. There is no `/native` entry and no compatibility wrapper for the TypeScript workflow engine.
 
-`@larkxai/telemetry` keeps the metadata batch contract. It is not connected to the C++ journal. Native telemetry export is a later milestone.
+Open a new SQLite file. This runtime does not migrate or delete a database created by the TypeScript engine. A file that already has LarkX tables and no native schema version is rejected.

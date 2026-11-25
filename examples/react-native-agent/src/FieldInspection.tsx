@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { cactusHostModel } from "@larkxai/cactus/adapter";
+import type { CactusModel } from "@larkxai/react-native/cactus";
 import {
   applicationDatabase,
   createRuntime,
@@ -25,9 +25,8 @@ import {
 import { FAILURE_BOUNDARIES, FailureGate, type FailureBoundary } from "./failure-gate";
 import { fieldTools, storedFieldEffect } from "./field-tools";
 import { scriptedInspectionResponse } from "./scripted-inspection";
-import type { CactusLanguageModel } from "@larkxai/cactus";
 
-const SDK_VERSION = "0.1.1";
+const SDK_VERSION = "0.1.2";
 
 const DATABASE = applicationDatabase("larkx-field.db");
 const INSTRUCTIONS = [
@@ -45,7 +44,7 @@ export function FieldInspection() {
   const gateRef = useRef(new FailureGate());
   const registeredMode = useRef<Mode | null>(null);
   const agentRef = useRef<Agent | null>(null);
-  const cactusRef = useRef<CactusLanguageModel | null>(null);
+  const cactusRef = useRef<CactusModel | null>(null);
   const [lines, setLines] = useState<readonly string[]>(["Native runtime is not open."]);
   const [message, setMessage] = useState("Inspect pump 12 and prepare a report.");
   const [mode, setMode] = useState<Mode>("scripted");
@@ -123,17 +122,17 @@ export function FieldInspection() {
     }
     setBusy(true);
     try {
-      // A static import of @larkxai/cactus evaluates CactusLM before Nitro installs JSI.
+      // Load Cactus after Nitro has installed its JSI runtime.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { createCactusModel } = require("@larkxai/cactus") as {
-        createCactusModel(params?: { readonly model?: string }): CactusLanguageModel;
+      const { cactusModel } = require("@larkxai/react-native/cactus") as {
+        cactusModel(options?: { readonly model?: string }): CactusModel;
       };
       const previous = cactusRef.current;
       cactusRef.current = null;
       if (previous !== null) {
         await previous.destroy();
       }
-      const model = createCactusModel({ model: "qwen3-0.6b" });
+      const model = cactusModel({ model: "qwen3-0.6b" });
       cactusRef.current = model;
       setModelStatus(`Downloading ${model.getModelName()}…`);
       const started = Date.now();
@@ -399,19 +398,18 @@ function scriptedInspectionModel(gate: FailureGate) {
   };
 }
 
-function localInspectionModel(model: CactusLanguageModel | null, gate: FailureGate) {
+function localInspectionModel(model: CactusModel | null, gate: FailureGate) {
   if (model === null) {
     throw new Error("Prepare the local model before starting or recovering a Cactus run.");
   }
-  const cactus = cactusHostModel(model);
   return {
-    ...cactus,
+    ...model,
     async complete(
-      request: Parameters<typeof cactus.complete>[0],
-      context: Parameters<typeof cactus.complete>[1],
+      request: Parameters<CactusModel["complete"]>[0],
+      context: Parameters<CactusModel["complete"]>[1],
     ) {
       await gate.reach("during-model");
-      return cactus.complete(request, context);
+      return model.complete(request, context);
     },
   };
 }

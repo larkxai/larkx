@@ -28,6 +28,8 @@ interface PackageJson {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>;
+  exports?: Record<string, unknown>;
 }
 
 function readJson(path: string): PackageJson {
@@ -42,23 +44,27 @@ function packageDirs(parent: string): string[] {
 }
 
 describe("npm publish layout", () => {
-  const libraries = packageDirs("packages").map((dir) => ({
+  const all = packageDirs("packages").map((dir) => ({
     dir,
     pkg: readJson(join(dir, "package.json")),
   }));
+  const libraries = all.filter(({ pkg }) => pkg.private !== true);
+  const internal = all.filter(({ pkg }) => pkg.private === true);
   const examples = packageDirs("examples").map((dir) => readJson(join(dir, "package.json")));
   const changeset = JSON.parse(readFileSync(join(root, ".changeset/config.json"), "utf8")) as {
     access?: string;
+    fixed?: string[][];
     ignore?: string[];
   };
   const license = readFileSync(join(root, "LICENSE"));
 
-  it("publishes library packages publicly from the @larkxai scope", () => {
-    expect(libraries.length).toBeGreaterThan(0);
+  it("publishes only the Node and React Native SDKs", () => {
+    expect(libraries.map(({ pkg }) => pkg.name).sort()).toEqual([
+      "@larkxai/node",
+      "@larkxai/react-native",
+    ]);
     for (const { dir, pkg } of libraries) {
       const directory = relative(root, dir);
-      expect(pkg.private).not.toBe(true);
-      expect(pkg.name).toBe(`@larkxai/${basename(directory)}`);
       expect(pkg.license).toBe("Apache-2.0");
       expect(pkg.publishConfig).toEqual({ access: "public" });
       expect(pkg.files).toEqual(expect.arrayContaining(["dist", "README.md", "LICENSE"]));
@@ -75,10 +81,33 @@ describe("npm publish layout", () => {
           if (name.startsWith("@larkxai/")) expect(range).toBe("workspace:*");
         }
       }
+      for (const name of Object.keys(pkg.dependencies ?? {})) {
+        expect(name.startsWith("@larkxai/")).toBe(false);
+      }
     }
     expect(libraries.find(({ pkg }) => pkg.name === "@larkxai/node")?.pkg.engines).toEqual({
       node: ">=22.13.0",
     });
+    const reactNative = libraries.find(({ pkg }) => pkg.name === "@larkxai/react-native")?.pkg;
+    expect(reactNative?.exports).toMatchObject({
+      ".": expect.any(Object),
+      "./cactus": expect.any(Object),
+    });
+    expect(reactNative?.peerDependenciesMeta).toMatchObject({
+      "cactus-react-native": { optional: true },
+    });
+  });
+
+  it("keeps host, protocol, cactus, and telemetry private", () => {
+    expect(internal.map(({ pkg }) => pkg.name).sort()).toEqual([
+      "@larkxai/cactus",
+      "@larkxai/host",
+      "@larkxai/protocol",
+      "@larkxai/telemetry",
+    ]);
+    for (const { pkg } of internal) {
+      expect(pkg.publishConfig).toBeUndefined();
+    }
   });
 
   it("keeps the root package and examples off the registry", () => {
@@ -99,20 +128,17 @@ describe("npm publish layout", () => {
     expect(changeset.access).toBe("public");
   });
 
-  it("keeps the telemetry sdk version aligned with the package", () => {
-    const telemetry = libraries.find(({ pkg }) => pkg.name === "@larkxai/telemetry");
-    if (!telemetry) throw new Error("missing @larkxai/telemetry");
+  it("keeps the telemetry sdk version aligned with the public SDK", () => {
+    const node = libraries.find(({ pkg }) => pkg.name === "@larkxai/node");
+    if (!node) throw new Error("missing @larkxai/node");
     const source = readFileSync(join(root, "packages/telemetry/src/project.ts"), "utf8");
-    expect(source).toContain(`export const SDK_VERSION = "${telemetry.pkg.version}";`);
+    expect(source).toContain(`export const SDK_VERSION = "${node.pkg.version}";`);
   });
 
   it("publishes the public libraries to GitHub Packages", () => {
     const names = libraryPackageDirs(root).map((dir) => basename(dir));
-    expect(names).toContain("react-native");
-    expect(names).toContain("host");
-    expect(names).toContain("node");
-    expect(names).not.toContain("core");
-    expect(names).not.toContain("agent");
+    expect(names.sort()).toEqual(["node", "react-native"]);
+    expect(changeset.fixed).toEqual([["@larkxai/node", "@larkxai/react-native"]]);
     expect(isAlreadyPublished("You cannot publish over the previously published versions")).toBe(
       true,
     );

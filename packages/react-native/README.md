@@ -2,14 +2,18 @@
 
 React Native SDK for the shared C++ runtime.
 
+```bash
+npm install @larkxai/react-native
+```
+
 ```typescript
-import { createRuntime, defineTool, sqlite } from "@larkxai/react-native";
+import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native";
 
 const runtime = await createRuntime({ storage: sqlite() });
 const agent = runtime.createAgent({
   name: "personal-assistant",
   version: 1,
-  model,
+  model: scriptedModel([{ message: "Done.", finish: "stop", calls: [] }]),
   instructions: "Help the user.",
   tools: [
     defineTool({
@@ -28,8 +32,16 @@ await runtime.close();
 
 `sqlite()` with no argument stores `larkx.db` under the application document directory. Pass `sqlite("/path/to/agent.db")` to choose a file. The runtime does not delete an existing database.
 
-`createRuntime` requires `NativeModules.LarkXNativeCore`. Expo Go does not load it. Use a development build. There is no JavaScript fallback.
+`createRuntime` requires `NativeModules.LarkXNativeCore`. Expo Go does not load it. Use a development build. There is no JavaScript fallback and no `/native` entry.
 
-The public surface is `Runtime`, `Agent`, `Run`, `Tool`, `Model`, `sqlite`, `resume`, `reconcile`, and `observe`. `@larkxai/node` exposes the same calls against the same C++ state machine.
+The package carries the JavaScript bundle, TypeScript declarations, the C++ host session, the C ABI headers, CMake, the Android and iOS projects, the podspec, and Expo autolinking. `prepack` copies the shared C++ sources into `vendor/larkx`, so a published install does not need this repository's directory layout.
 
-Peers: `react`, `react-native`, and `expo-file-system`.
+Optional Cactus:
+
+```typescript
+import { cactusModel } from "@larkxai/react-native/cactus";
+```
+
+Install `cactus-react-native` 1.13.1 and `react-native-nitro-modules` 0.33.9 or newer only if you import that subpath. The root import does not load them. Call `download()` and `init()` before `agent.start`. The supported demo model name is `qwen3-0.6b`.
+
+Peers: `react`, `react-native`, and `expo-file-system`. Cactus and Nitro are optional peers.

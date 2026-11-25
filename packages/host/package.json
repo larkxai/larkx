@@ -1,6 +1,7 @@
 {
   "name": "@larkxai/host",
   "version": "0.1.2",
+  "private": true,
   "description": "Host driver for the shared LarkX C++ runtime. It invokes the model or tool the core requests. It does not plan steps.",
   "license": "Apache-2.0",
   "type": "module",
@@ -31,8 +32,5 @@
   "homepage": "https://github.com/larkxai/larkx/tree/main/packages/host#readme",
   "bugs": {
     "url": "https://github.com/larkxai/larkx/issues"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

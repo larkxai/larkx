@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 project(larkxnative LANGUAGES C CXX)
 
 if(NOT ANDROID)
-  message(FATAL_ERROR "This CMake build produces the Android native library. Use packages/react-native/cpp for the Node addon.")
+  message(FATAL_ERROR "This CMake build produces the Android native library. The Node addon is built from packages/node.")
 endif()
 
 set(CMAKE_CXX_STANDARD 20)

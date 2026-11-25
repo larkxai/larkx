@@ -8,15 +8,15 @@ One Expo app with two screens, both on the C++ runtime:
 ```bash
 pnpm install
 pnpm build
-pnpm --filter @larkxai/example-react-native-workflow start
+pnpm --filter @larkxai/example-react-native-agent start
 ```
 
 Expo Go cannot load `LarkXNativeCore` or Cactus. Use a development build:
 
 ```bash
-pnpm --filter @larkxai/example-react-native-workflow exec expo prebuild
-pnpm --filter @larkxai/example-react-native-workflow exec expo run:ios
-pnpm --filter @larkxai/example-react-native-workflow exec expo run:android
+pnpm --filter @larkxai/example-react-native-agent exec expo prebuild
+pnpm --filter @larkxai/example-react-native-agent exec expo run:ios
+pnpm --filter @larkxai/example-react-native-agent exec expo run:android
 ```
 
 This repository has not executed that build on a simulator or a phone. The checklist is [docs/validation/on-device-agent.md](../../docs/validation/on-device-agent.md).

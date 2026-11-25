@@ -973,7 +973,7 @@ describe("native React Native host", () => {
 
   it("round-trips an embedded NUL through the node binding", () => {
     const require = createRequire(import.meta.url);
-    const addon = require("../../packages/react-native/build/larkx_native.node") as {
+    const addon = require("../../packages/node/build/larkx_native.node") as {
       createSession(): { invoke(method: string, argsJson: string): string };
     };
     const payload = "a\0b 😀 𝄞";

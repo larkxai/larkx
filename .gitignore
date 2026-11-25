@@ -44,6 +44,9 @@ native/build-rn-pic/
 packages/react-native/build/
 packages/react-native/build-android/
 packages/react-native/vendor/
+packages/node/build/
+packages/node/native/vendor/
+package.json.pack-backup
 packages/react-native/ios/third_party/
 
 # Dependency directories

@@ -1,10 +1,6 @@
 # @larkxai/telemetry
 
-Optional client that posts metadata batches to LarkX Cloud. The C++ runtime does not import this package and does not build a journal for it. Native telemetry export is a later milestone. A run completes whether or not a batch is acknowledged. Cloud does not retry steps, reconcile unknown outcomes, or cancel runs.
-
-```bash
-npm install @larkxai/telemetry
-```
+Optional client that posts metadata batches to LarkX Cloud. This package is private and is not a public install target. The C++ runtime does not import this package and does not build a journal for it. Native telemetry export is a later milestone. A run completes whether or not a batch is acknowledged. Cloud does not retry steps, reconcile unknown outcomes, or cancel runs.
 
 ```typescript
 import {
