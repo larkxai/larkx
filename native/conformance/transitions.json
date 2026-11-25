@@ -1,0 +1,53 @@
+{
+  "protocolVersion": 1,
+  "storageSchemaVersion": 1,
+  "workflowTransitions": {
+    "CREATED": ["RUNNING", "CANCELLED", "BLOCKED"],
+    "RUNNING": ["WAITING", "RECOVERING", "COMPLETED", "FAILED", "CANCELLED", "BLOCKED"],
+    "WAITING": ["RUNNING", "RECOVERING", "CANCELLED", "FAILED", "BLOCKED"],
+    "RECOVERING": ["RUNNING", "WAITING", "COMPLETED", "FAILED", "CANCELLED", "BLOCKED"],
+    "COMPLETED": [],
+    "FAILED": [],
+    "CANCELLED": [],
+    "BLOCKED": ["RUNNING", "RECOVERING", "FAILED", "CANCELLED"]
+  },
+  "stepTransitions": {
+    "PENDING": ["RUNNING", "CANCELLED"],
+    "RUNNING": [
+      "COMPLETED",
+      "FAILED",
+      "WAITING_REMOTE",
+      "RETRY_SCHEDULED",
+      "UNKNOWN_OUTCOME",
+      "CANCELLED"
+    ],
+    "WAITING_REMOTE": ["COMPLETED", "FAILED", "RETRY_SCHEDULED", "UNKNOWN_OUTCOME", "CANCELLED"],
+    "RETRY_SCHEDULED": ["RUNNING", "CANCELLED", "FAILED"],
+    "COMPLETED": [],
+    "FAILED": [],
+    "UNKNOWN_OUTCOME": ["RETRY_SCHEDULED", "COMPLETED", "FAILED", "CANCELLED"],
+    "CANCELLED": []
+  },
+  "sensitiveEventKeys": ["input", "output", "messages", "prompt", "toolResult", "content"],
+  "interruptResolution": {
+    "pure": "retry",
+    "idempotent": "retry",
+    "non-idempotent": "unknown"
+  },
+  "egress": {
+    "device-only": {
+      "local": true,
+      "cloud-model": false,
+      "remote-tool": false,
+      "remote-agent": false,
+      "telemetry": false
+    },
+    "cloud-allowed": {
+      "local": true,
+      "cloud-model": true,
+      "remote-tool": true,
+      "remote-agent": true,
+      "telemetry": false
+    }
+  }
+}

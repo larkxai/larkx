@@ -94,9 +94,29 @@ The reference coordinator is a development tool. It is not LarkX Cloud.
 
 ## M7 — Native runtime and Rust, if justified
 
-Not scheduled as implementation work. A Rust core is only justified for pieces that profiling shows the TypeScript runtime cannot meet. It would not execute TypeScript callbacks inside Rust.
+The shared execution direction is the C++ core under `native/`. A Rust core is only justified for pieces that profiling shows that core cannot meet. It would not execute TypeScript callbacks inside Rust.
 
-- Swift and Kotlin SDKs.
+- Swift and Kotlin SDKs. Not started. They belong in `larkxai/ios` and `larkxai/android` and must not embed a JavaScript engine.
 - Native background scheduling.
 - Resource-aware routing once real capability adapters exist.
 - Multi-device ownership transfer and a reconciliation protocol that makes it safe.
+
+## Native core — Phase 1
+
+Started in `native/`. This is not a shipped SDK and it does not replace `@larkxai/core`.
+
+Present in this tree:
+
+- C++20 reducer for the protocol version 1 state machines, ownership fences, step attempts, reconciliation, and outbox dedupe.
+- SQLite schema version 1 and C ABI version 1 in `native/abi/include/larkx.h`.
+- The frozen tables in `native/conformance/transitions.json`, checked by the native tests and by `tests/native/conformance-fixtures.test.ts`.
+- Host build and `ctest` on Linux. The iOS and Android toolchain files fail closed on a machine that cannot produce those binaries.
+
+Not present:
+
+- Runtime, Agent, and Run execution loop.
+- Model adapters, remote-agent submission, A2A, or telemetry export.
+- Swift, Kotlin, or React Native bindings.
+- A device or emulator recovery run.
+
+The plan, the ABI decisions, and the later phases are in [docs/native/migration.md](docs/native/migration.md). Cloud follow-ups that this phase does not implement are in [docs/native/cloud-changes.md](docs/native/cloud-changes.md).
