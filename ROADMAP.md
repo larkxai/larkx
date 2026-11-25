@@ -6,19 +6,19 @@ A capability is implemented when code and relevant automated checks exist. Mobil
 
 ## Current delivery status
 
-| Milestone | Status |
-| --- | --- |
-| Native C++ foundation (PR #24) | Merged |
-| Native autonomous agent runtime (PR #25) | Merged |
-| React Native native host (PR #26) | Implemented |
+| Milestone                                | Status                                     |
+| ---------------------------------------- | ------------------------------------------ |
+| Native C++ foundation (PR #24)           | Merged                                     |
+| Native autonomous agent runtime (PR #25) | Merged                                     |
+| React Native native host (PR #26)        | Implemented                                |
 | Cactus and mobile recovery demo (PR #28) | Merged; physical-device validation pending |
-| Durable remote delegation | Next |
-| A2A integration | Planned |
-| Privacy and egress policies | Planned |
-| Native telemetry | Planned |
-| Cloud integration | Planned |
-| Developer preview release | Planned |
-| Standalone Swift and Kotlin SDKs | Deferred |
+| Durable remote delegation                | Next                                       |
+| A2A integration                          | Planned                                    |
+| Privacy and egress policies              | Planned                                    |
+| Native telemetry                         | Planned                                    |
+| Cloud integration                        | Planned                                    |
+| Developer preview release                | Planned                                    |
+| Standalone Swift and Kotlin SDKs         | Deferred                                   |
 
 ## Next — Physical-device validation
 
@@ -173,7 +173,6 @@ Not part of M3:
 - No new event type. Provider and model id sit on the step output, which stays on the device. A future non-sensitive field needs a telemetry version and a Cloud change first.
 - Billing, accounts, and enterprise permissions stay out of the public repository.
 - Automated coverage is in `tests/telemetry`. A physical-device timeline was not captured for this change. The procedure is in [docs/validation/m4-physical-device.md](docs/validation/m4-physical-device.md).
-
 
 ## Native architecture reference
 
