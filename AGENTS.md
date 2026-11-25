@@ -13,10 +13,10 @@ LarkX is an independent durable execution engine for on-device and hybrid AI age
 - `@larkxai/storage-memory` — process-local storage.
 - `@larkxai/storage-sqlite` — schema version 1 and a driver-agnostic SQLite adapter.
 - `@larkxai/node` — `node:sqlite` driver, pid-file ownership reclaim, `createNodeEngine`.
-- `@larkxai/react-native` — Expo SQLite driver, mobile ownership, lifecycle binding, local artifact copy, and a display hook.
+- `@larkxai/react-native` — Expo SQLite driver, mobile ownership, lifecycle binding, local artifact copy, and a display hook. The default export is that TypeScript adapter. `@larkxai/react-native/native` is a preview host for the shared C++ core and does not replace it.
 - `@larkxai/testing` — fake clocks and storage conformance cases.
 - `examples/node-workflow` — the Node process-death demo.
-- `examples/react-native-workflow` — the Expo demo. Node tests do not prove it ran on a device.
+- `examples/react-native-workflow` — the Expo demo. The TypeScript workflow stays on screen. A second card drives a scripted agent through the C++ core when a development build is installed. Node tests do not prove it ran on a device.
 - `native/` — C++20 execution core and C ABI version 2. The agent loop drives model and tool requests and persists their results. The TypeScript engine remains the shipped runtime. See [docs/native/migration.md](docs/native/migration.md). A host `ctest` run is not an iOS or Android binary, and it does not compile `examples/swift-agent`.
 
 Do not add a package that only re-exports types or throws "not implemented" and then document it as shipped. Planned packages stay in [ROADMAP.md](ROADMAP.md) until they have behavior and tests.
@@ -42,7 +42,7 @@ Do not add a package that only re-exports types or throws "not implemented" and 
 - Crash tests spawn `examples/node-workflow/dist/main.js` and send `SIGKILL`. Do not replace them with a thrown exception.
 - Tests that use `createAutoClock` must set `leaseMs: 0`. The auto clock is not safe with heartbeats.
 - Node may print `ExperimentalWarning: SQLite is an experimental feature`. That is expected with `node:sqlite`.
-- A green Node suite is not mobile validation. The React Native package has Node tests for its ownership policy, artifact copy, and lifecycle binding, including `SIGKILL` against the mobile storage adapter backed by `node:sqlite`. Do not describe that as an emulator or device run.
+- A green Node suite is not mobile validation. The React Native package has Node tests for its ownership policy, artifact copy, and lifecycle binding, including `SIGKILL` against the mobile storage adapter backed by `node:sqlite`. `tests/react-native/native-core.test.ts` drives the real C++ core through a Node addon. Do not describe either as an emulator or device run.
 - Native core: `cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release && cmake --build native/build && ctest --test-dir native/build --output-on-failure`. Requires CMake, a C++20 compiler, and SQLite 3 development headers. Do not describe that host run as device recovery. Do not delete the TypeScript engine because this suite is green.
 
 ## Local commands

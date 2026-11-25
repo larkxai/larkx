@@ -1,14 +1,21 @@
 {
   "name": "@larkxai/react-native",
   "version": "0.1.1",
-  "description": "React Native adapter for the LarkX durable workflow engine.",
+  "description": "React Native adapter for the LarkX engine, plus a preview binding to the shared C++ core.",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "android",
+    "cpp",
+    "ios",
+    "scripts",
+    "vendor",
+    "LarkXNativeCore.podspec",
+    "react-native.config.js"
   ],
   "exports": {
     ".": {
@@ -30,10 +37,23 @@
     "./lifecycle": {
       "types": "./dist/lifecycle.d.ts",
       "import": "./dist/lifecycle.js"
+    },
+    "./native": {
+      "types": "./dist/native/index.d.ts",
+      "react-native": "./dist/native/index.js",
+      "import": "./dist/native/index.js",
+      "default": "./dist/native/index.js"
+    },
+    "./native-node": {
+      "types": "./dist/native/node-client.d.ts",
+      "import": "./dist/native/node-client.js",
+      "default": "./dist/native/node-client.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepack": "node scripts/vendor-native.mjs",
+    "postinstall": "node scripts/vendor-native.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

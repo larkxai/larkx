@@ -112,13 +112,14 @@ Present in this tree:
 - An agent loop: register an agent, start a run, drive model and tool requests, submit results, pause, cancel, and reconcile. Committed outputs are replayed. Interrupted non-idempotent tools block.
 - The frozen tables in `native/conformance/transitions.json`, checked by the native tests and by `tests/native/conformance-fixtures.test.ts`. The agent loop is checked by `native/core/tests/agent_tests.cpp`.
 - A pure Swift host in `examples/swift-agent`. The macOS CI job compiles and runs it. Linux CI does not.
-- Host build and `ctest` on Linux. The iOS and Android toolchain files fail closed on a machine that cannot produce those binaries.
+- A preview React Native host at `@larkxai/react-native/native`. It calls this core through a native module. The default package export is still the TypeScript engine.
+- Host build and `ctest` on Linux. The Node addon in `packages/react-native` links the same core for the React Native host tests.
 
 Not present:
 
-- A production Swift, Kotlin, or React Native SDK.
+- A production Swift or Kotlin SDK.
 - Model provider adapters inside the core, including Cactus.
 - Remote-agent submission, A2A, or telemetry export.
-- A device or emulator recovery run.
+- A device or emulator recovery run. The React Native preview binding is not that proof.
 
 The plan, the ABI decisions, and the later phases are in [docs/native/migration.md](docs/native/migration.md). Cloud follow-ups that this phase does not implement are in [docs/native/cloud-changes.md](docs/native/cloud-changes.md).

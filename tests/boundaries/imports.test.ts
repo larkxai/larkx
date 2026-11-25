@@ -36,6 +36,7 @@ describe("package boundaries", () => {
       "packages/react-native/src/ownership.ts",
       "packages/react-native/src/artifacts.ts",
       "packages/react-native/src/lifecycle.ts",
+      "packages/react-native/src/native/runtime.ts",
     ];
     const offenders = files.filter((file) =>
       /from\s+["'](expo|react-native|node:)/.test(readFileSync(file, "utf8")),

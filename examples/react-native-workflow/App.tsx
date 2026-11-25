@@ -12,6 +12,7 @@ import { deleteDatabaseSync } from "expo-sqlite";
 import type { CloudTelemetry } from "@larkxai/telemetry";
 
 import { TELEMETRY_DATABASE, cloudLabel, openCloud } from "./src/cloud";
+import { NativeAgentDemo } from "./src/NativeAgentDemo";
 import { clearSessionCalls, demoWorkflows, sessionCalls } from "./src/workflow";
 
 const DATABASE = "larkx.db";
@@ -265,6 +266,8 @@ export function App() {
           </View>
         ))}
       </Card>
+
+      <NativeAgentDemo />
 
       <Card title="History">
         {observation.history.length === 0 ? <Text style={styles.body}>No events yet.</Text> : null}

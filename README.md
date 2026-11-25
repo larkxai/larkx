@@ -28,10 +28,11 @@ License: Apache-2.0
 | SQLite storage and Node adapter                          | Implemented. Node's built-in `node:sqlite` is experimental                          |
 | Replay, crash recovery, effect policies, ownership       | Implemented and tested on Node.js                                                   |
 | Durable agents, tools, model adapters (`@larkxai/agent`) | Implemented on the existing engine. Scripted model in CI. No device run for Cactus  |
-| React Native adapter                                     | Implemented on the shared engine. Device and emulator runs are not in CI            |
+| React Native adapter                                     | TypeScript engine on Expo SQLite. Device and emulator runs are not in CI            |
+| React Native native runtime                              | Preview host for the C++ core at `@larkxai/react-native/native`. Not a device run   |
 | Cactus adapter (`@larkxai/cactus`)                       | Implemented against cactus-react-native 1.13.1. Native dev build only. Not run here |
 | Optional Cloud telemetry (`@larkxai/telemetry`)          | Implemented. Metadata only. Execution does not wait on it. Not a device run         |
-| Native C++ core (`native/`)                              | ABI 2 agent loop. Not a replacement runtime and not an iOS or Android build         |
+| Native C++ core (`native/`)                              | ABI 2 agent loop. Linux, macOS, and the Node addon run it. Not a device build       |
 | HTTP transport, worker SDK, reference coordinator        | Not implemented                                                                     |
 | Managed LarkX Cloud                                      | Ingestion lives in `larkxai/cloud`. This tree only sends the batch                  |
 

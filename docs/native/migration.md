@@ -222,9 +222,9 @@ Filtering happens before data leaves through an SDK-managed channel. Credentials
 The order is a dependency order. Later items are not implemented.
 
 1. Phase 1. Freeze the tables, land the C ABI, the reducer, SQLite schema 1, the host tests, and the fail-closed toolchain files. Done.
-2. Still before a production binding. Vendor SQLite. Cross-compile on a machine with the Android NDK and on an Apple host for an iOS binary. Those builds are not done.
+2. Still before a production binding. The Android NDK job compiles `liblarkxnative.so` with the pinned SQLite amalgamation. The macOS job compiles the iOS bridge against the Apple SDK `libsqlite3` and links it to this core. Those jobs are not a device or simulator run, and a Linux checkout does not produce either binary.
 3. Phase 2. Runtime, Agent, Run, and Tool on the ABI. Replay skips committed model and tool steps. Recovery classifies interrupts. Operation ids and reconcile follow the TypeScript rules. A minimal Swift host is in `examples/swift-agent`. Production SDKs are not in this phase.
-4. Phase 3. Swift, Kotlin, and React Native bindings, lifecycle hooks, and physical-device crash recovery. A simulator log is not that proof. The macOS CI job is not that proof.
+4. Phase 3. Swift and Kotlin production SDKs, and physical-device crash recovery. A preview React Native host is in `@larkxai/react-native/native`. It is a native module over this core, not a Swift or Kotlin wrapper, and it does not replace `@larkxai/core`. A simulator log is not device proof. The macOS CI job is not that proof.
 5. Phase 4. RemoteAgent state machine, offline queue, custom HTTP, A2A, lost-ack handling, and egress checks on the bytes that would be sent.
 6. Phase 5. Versioned native telemetry, Cloud compatibility tests, examples, and package distribution. The Cloud edits in [cloud-changes.md](cloud-changes.md) land with that phase, not before the protocol version exists.
 
@@ -250,5 +250,17 @@ Risks:
 - A model or idempotent tool can run more than once if the process dies after the attempt begins and before the result is committed. Do not describe that as exactly-once.
 - ABI structs and functions must not share a typedef name. The header uses `*_spec` typedefs for that reason. A later edit that collapses those names will fail to compile as C.
 - Cloud rejects sensitive keys recursively and then stores other payload extras. The SDK journal check is top-level, matching the TypeScript reducer. The allowlist tightening is a Cloud change, not a silent native change.
-- No iOS or Android binary has been produced. Toolchain files that fail closed are not a cross-compile.
+- The Android and iOS React Native jobs compile the bridge. They do not boot a simulator or a device. Toolchain files that fail closed are not a cross-compile.
 - Physical-device recovery is not claimed.
+
+## 10. React Native host
+
+`@larkxai/react-native` keeps its default export. That export opens the TypeScript engine on Expo SQLite. `@larkxai/react-native/native` is the preview host for this core. `@larkxai/react-native/native-node` loads the Node addon used by `tests/react-native/native-core.test.ts`. An application imports only `./native`.
+
+The host is one C++ session, `larkx::host::Session`, shared by the Node addon, the JNI library, and the Objective-C++ module. Each platform passes a method name and a JSON argument string. The session calls ABI 2. It does not plan agent steps. The TypeScript driver calls `drive`, runs the model or tool the core requested, and submits the result. `agent.start` persists the run and leaves it `RUNNING`. It does not call the model. `run.result()` starts the one host driver for that run id. Another `start`, `resume`, or `result` for the same id waits on that driver instead of issuing a second `drive` while a host request is open. The core repeats an in-flight request to a second `drive`, so a second driver would run the model or tool twice. Register the agent again after the process restarts. Closing the runtime does not release ownership.
+
+Android keeps sessions in a handle registry. `invalidate()` publishes a zero handle and then destroys the native session. Destroy waits for `invoke` calls on other threads. The JNI boundary converts Java UTF-16 to standard UTF-8 and back, including supplementary characters. It does not use modified UTF-8. iOS already passes `NSString` as standard UTF-8.
+
+iOS links `libsqlite3` from the Apple SDK and compiles the core sources in the pod. Android compiles the same sources plus SQLite amalgamation `3450100` (`5592243caf28b2cdef41e6ab58d25d653dfc53deded8450eb66072c929f030c4`) into `liblarkxnative.so`. The published package vendors `native/abi`, `native/core/include`, and `native/core/src` at pack time so the pod and Gradle build do not need the monorepo layout. The git tree keeps a single copy under `native/`. Expo autolinking reads `LarkXNativeCore.podspec` and `react-native.config.js`. The Android package is a classic native module. Its Gradle project builds the `.so`. The app CMake file does not compile a second copy.
+
+The Node tests open that core. `larkx_host_tests` covers the UTF conversion and the handle registry, including a destroy that waits for another thread and a destroy of one session from inside another. They do not boot a simulator or a device. Expo Go cannot load the native module. A development build is `npx expo prebuild` followed by `npx expo run:ios` or `npx expo run:android` in `examples/react-native-workflow`. A missing module does not fall back to the TypeScript engine. Those application builds were not run here: this environment has no Xcode and no Android SDK. The macOS CI job compiles the Objective-C++ bridge. The Android CI job compiles `liblarkxnative.so`. Neither job installs the app or boots a simulator, emulator, or device. Compiling that library is not a Gradle app install or an emulator run.
