@@ -89,7 +89,7 @@ struct Drive {
 
 Drive drive(larkx_runtime* runtime, const char* run_id, int64_t now = 20) {
   Drive out;
-  char detail[65536];
+  char detail[65536] = {};
   size_t needed = 0;
   larkx_error error{};
   out.code = larkx_run_drive(runtime, run_id, now, &out.request, detail, sizeof(detail), &needed, &error);

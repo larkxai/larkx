@@ -1294,19 +1294,23 @@ struct Runtime::Impl {
     return finish_delegate(state, *row, attempt_id, number, out);
   }
 
-  Status issue_poll(State state, const AgentRecord& agent, const Fence& fence, int64_t now_ms, const std::string& step_key,
-                    const std::string& action, ExecRequest& out, bool& again) {
+  Status issue_poll(State state, const AgentRecord& agent, const Fence& fence, int64_t now_ms, const std::string& step_key_ref,
+                    const std::string& action_ref, ExecRequest& out, bool& again) {
+    // step_key_ref aliases a step inside state. load() replaces state, so keep owned copies.
+    const std::string step_key = step_key_ref;
+    const std::string action = action_ref;
+    const std::string run_id = state.run.run_id;
     const Delegation* existing = find_delegation(state, step_key);
     if (existing == nullptr) {
       return state_error("Remote delegation is missing.");
     }
     const std::string current_id = existing->operation_id + ":" + std::to_string(existing->poll_epoch);
-    const auto inflight = remote_issued.find(state.run.run_id);
+    const auto inflight = remote_issued.find(run_id);
     if (existing->poll_inflight && inflight != remote_issued.end() && inflight->second == current_id &&
         existing->inflight_action == action) {
       return finish_delegate(state, *existing, current_id, existing->poll_epoch, out);
     }
-    if (auto status = store->apply(state.run.run_id, [&](State& next) {
+    if (auto status = store->apply(run_id, [&](State& next) {
           for (auto& row : next.delegations) {
             if (row.step_key != step_key) {
               continue;
@@ -1326,7 +1330,7 @@ struct Runtime::Impl {
         !status.ok()) {
       return status;
     }
-    if (auto status = load(state.run.run_id, state); !status.ok()) {
+    if (auto status = load(run_id, state); !status.ok()) {
       return status;
     }
     const Delegation* row = find_delegation(state, step_key);
@@ -1554,7 +1558,9 @@ struct Runtime::Impl {
     if (state.steps.back().status == StepStatus::Running) {
       return resume_running_remote(std::move(state), agent, fence, now_ms, out, again);
     }
-    return continue_remote(std::move(state), agent, fence, now_ms, state.steps.back(), out, again);
+    // Copy before the move. Argument order may evaluate back() on the moved-from vector.
+    const Step recorded = state.steps.back();
+    return continue_remote(std::move(state), agent, fence, now_ms, recorded, out, again);
   }
 
 
@@ -1868,7 +1874,8 @@ struct Runtime::Impl {
           return state_error("Replay diverged at " + tool_key + ".");
         }
         if (recorded->execution_target == ExecutionTarget::Hybrid && recorded->status != StepStatus::Completed) {
-          return continue_remote(std::move(state), agent, fence, now_ms, *recorded, out, again);
+          const Step remote_step = *recorded;
+          return continue_remote(std::move(state), agent, fence, now_ms, remote_step, out, again);
         }
         if (tool != nullptr && recorded->effect_type != tool->effect) {
           return state_error("Step \"" + tool_key + "\" changed its effect class.");

@@ -1,7 +1,15 @@
-import { mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 
 import { describe, expect, it } from "vitest";
 
@@ -15,17 +23,14 @@ describe("packed Node SDK", () => {
       encoding: "utf8",
     });
     expect(build.status, build.stderr).toBe(0);
-    const pack = spawnSync(
-      "pnpm",
-      ["--filter", "@larkxai/node", "pack", "--pack-destination", packed],
-      {
-        cwd: root,
-        encoding: "utf8",
-      },
-    );
+    const packageDir = join(root, "packages/node");
+    const pack = spawnSync("pnpm", ["--dir", packageDir, "pack", "--pack-destination", packed], {
+      cwd: root,
+      encoding: "utf8",
+    });
     try {
-      expect(pack.status, pack.stderr).toBe(0);
-      const tarball = join(packed, "larkxai-node-0.1.2.tgz");
+      expect(pack.status, `${pack.stdout}\n${pack.stderr}`).toBe(0);
+      const tarball = packedTarball(pack, packed, packageDir);
       const project = mkdtempSync(join(tmpdir(), "larkx-install-"));
       writeFileSync(
         join(project, "package.json"),
@@ -66,10 +71,41 @@ describe("packed Node SDK", () => {
       expect(bundled).not.toContain("@larkxai/protocol");
       expect(bundled).not.toContain("react-native/build");
     } finally {
+      removePackedTarballs(packageDir);
       spawnSync("node", ["packages/node/scripts/prepare-publish.mjs", "restore"], { cwd: root });
     }
   }, 180_000);
 });
+
+function packedTarball(
+  pack: SpawnSyncReturns<string>,
+  destination: string,
+  packageDir: string,
+): string {
+  const roots = [destination, packageDir, root, process.cwd()];
+  const printed = pack.stdout
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.endsWith(".tgz"))
+    .flatMap((line) => (line.startsWith("/") ? [line] : roots.map((dir) => join(dir, line))));
+  const discovered = roots.flatMap((dir) =>
+    readdirSync(dir)
+      .filter((name) => name.endsWith(".tgz"))
+      .map((name) => join(dir, name)),
+  );
+  const found = [...printed, ...discovered].find((path) => existsSync(path));
+  expect(found, `${pack.stdout}\n${pack.stderr}\n${discovered.join("\n")}`).toBeTruthy();
+  return found ?? "";
+}
+
+function removePackedTarballs(packageDir: string): void {
+  for (const dir of [packageDir, root]) {
+    for (const name of readdirSync(dir)) {
+      if (name.endsWith(".tgz")) unlinkSync(join(dir, name));
+    }
+  }
+}
 
 const agentScript = `
 import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/node";
