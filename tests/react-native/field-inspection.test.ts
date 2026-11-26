@@ -5,7 +5,10 @@ import {
   commitOnce,
   type EffectStore,
 } from "../../examples/react-native-agent/src/field-effects.js";
+import { operationLabel } from "../../examples/react-native-agent/src/operation-label.js";
 import { scriptedInspectionResponse } from "../../examples/react-native-agent/src/scripted-inspection.js";
+import { telemetryPresentation } from "../../examples/react-native-agent/src/telemetry-label.js";
+import type { TelemetryDeliveryStatus } from "@larkxai/host";
 
 describe("field inspection demo", () => {
   it("stores an idempotent effect once for an operation id", async () => {
@@ -70,10 +73,16 @@ describe("field inspection demo", () => {
       { role: "tool", name: "read_inspection_notes", content: "notes" },
     ]);
     expect(afterNotes.calls[0]?.name).toBe("get_equipment_details");
+    const afterDetails = scriptedInspectionResponse([
+      { role: "tool", name: "read_inspection_notes", content: "notes" },
+      { role: "tool", name: "get_equipment_details", content: "spec" },
+    ]);
+    expect(afterDetails.calls[0]?.name).toBe("get_previous_inspections");
     const delegated = scriptedInspectionResponse(
       [
         { role: "tool", name: "read_inspection_notes", content: "notes" },
         { role: "tool", name: "get_equipment_details", content: "spec" },
+        { role: "tool", name: "get_previous_inspections", content: "history" },
       ],
       { delegate: true },
     );
@@ -83,19 +92,85 @@ describe("field inspection demo", () => {
       equipment: "Industrial water pump",
       component: "Mechanical seal",
     });
-    const afterSave = scriptedInspectionResponse([
-      { role: "tool", name: "read_inspection_notes", content: "notes" },
-      { role: "tool", name: "get_equipment_details", content: "spec" },
-      { role: "tool", name: "save_inspection_report", content: "saved" },
-    ]);
-    expect(afterSave.calls[0]?.name).toBe("record_part_replacement");
+    const withSupplier = scriptedInspectionResponse(
+      [
+        { role: "tool", name: "read_inspection_notes", content: "notes" },
+        { role: "tool", name: "get_equipment_details", content: "spec" },
+        { role: "tool", name: "get_previous_inspections", content: "history" },
+        {
+          role: "tool",
+          name: "procurement-agent",
+          content: "Fictional supplier Northwind Seal Co.",
+        },
+      ],
+      { delegate: true },
+    );
+    expect(withSupplier.calls[0]?.name).toBe("save_inspection_report");
+    expect(withSupplier.calls[0]?.arguments.report).toContain("Northwind Seal Co.");
+    expect(withSupplier.calls[0]?.arguments.report).not.toContain("notes");
     const done = scriptedInspectionResponse([
       { role: "tool", name: "read_inspection_notes", content: "notes" },
       { role: "tool", name: "get_equipment_details", content: "spec" },
+      { role: "tool", name: "get_previous_inspections", content: "history" },
       { role: "tool", name: "save_inspection_report", content: "saved" },
-      { role: "tool", name: "record_part_replacement", content: "issued" },
     ]);
     expect(done.finish).toBe("stop");
     expect(done.calls).toEqual([]);
+    expect(done.message).toMatch(/saved on this device/);
+  });
+
+  it("labels runtime observations without inventing a step", () => {
+    expect(
+      operationLabel({
+        type: "tool-requested",
+        runId: "run-1",
+        toolName: "read_inspection_notes",
+        atMs: 1,
+      })?.label,
+    ).toBe("Reading inspection notes");
+    expect(
+      operationLabel({
+        type: "remote-waiting",
+        runId: "run-1",
+        toolName: "procurement-agent",
+        atMs: 1,
+      }),
+    ).toEqual({ label: "Waiting for remote research", kind: "remote" });
+    expect(
+      operationLabel({
+        type: "tool-requested",
+        runId: "run-1",
+        stepKey: "tool-0-0",
+        atMs: 1,
+      }),
+    ).toBeNull();
+  });
+
+  it("names telemetry from the exporter status", () => {
+    expect(telemetryPresentation(status({ enabled: false }))).toBe("Disabled");
+    expect(telemetryPresentation(status({ phase: "offline", lastError: "offline" }))).toBe(
+      "Offline",
+    );
+    expect(
+      telemetryPresentation(status({ phase: "unauthorized", lastError: "unauthorized" })),
+    ).toBe("Unauthorized");
+    expect(telemetryPresentation(status({ lastError: "redirected" }))).toBe("Configuration error");
+    expect(telemetryPresentation(status({ phase: "pending", pendingEvents: 2 }))).toBe("Pending");
+    expect(telemetryPresentation(status({ phase: "idle", lastSyncedAt: 10 }))).toBe("Synchronized");
   });
 });
+
+function status(overrides: Partial<TelemetryDeliveryStatus>): TelemetryDeliveryStatus {
+  return {
+    enabled: true,
+    phase: "idle",
+    pendingEvents: 0,
+    lastSyncedAt: null,
+    lastError: null,
+    installationId: null,
+    observations: [],
+    droppedObservations: 0,
+    exportBehind: false,
+    ...overrides,
+  };
+}

@@ -1,9 +1,8 @@
-# React Native agents
+# Field inspection
 
-One Expo app with two screens, both on the C++ runtime:
+The Expo app is a fictional industrial inspection assistant. It is a demonstration of the LarkX runtime, not a commercial inspection product. The walkthrough, recording script, and device checklist are in [docs/demo/flagship-mobile-demo.md](../../docs/demo/flagship-mobile-demo.md).
 
-- Scripted agent. A fixed model drives the native host and prints the run id, operation ids, and ABI.
-- Field inspection. Scripted mode and local Cactus mode. Field notes stay in `larkx-field-data.db`. The run record stays in `larkx-field.db`. Reset does not delete those files.
+The home screen is the inspection. Settings holds the model, the remote endpoint, Cloud telemetry, and the developer controls. The scripted runtime lab is behind Settings.
 
 ```bash
 pnpm install
@@ -11,7 +10,7 @@ pnpm build
 pnpm --filter @larkxai/example-react-native-agent start
 ```
 
-Expo Go cannot load `LarkXNativeCore` or Cactus. Use a development build:
+Node.js 22.13 or newer and pnpm 10.33.4. Expo SDK 58. React Native 0.88. Expo Go cannot load `LarkXNativeCore` or Cactus. Use a development build:
 
 ```bash
 pnpm --filter @larkxai/example-react-native-agent exec expo prebuild
@@ -19,10 +18,14 @@ pnpm --filter @larkxai/example-react-native-agent exec expo run:ios
 pnpm --filter @larkxai/example-react-native-agent exec expo run:android
 ```
 
-This repository has not executed that build on a simulator or a phone. The checklist is [docs/validation/on-device-agent.md](../../docs/validation/on-device-agent.md).
+This repository has not executed that build on a simulator or a phone.
 
-Scripted field runs use agent `field-assistant-scripted`. Local runs use `field-assistant-local`. Resume a run with the same mode. Prepare downloads and initializes one Cactus instance. Leaving the screen calls `destroy()`. Those model calls have not been executed on a device.
+Scripted test mode uses agent `field-assistant-scripted`. The tool sequence is fixed. It is not on-device inference. Local AI mode uses `field-assistant-local` and `qwen3-0.6b` through Cactus. Download the model from Settings before the recorded run. Resume a run with the same mode. Leaving the screen calls `destroy()` on the model.
 
-Telemetry stays off until a project id and an `lkx_ing_` key are applied. The status line shows the phase, pending count, last sync, and last error code. Flush sends the pending batch. The inspection still runs when that request fails. Current LarkX Cloud rejects storage schema 3, so point the optional endpoint at a collector that accepts the contract in [docs/cloud-native-telemetry.md](../../docs/cloud-native-telemetry.md) until Cloud does.
+The inspection database is `larkx-field.db`. Application tool rows, including saved reports, are in `larkx-field-data.db`. Starting another inspection does not delete those files.
 
-The field screen can register `procurement-agent` when an endpoint is set. Use the computer's LAN address, such as `http://192.168.1.20:8787`, while `examples/remote-task` is running. `localhost` points at the phone. The network control reports waiting for a network without failing the run. The timeline marks hybrid steps separately from local steps and shows the client operation id and the remote task id. Cancel uses `run.cancel()`. A blocked unknown delegation can be reconciled from the existing buttons. This screen has not been run on a phone.
+Telemetry stays off until a project id and an `lkx_ing_` key are applied. The key is written to the platform keystore, not to SQLite. Apply it before the recorded run. Earlier runs are not backfilled. The demo flush interval is 3 seconds. The SDK default stays 15 seconds. Production `https://cloud.larkx.ai` still accepts schema 1 only. Point the endpoint at a local collector that accepts schema 3 until production is redeployed.
+
+Remote research uses A2A by default. Point it at `examples/langgraph-a2a-agent` on the computer's LAN address, such as `http://192.168.1.20:8791`. `localhost` on the phone is the phone. The runtime network switch is an explicit input. Airplane mode does not flip it by itself.
+
+The recorded script reads notes, specifications, and previous inspections, optionally delegates supplier research, and saves one report. `record_part_replacement` stays registered for an unknown-outcome check. The script does not call it.
