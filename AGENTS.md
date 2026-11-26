@@ -4,15 +4,67 @@ Instructions for people and coding agents changing LarkX.
 
 ## What this repository is
 
-LarkX is an open-source, local-first durable orchestration runtime for on-device and hybrid AI agents. One C++ runtime owns orchestration, the SQLite execution record, and remote delegation state. `@larkxai/node` and `@larkxai/react-native` are the only published SDKs. They share one host driver. The host sends HTTP. Optional Cloud observability belongs in `larkxai/cloud`, not here. This repository does not host remote agents.
+LarkX is the durable execution runtime for mobile-first, offline-first AI agents. It fills gaps in the existing agent ecosystem. It does not replace LangGraph, Google ADK, the OpenAI Agents SDK, or an inference engine.
+
+One C++ runtime owns orchestration, the SQLite execution record, and remote delegation state. `@larkxai/react-native` is the only public npm SDK. `@larkxai/node` is a private workspace package used to test that runtime without building a mobile application. Both use one host driver. The host sends HTTP. Optional Cloud observability belongs in `larkxai/cloud`, not here. This repository does not host remote agents.
+
+## Product and engineering philosophy
+
+LarkX is an early-stage product. Prefer a working integration and a validated device run over a new subsystem.
+
+### Integrate before building
+
+Before implementing a capability, check whether a library, framework, or standard already solves it. Prefer that integration.
+
+### Focus on differentiation
+
+Build infrastructure only when it addresses an on-device execution requirement that existing solutions do not cover well enough: durable local execution, offline operation, the mobile process lifecycle, embedded persistence, native device tools, constrained resources, and durable coordination with a remote agent.
+
+### Avoid unnecessary competition
+
+Do not build a second server-side agent framework, a model host, an inference engine, or a proprietary agent protocol when an established project already covers that problem. A custom replacement needs a validated customer requirement.
+
+### Prioritize time to market
+
+Developer adoption, working integrations, physical-device validation, and customer feedback come before architectural completeness.
+
+Before a significant feature, answer:
+
+1. What specific problem are we solving?
+2. Does an existing solution already solve it?
+3. Can we integrate that solution?
+4. Does this feature strengthen on-device differentiation?
+5. Is it necessary at the current stage?
+
+### Build, integrate, or leave out
+
+| Capability                             | Strategy        |
+| -------------------------------------- | --------------- |
+| Durable on-device execution            | Build           |
+| Mobile lifecycle management            | Build           |
+| Offline-first agent execution          | Build           |
+| Embedded execution persistence         | Build           |
+| Native device integration              | Build           |
+| Durable remote task coordination       | Build           |
+| Privacy-aware orchestration            | Build           |
+| Local model inference                  | Integrate       |
+| Server-side agent orchestration        | Integrate       |
+| Agent communication protocols          | Adopt standards |
+| External tools                         | Integrate       |
+| Cloud inference                        | Integrate       |
+| Remote agent hosting                   | Out of scope    |
+| Model training                         | Out of scope    |
+| General-purpose server workflow engine | Out of scope    |
+
+Local inference integrates Cactus and, when developers ask, other existing engines. Remote agents are independently deployed agents built with LangGraph, Google ADK, the OpenAI Agents SDK, or another framework that exposes a compatible interface. A2A is the planned standard for that link. The HTTP task transport stays as a generic mechanism and as the test foundation. It is not a proprietary ecosystem. MCP is a possible later integration for external tools, not current work. Cloud models enter through the model adapter. This repository does not host models or remote agents.
 
 ## What is implemented
 
 - `native/` — the C++ runtime. ABI version 3. SQLite schema version 2. The agent loop asks the host to invoke a model, a tool, or a remote delegation and then commits the submitted result.
-- `@larkxai/protocol` — private workspace module. Version 1 states, errors, effect classes, and canonical JSON. Bundled into the public SDKs. Not published on its own.
+- `@larkxai/protocol` — private workspace module. Version 1 states, errors, effect classes, and canonical JSON. Bundled into `@larkxai/react-native`. Not published on its own.
 - `@larkxai/host` — private workspace module. The TypeScript driver. It does not plan steps. It must not import React Native, Node, Expo, or Cactus.
-- `@larkxai/node` — public Node SDK. It vendors the C++ sources and builds `packages/node/build/larkx_native.node` with `packages/node/scripts/build-native.sh`.
-- `@larkxai/react-native` — public React Native SDK. `createRuntime` comes from the package root. Cactus is `@larkxai/react-native/cactus`. Expo Go cannot load the native module.
+- `@larkxai/node` — private Node host. It vendors the C++ sources and builds `packages/node/build/larkx_native.node` with `packages/node/scripts/build-native.sh`. Keep the addon, the crash tests, and the remote-delegation tests. Do not publish this package.
+- `@larkxai/react-native` — the public npm SDK. `createRuntime` comes from the package root. Cactus is `@larkxai/react-native/cactus`. Expo Go cannot load the native module. Swift and Kotlin SDKs are planned and are not in this repository yet.
 - `@larkxai/cactus` — private workspace module used by the React Native Cactus subpath. The C++ runtime does not import it. Node does not depend on it.
 - `@larkxai/telemetry` — private workspace module. Metadata batch contract and HTTP client. The C++ runtime does not feed it a journal.
 - `examples/node-agent` — scripted Node agent and the `SIGKILL` demo.
@@ -29,7 +81,7 @@ Do not add a public package that only re-exports types. Planned work stays in [R
 
 - `@larkxai/protocol`, `@larkxai/host`, and `@larkxai/telemetry` must not import `node:*`, `react-native`, `fs`, `path`, a database driver, or a model provider. ESLint and `tests/boundaries/imports.test.ts` enforce this.
 - The C++ runtime must not depend on React Native, Node.js, Expo, Cactus, or another model SDK.
-- Published SDK artifacts must not depend on unpublished workspace packages. Bundle the host and protocol into `@larkxai/node` and `@larkxai/react-native`.
+- The published React Native artifact must not depend on unpublished workspace packages. Bundle the host and protocol into `@larkxai/react-native`. The private Node host bundles them the same way so its pack tests stay honest.
 - `workflow_runs` and `workflow_steps` are authoritative. `workflow_events` is an append-only journal in the same transaction. Replay does not fold events back into state.
 - The core assigns agent step keys. Completed model and tool steps are not executed again.
 - `pure` and `idempotent` interrupted steps may retry. `idempotent` retries keep the same `operationId`. `non-idempotent` interrupted steps become `UNKNOWN_OUTCOME` and the run becomes `BLOCKED`.
@@ -78,4 +130,4 @@ Node.js must be 22.13 or newer. The lockfile is pinned to pnpm 10.33.4.
 
 ## Publishing
 
-`.github/workflows/ci.yml` is the build. `.github/workflows/release.yml` publishes `@larkxai/node` and `@larkxai/react-native` from `main` after that build succeeds, including GitHub Releases and GitHub Packages. The npm scope is `@larkxai`. Changesets `access` is `public`. The fixed group is only those two packages. Private workspace packages are not versioned or tagged. Do not commit a registry token. Do not publish the root package, a private workspace package, or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. One `NPM_TOKEN` covers the whole `@larkxai` scope. `@larkxai/node` requires Node.js 22.13 or newer. `pnpm version-packages` copies the `@larkxai/node` version into `SDK_VERSION` in `@larkxai/telemetry`.
+`.github/workflows/ci.yml` is the build. `.github/workflows/release.yml` publishes `@larkxai/react-native` from `main` after that build succeeds, including GitHub Releases and GitHub Packages. The npm scope is `@larkxai`. Changesets `access` is `public`. There is no fixed version group. Private workspace packages, including `@larkxai/node`, are not versioned or tagged. Do not commit a registry token. Do not publish the root package, a private workspace package, or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. One `NPM_TOKEN` covers the whole `@larkxai` scope. Previously published `@larkxai/node` versions stay on the registry. Do not publish a new one from this repository. The Node host still requires Node.js 22.13 or newer. `pnpm version-packages` copies the `@larkxai/react-native` version into `SDK_VERSION` in `@larkxai/telemetry`.

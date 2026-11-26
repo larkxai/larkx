@@ -1,6 +1,6 @@
 # Reference remote task fixture
 
-A small HTTP service for the delegation protocol. It stores tasks in a JSON file. It does not run a model, and it is not a LarkX hosting product. Every supplier recommendation is simulated.
+A small HTTP service for the current task transport. It is the test foundation for delegation, not a product protocol and not a LarkX hosting service. A2A is the planned standard. The fixture stores tasks in a JSON file. It does not run a model. Every supplier recommendation is simulated.
 
 ```bash
 pnpm install

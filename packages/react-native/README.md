@@ -1,6 +1,6 @@
 # @larkxai/react-native
 
-React Native SDK for the shared C++ runtime.
+Public SDK for the shared C++ runtime. This is the npm package an application installs. Swift and Kotlin SDKs are planned and are not this package.
 
 ```bash
 npm install @larkxai/react-native

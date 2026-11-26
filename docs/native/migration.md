@@ -13,7 +13,7 @@ The C++ runtime in `native/` is the execution engine. This note is the current b
 
 ## Who does what
 
-`larkx_run_drive` returns one request: invoke a model, invoke a tool, wait, reconcile, or finish. The private host driver performs that request and submits the result. `@larkxai/node` loads `larkx_native.node` from its own package. `@larkxai/react-native` calls `NativeModules.LarkXNativeCore`. Neither SDK plans the next step.
+`larkx_run_drive` returns one request: invoke a model, invoke a tool, wait, reconcile, or finish. The private host driver performs that request and submits the result. `@larkxai/react-native` is the public SDK and calls `NativeModules.LarkXNativeCore`. The private Node host loads `larkx_native.node` for tests. Neither binding plans the next step.
 
 The core does not import React Native, Node, Cactus, or any other model library.
 

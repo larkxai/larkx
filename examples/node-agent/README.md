@@ -1,6 +1,6 @@
 # Node agent
 
-A scripted agent on the shared C++ runtime. It does not download a model and it does not use the network. The same script is the process-termination demo.
+Internal Node host for a scripted agent on the shared C++ runtime. It is not a published SDK. It does not download a model and it does not use the network. The same script is the process-termination demo.
 
 ```bash
 pnpm install

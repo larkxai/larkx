@@ -1,7 +1,8 @@
 {
   "name": "@larkxai/node",
   "version": "0.2.0",
-  "description": "Node.js SDK for the shared LarkX C++ runtime.",
+  "private": true,
+  "description": "Internal Node.js host for the shared C++ runtime. Not a published SDK.",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
@@ -37,9 +38,6 @@
   "homepage": "https://github.com/larkxai/larkx/tree/main/packages/node#readme",
   "bugs": {
     "url": "https://github.com/larkxai/larkx/issues"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "engines": {
     "node": ">=22.13.0"
