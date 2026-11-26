@@ -2,6 +2,8 @@ export { bindNativeAppState, createRuntime, defineTool, scriptedModel, sqlite } 
 
 export {
   remoteAgent,
+  A2A_PROTOCOL_VERSION,
+  A2A_REMOTE_CAPABILITIES,
   HTTP_REMOTE_CAPABILITIES,
   linkAbortSignal,
   normalizeEndpoint,
@@ -10,11 +12,15 @@ export {
   transportId,
   type DelegationView,
   type RemoteAgent,
+  type RemoteA2aCall,
+  type RemoteA2aTransport,
   type RemoteCapabilities,
   type RemoteHttpCall,
   type RemoteHttpResponse,
   type RemoteHttpTransport,
+  type RemoteTransport,
 } from "./remote.js";
+export { performA2aDelegation } from "./a2a.js";
 
 export {
   ToolFailure,

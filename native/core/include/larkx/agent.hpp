@@ -24,6 +24,7 @@ struct RemoteRegistration {
   std::string description;
   std::string schema_json;
   std::string endpoint;
+  std::string transport = "http";
   DelegationCapabilities capabilities;
   int64_t poll_interval_ms = 1000;
 };
@@ -83,6 +84,7 @@ class Runtime {
                           const std::string& output_json, const std::string& message, int64_t now_ms);
   Status submit_delegation(const std::string& run_id, const std::string& request_id, const std::string& body_json,
                            int64_t now_ms);
+  Status provide_input(const std::string& run_id, const std::string& step_key, const std::string& text, int64_t now_ms);
   Status delegations_json(const std::string& run_id, std::string& out);
   Status pause(const std::string& run_id, int64_t now_ms);
   Status resume_run(const std::string& run_id, int64_t now_ms);

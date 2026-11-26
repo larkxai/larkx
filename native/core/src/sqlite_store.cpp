@@ -227,6 +227,11 @@ CREATE TABLE delegations (
   inflight_action TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
+  context_id TEXT,
+  remote_status TEXT,
+  continuation_json TEXT,
+  remote_identity TEXT,
+  remote_message TEXT,
   PRIMARY KEY (run_id, step_key),
   UNIQUE (run_id, operation_id),
   FOREIGN KEY (run_id, step_key) REFERENCES workflow_steps(run_id, step_key)
@@ -306,6 +311,22 @@ Status schema_version(sqlite3* db, int32_t& version) {
     return status;
   }
   version = found ? static_cast<int32_t>(value) : 0;
+  return Status::success();
+}
+
+Status add_delegation_identity_columns(sqlite3* db) {
+  const char* statements[] = {
+      "ALTER TABLE delegations ADD COLUMN context_id TEXT",
+      "ALTER TABLE delegations ADD COLUMN remote_status TEXT",
+      "ALTER TABLE delegations ADD COLUMN continuation_json TEXT",
+      "ALTER TABLE delegations ADD COLUMN remote_identity TEXT",
+      "ALTER TABLE delegations ADD COLUMN remote_message TEXT",
+  };
+  for (const char* statement : statements) {
+    if (auto status = exec_sql(db, statement); !status.ok()) {
+      return status;
+    }
+  }
   return Status::success();
 }
 
@@ -401,7 +422,7 @@ Status Store::migrate() {
       return status;
     }
     sqlite3_stmt* insert = nullptr;
-    if (sqlite3_prepare_v2(db_, "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?)", -1, &insert,
+    if (sqlite3_prepare_v2(db_, "INSERT INTO schema_migrations (version, applied_at) VALUES (3, ?)", -1, &insert,
                            nullptr) != SQLITE_OK) {
       return storage(sqlite3_errmsg(db_));
     }
@@ -418,8 +439,8 @@ Status Store::migrate() {
     if (auto status = schema_version(db_, version); !status.ok()) {
       return status;
     }
-    if (version > 2) {
-      return storage("Database schema " + std::to_string(version) + " is newer than storage schema 2.");
+    if (version > 3) {
+      return storage("Database schema " + std::to_string(version) + " is newer than storage schema 3.");
     }
     if (version == 1) {
       Transaction tx(db_);
@@ -429,8 +450,11 @@ Status Store::migrate() {
       if (auto status = exec_sql(db_, kDelegationTable); !status.ok()) {
         return status;
       }
+      if (auto status = add_delegation_identity_columns(db_); !status.ok()) {
+        return status;
+      }
       sqlite3_stmt* upgrade = nullptr;
-      if (sqlite3_prepare_v2(db_, "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?)", -1, &upgrade,
+      if (sqlite3_prepare_v2(db_, "INSERT INTO schema_migrations (version, applied_at) VALUES (3, ?)", -1, &upgrade,
                              nullptr) != SQLITE_OK) {
         return storage(sqlite3_errmsg(db_));
       }
@@ -442,9 +466,34 @@ Status Store::migrate() {
       if (auto status = tx.commit(); !status.ok()) {
         return status;
       }
-    } else if (version != 2) {
+      version = 3;
+    }
+    if (version == 2) {
+      Transaction tx(db_);
+      if (auto status = tx.begin(); !status.ok()) {
+        return status;
+      }
+      if (auto status = add_delegation_identity_columns(db_); !status.ok()) {
+        return status;
+      }
+      sqlite3_stmt* upgrade = nullptr;
+      if (sqlite3_prepare_v2(db_, "INSERT INTO schema_migrations (version, applied_at) VALUES (3, ?)", -1, &upgrade,
+                             nullptr) != SQLITE_OK) {
+        return storage(sqlite3_errmsg(db_));
+      }
+      Statement upgrade_stmt(upgrade);
+      sqlite3_bind_int64(upgrade_stmt.get(), 1, 0);
+      if (auto status = step_done(upgrade_stmt.get(), db_); !status.ok()) {
+        return status;
+      }
+      if (auto status = tx.commit(); !status.ok()) {
+        return status;
+      }
+      version = 3;
+    }
+    if (version != 3) {
       return storage(
-          "This LarkX database is not storage schema 2. "
+          "This LarkX database is not storage schema 3. "
           "It was not migrated and it was not deleted. Open a new database file.");
     }
   }
@@ -652,7 +701,8 @@ Status Store::load_unlocked(const std::string& run_id, std::optional<State>& out
                          "SELECT run_id, step_key, operation_id, remote_agent, endpoint, transport_id, input_json, "
                          "state, task_id, result_json, cap_dedupe, cap_lookup, cap_task, cap_poll, cap_cancel, "
                          "cap_persistent, poll_interval_ms, poll_epoch, poll_inflight, poll_failures, cancel_intent, "
-                         "inflight_action, created_at, updated_at FROM delegations WHERE run_id = ? "
+                         "inflight_action, created_at, updated_at, context_id, remote_status, continuation_json, "
+                         "remote_identity, remote_message FROM delegations WHERE run_id = ? "
                          "ORDER BY created_at ASC, step_key ASC",
                          -1, &delegation_raw, nullptr) != SQLITE_OK) {
     return storage(sqlite3_errmsg(db_));
@@ -694,6 +744,11 @@ Status Store::load_unlocked(const std::string& run_id, std::optional<State>& out
     row.inflight_action = column_text(delegations.get(), 21);
     row.created_at = sqlite3_column_int64(delegations.get(), 22);
     row.updated_at = sqlite3_column_int64(delegations.get(), 23);
+    row.context_id = column_optional_text(delegations.get(), 24);
+    row.remote_status = column_optional_text(delegations.get(), 25);
+    row.continuation_json = column_optional_text(delegations.get(), 26);
+    row.remote_identity = column_optional_text(delegations.get(), 27);
+    row.remote_message = column_optional_text(delegations.get(), 28);
     state.delegations.push_back(std::move(row));
   }
   out = std::move(state);
@@ -871,8 +926,9 @@ Status Store::persist(const State& before, const State& after) {
                            "INSERT INTO delegations (run_id, step_key, operation_id, remote_agent, endpoint, "
                            "transport_id, input_json, state, task_id, result_json, cap_dedupe, cap_lookup, cap_task, "
                            "cap_poll, cap_cancel, cap_persistent, poll_interval_ms, poll_epoch, poll_inflight, "
-                           "poll_failures, cancel_intent, inflight_action, created_at, updated_at) "
-                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           "poll_failures, cancel_intent, inflight_action, created_at, updated_at, context_id, "
+                           "remote_status, continuation_json, remote_identity, remote_message) "
+                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                            -1, &raw, nullptr) != SQLITE_OK) {
       return storage(sqlite3_errmsg(db_));
     }
@@ -901,6 +957,11 @@ Status Store::persist(const State& before, const State& after) {
     bind_text(stmt.get(), 22, row.inflight_action);
     sqlite3_bind_int64(stmt.get(), 23, row.created_at);
     sqlite3_bind_int64(stmt.get(), 24, row.updated_at);
+    bind_optional_text(stmt.get(), 25, row.context_id);
+    bind_optional_text(stmt.get(), 26, row.remote_status);
+    bind_optional_text(stmt.get(), 27, row.continuation_json);
+    bind_optional_text(stmt.get(), 28, row.remote_identity);
+    bind_optional_text(stmt.get(), 29, row.remote_message);
     if (auto status = step_done(stmt.get(), db_); !status.ok()) {
       return status;
     }

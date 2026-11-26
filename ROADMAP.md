@@ -30,13 +30,13 @@ The checklist is [docs/validation/on-device-agent.md](docs/validation/on-device-
 
 ## Phase 2 — Ecosystem interoperability
 
-1. A2A client interoperability.
-2. A real LangGraph remote agent. The agent is deployed on its own. It is not another LarkX runtime. Prefer A2A when that link is practical. The HTTP task transport remains the generic fallback and the current test foundation.
+1. A2A 1.0 JSON-RPC client interoperability. Implemented in the React Native SDK. Automated against a fixture and a LangGraph example. Not yet run on a phone.
+2. A real LangGraph remote agent. Implemented as `examples/langgraph-a2a-agent`. It is deployed on its own. It is not another LarkX runtime. The HTTP task transport remains the generic fallback.
 3. A Google ADK interoperability example.
 4. Privacy-aware delegation.
 5. Destination-specific data egress policies.
 
-The intended demonstration is a mobile field-inspection agent. It reads local notes, uses an on-device model, calls native tools, finds a defective component, and delegates supplier research to an independently deployed LangGraph agent. The local run stores that delegation, survives application termination, recovers the same remote task, and finishes the report on the device. The remote agent uses existing server-side infrastructure. LarkX supplies the mobile execution and coordination layer. This demonstration is the target for the interoperability milestone. It has not been validated.
+The intended demonstration is a mobile field-inspection agent. It reads local notes, uses an on-device model, calls native tools, finds a defective component, and delegates supplier research to an independently deployed LangGraph agent. The local run stores that delegation, survives application termination, recovers the same remote task, and finishes the report on the device. The Node process-death tests and the LangGraph integration test cover that sequence on a computer. The same sequence has not been run on a phone. The checklist is [docs/validation/on-device-agent.md](docs/validation/on-device-agent.md).
 
 ## Phase 3 — Developer adoption
 

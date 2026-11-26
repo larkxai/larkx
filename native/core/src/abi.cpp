@@ -702,6 +702,7 @@ larkx::AgentRegistration registration_from(const larkx_agent_spec* spec) {
       item.capabilities.cancel = remote.cancel != 0;
       item.capabilities.persistent = remote.persistent != 0;
       item.poll_interval_ms = remote.poll_interval_ms;
+      item.transport = remote.transport == nullptr || remote.transport[0] == '\0' ? "http" : remote.transport;
       agent.remote_agents.push_back(std::move(item));
     }
   }
@@ -822,6 +823,16 @@ larkx_code larkx_run_submit_delegation(larkx_runtime* runtime, const char* run_i
   }
   auto status = runtime->impl->submit_delegation(run_id == nullptr ? "" : run_id, request_id == nullptr ? "" : request_id,
                                                  body_json == nullptr ? "" : body_json, now_ms);
+  return status.ok() ? ok(err) : fail(err, status);
+}
+
+larkx_code larkx_run_provide_input(larkx_runtime* runtime, const char* run_id, const char* step_key, const char* text,
+                                  int64_t now_ms, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Remote input is missing a runtime."));
+  }
+  auto status = runtime->impl->provide_input(run_id == nullptr ? "" : run_id, step_key == nullptr ? "" : step_key,
+                                             text == nullptr ? "" : text, now_ms);
   return status.ok() ? ok(err) : fail(err, status);
 }
 

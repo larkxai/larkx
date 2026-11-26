@@ -55,10 +55,14 @@ export function FieldInspection() {
   const [held, setHeld] = useState<FailureBoundary | null>(null);
   const [busy, setBusy] = useState(false);
   const [endpoint, setEndpoint] = useState("");
+  const [transport, setTransport] = useState<"http" | "a2a">("http");
+  const [remoteInput, setRemoteInput] = useState("");
   const [online, setOnline] = useState(true);
   const onlineRef = useRef(true);
   const endpointRef = useRef("");
+  const transportRef = useRef<"http" | "a2a">("http");
   const registeredEndpoint = useRef("");
+  const registeredTransport = useRef<"http" | "a2a">("http");
 
   useEffect(() => {
     let active = true;
@@ -209,8 +213,11 @@ export function FieldInspection() {
       if (registeredMode.current !== mode) {
         throw new Error("Relaunch the app before switching between scripted and local mode.");
       }
-      if (registeredEndpoint.current !== remoteEndpoint) {
-        throw new Error("Relaunch the app before changing the remote endpoint.");
+      if (
+        registeredEndpoint.current !== remoteEndpoint ||
+        registeredTransport.current !== transportRef.current
+      ) {
+        throw new Error("Relaunch the app before changing the remote endpoint or transport.");
       }
       return existing;
     }
@@ -244,19 +251,26 @@ export function FieldInspection() {
                   required: ["objective", "equipment", "component"],
                   additionalProperties: false,
                 },
-                transport: {
-                  type: "http",
-                  endpoint: remoteEndpoint,
-                  pollIntervalMs: 1000,
-                  capabilities: {
-                    dedupe: true,
-                    lookup: true,
-                    taskId: true,
-                    poll: true,
-                    cancel: true,
-                    persistent: true,
-                  },
-                },
+                transport:
+                  transportRef.current === "a2a"
+                    ? {
+                        type: "a2a",
+                        endpoint: remoteEndpoint,
+                        pollIntervalMs: 1000,
+                      }
+                    : {
+                        type: "http",
+                        endpoint: remoteEndpoint,
+                        pollIntervalMs: 1000,
+                        capabilities: {
+                          dedupe: true,
+                          lookup: true,
+                          taskId: true,
+                          poll: true,
+                          cancel: true,
+                          persistent: true,
+                        },
+                      },
               }),
             ],
           }),
@@ -265,6 +279,7 @@ export function FieldInspection() {
     agentRef.current = agent;
     registeredMode.current = mode;
     registeredEndpoint.current = remoteEndpoint;
+    registeredTransport.current = transportRef.current;
     return agent;
   }
 
@@ -375,8 +390,10 @@ export function FieldInspection() {
       </View>
       <TextInput value={message} onChangeText={setMessage} style={styles.input} />
       <Text style={styles.label}>
-        Remote procurement endpoint. Leave empty for a local-only run. On a phone use the computer's
-        LAN address, such as http://192.168.1.20:8787. Do not use localhost.
+        Remote procurement endpoint. Leave empty for a local-only run. HTTP keeps the custom task
+        transport. A2A speaks protocol 1.0 to an authorized endpoint, such as the LangGraph example.
+        On a phone use the computer's LAN address. Do not use localhost. Discovery stays off, so the
+        card cannot change this endpoint.
       </Text>
       <TextInput
         autoCapitalize="none"
@@ -390,6 +407,52 @@ export function FieldInspection() {
         value={endpoint}
         style={styles.input}
       />
+      <View style={styles.row}>
+        <Pressable
+          onPress={() => {
+            transportRef.current = "http";
+            setTransport("http");
+          }}
+          style={styles.action}
+        >
+          <Text style={styles.actionText}>{transport === "http" ? "HTTP *" : "HTTP"}</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            transportRef.current = "a2a";
+            setTransport("a2a");
+          }}
+          style={styles.action}
+        >
+          <Text style={styles.actionText}>{transport === "a2a" ? "A2A *" : "A2A"}</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.label}>
+        Additional input for an A2A task that asked a question. This text is the continuation, not
+        the local conversation.
+      </Text>
+      <TextInput
+        onChangeText={setRemoteInput}
+        placeholder="Model P-104"
+        placeholderTextColor="#7f9086"
+        value={remoteInput}
+        style={styles.input}
+      />
+      <Pressable
+        onPress={() => {
+          const run = runRef.current;
+          if (run === null) {
+            return;
+          }
+          void run.provideInput(remoteInput).then(
+            () => push("Sent additional remote input."),
+            (error: unknown) => push(textOf(error)),
+          );
+        }}
+        style={styles.action}
+      >
+        <Text style={styles.actionText}>Send remote input</Text>
+      </Pressable>
       <Pressable
         onPress={() => {
           onlineRef.current = !onlineRef.current;
@@ -515,7 +578,8 @@ function formatEvent(event: HostEvent): string {
   const action = event.action === undefined ? "" : ` ${event.action}`;
   const task = event.taskId === undefined ? "" : ` task ${event.taskId}`;
   const waiting = event.waitingFor === undefined ? "" : ` ${event.waitingFor}`;
-  return `${event.type}${action}${waiting}${event.stepKey === undefined ? "" : ` ${event.stepKey}`}${operation}${task}${attempt}`;
+  const prompt = event.prompt === undefined ? "" : ` prompt ${event.prompt}`;
+  return `${event.type}${action}${waiting}${prompt}${event.stepKey === undefined ? "" : ` ${event.stepKey}`}${operation}${task}${attempt}`;
 }
 
 async function formatRun(runtime: Runtime, run: Run): Promise<string> {
@@ -527,9 +591,20 @@ async function formatRun(runtime: Runtime, run: Run): Promise<string> {
     .map((step) => `${step.executionTarget} ${step.stepKey} ${step.operationId}`)
     .join(", ");
   const remote = delegations
-    .map(
-      (item) =>
-        `${item.state} op ${item.operationId} task ${item.taskId ?? "none"}${item.cancelIntent ? " cancel" : ""}`,
+    .map((item) =>
+      [
+        item.transport,
+        item.state,
+        `op ${item.operationId}`,
+        `task ${item.taskId ?? "none"}`,
+        `context ${item.contextId ?? "none"}`,
+        `identity ${item.remoteIdentity ?? "none"}`,
+        `status ${item.remoteStatus ?? "none"}`,
+        item.prompt === null ? "" : `prompt ${item.prompt}`,
+        item.cancelIntent ? "cancel" : "",
+      ]
+        .filter((part) => part.length > 0)
+        .join(" "),
     )
     .join(", ");
   const retries = history.steps.filter((step) => step.attemptCount > 1).length;

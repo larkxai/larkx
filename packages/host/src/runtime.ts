@@ -1,7 +1,9 @@
 import type { EffectType, JsonObject, JsonValue } from "@larkxai/protocol";
 import { isErrorCode, LarkxError, type ErrorCode } from "@larkxai/protocol";
 
+import { performA2aDelegation } from "./a2a.js";
 import {
+  A2A_REMOTE_CAPABILITIES,
   performHttpDelegation,
   resolvedCapabilities,
   transportId,
@@ -257,7 +259,8 @@ export interface HostEvent {
     | "run-paused"
     | "remote-requested"
     | "remote-response"
-    | "remote-waiting";
+    | "remote-waiting"
+    | "remote-input-required";
   readonly runId: string;
   readonly stepKey?: string;
   readonly operationId?: string;
@@ -266,6 +269,8 @@ export interface HostEvent {
   readonly action?: string;
   readonly outcome?: string;
   readonly taskId?: string;
+  readonly contextId?: string;
+  readonly prompt?: string;
   readonly waitingFor?: string;
   readonly atMs: number;
 }
@@ -549,12 +554,16 @@ export class Runtime {
         modelMaxIntervalMs: options.modelRetry?.maxIntervalMs ?? -1,
         modelBackoff: options.modelRetry?.backoff ?? "",
         remoteAgents: [...remotes.values()].map((remote) => {
-          const capabilities = resolvedCapabilities(remote.transport.capabilities);
+          const capabilities =
+            remote.transport.type === "a2a"
+              ? A2A_REMOTE_CAPABILITIES
+              : resolvedCapabilities(remote.transport.capabilities);
           return {
             name: remote.name,
             description: remote.description,
             schema: remote.schema as unknown as JsonValue,
             endpoint: remote.transport.endpoint,
+            transport: remote.transport.type,
             pollIntervalMs: remote.transport.pollIntervalMs ?? 0,
             dedupe: capabilities.dedupe,
             lookup: capabilities.lookup,
@@ -921,6 +930,11 @@ export class Run {
     resolve(value: ReconcileInput): void;
     reject(error: LarkxError): void;
   } | null = null;
+  private inputWait: {
+    resolve(value: string): void;
+    reject(error: LarkxError): void;
+  } | null = null;
+  private pendingInput: string | null = null;
 
   constructor(
     private readonly runtime: Runtime,
@@ -940,6 +954,8 @@ export class Run {
     this.wakePause();
     this.reconcileWait?.reject(closedError());
     this.reconcileWait = null;
+    this.inputWait?.reject(closedError());
+    this.inputWait = null;
     if (!this.settled) {
       this.finish({ ok: false, error: closedError() });
     }
@@ -1005,7 +1021,42 @@ export class Run {
     this.wakePause();
     this.reconcileWait?.reject(cancelled("Execution cancelled."));
     this.reconcileWait = null;
+    this.inputWait?.reject(cancelled("Execution cancelled."));
+    this.inputWait = null;
     await this.runtime.call("cancel", { runId: this.runId, nowMs: this.runtime.now() });
+  }
+
+  /**
+   * Answers one remote input request with text meant for that remote agent.
+   * The text is not the local conversation. A2A sends it on the existing task.
+   */
+  async provideInput(text: string): Promise<void> {
+    this.runtime.ensureGeneration(this.generation);
+    if (text.trim().length === 0) {
+      throw new LarkxError({
+        code: "invalid_workflow_definition",
+        message: "Remote input must include text.",
+        retryable: false,
+      });
+    }
+    if (this.inputWait === null) {
+      this.pendingInput = text;
+      return;
+    }
+    const waiting = this.inputWait;
+    this.inputWait = null;
+    waiting.resolve(text);
+  }
+
+  private takeInput(): Promise<string> {
+    if (this.pendingInput !== null) {
+      const text = this.pendingInput;
+      this.pendingInput = null;
+      return Promise.resolve(text);
+    }
+    return new Promise<string>((resolve, reject) => {
+      this.inputWait = { resolve, reject };
+    });
   }
 
   async reconcile(input: ReconcileInput): Promise<void> {
@@ -1033,14 +1084,23 @@ export class Run {
     return parsed.map((item) => {
       const record = readRecord(item, "Delegation");
       const taskId = record.taskId;
+      const contextId = record.contextId;
+      const prompt = record.prompt;
+      const remoteIdentity = record.remoteIdentity;
+      const remoteStatus = record.remoteStatus;
       return {
         cancelIntent: readBoolean(record, "cancelIntent"),
+        contextId: typeof contextId === "string" ? contextId : null,
         endpoint: readString(record, "endpoint"),
         operationId: readString(record, "operationId"),
+        prompt: typeof prompt === "string" ? prompt : null,
         remoteAgent: readString(record, "remoteAgent"),
+        remoteIdentity: typeof remoteIdentity === "string" ? remoteIdentity : null,
+        remoteStatus: typeof remoteStatus === "string" ? remoteStatus : null,
         state: readString(record, "state"),
         stepKey: readString(record, "stepKey"),
         taskId: typeof taskId === "string" ? taskId : null,
+        transport: readString(record, "transport"),
       };
     });
   }
@@ -1171,10 +1231,27 @@ export class Run {
       case RequestKind.Delegate:
         await this.invokeDelegation(request);
         return;
-      case RequestKind.Reconcile:
+      case RequestKind.Reconcile: {
+        const detail = readRecord(JSON.parse(request.detailJson) as unknown, "Reconcile request");
+        if (detail.reason === "remote_input_required") {
+          await this.runtime.emit({
+            ...this.event("remote-input-required", request),
+            ...(typeof detail.prompt === "string" ? { prompt: detail.prompt } : {}),
+            ...(typeof detail.taskId === "string" ? { taskId: detail.taskId } : {}),
+          });
+          const text = await this.takeInput();
+          await this.runtime.call("provideInput", {
+            runId: this.runId,
+            stepKey: request.stepKey,
+            text,
+            nowMs: this.runtime.now(),
+          });
+          return;
+        }
         await this.runtime.emit(this.event("reconcile-required", request));
         await this.awaitReconcile(request);
         return;
+      }
       case RequestKind.InvokeModel:
         if (request.attempt > 1) {
           await this.runtime.emit(this.event("retry", request));
@@ -1257,7 +1334,8 @@ export class Run {
     const authorized =
       remote !== undefined &&
       remote.transport.endpoint === command.endpoint &&
-      transportId(remote.transport.endpoint) === command.transportId;
+      remote.transport.type === command.transport &&
+      transportId(remote.transport) === command.transportId;
     if (!authorized || remote === undefined) {
       await this.submitDelegation(request, {
         action: command.action,
@@ -1274,12 +1352,20 @@ export class Run {
         action: command.action,
         ...(command.taskId !== undefined ? { taskId: command.taskId } : {}),
       });
-      const report = await performHttpDelegation({
-        command,
-        transport: remote.transport,
-        signal: controller.signal,
-        online: () => this.runtime.online(),
-      });
+      const report =
+        remote.transport.type === "a2a"
+          ? await performA2aDelegation({
+              command,
+              transport: remote.transport,
+              signal: controller.signal,
+              online: () => this.runtime.online(),
+            })
+          : await performHttpDelegation({
+              command,
+              transport: remote.transport,
+              signal: controller.signal,
+              online: () => this.runtime.online(),
+            });
       if (!this.alive()) {
         return;
       }
@@ -1312,6 +1398,9 @@ export class Run {
       readonly action: string;
       readonly outcome: string;
       readonly taskId?: string;
+      readonly contextId?: string;
+      readonly remoteStatus?: string;
+      readonly remoteIdentity?: string;
       readonly result?: JsonValue;
       readonly message?: string;
     },
@@ -1747,15 +1836,24 @@ function readWaiting(detailJson: string): string | undefined {
 
 function readDelegation(value: { readonly [key: string]: JsonValue }): DelegationCommand {
   const taskId = value.taskId;
+  const contextId = value.contextId;
+  const continuation = value.continuation;
+  const transport = readString(value, "transport");
+  if (transport !== "http" && transport !== "a2a") {
+    throw permanent(`Remote transport "${transport}" is not supported.`);
+  }
   const input = value.input ?? null;
   return {
     action: readString(value, "action"),
+    ...(typeof contextId === "string" ? { contextId } : {}),
+    ...(typeof continuation === "string" ? { continuation } : {}),
     endpoint: readString(value, "endpoint"),
     input,
     operationId: readString(value, "operationId"),
     pollIntervalMs: readNumber(value, "pollIntervalMs"),
     remoteAgent: readString(value, "remoteAgent"),
     ...(typeof taskId === "string" ? { taskId } : {}),
+    transport,
     transportId: readString(value, "transportId"),
   };
 }

@@ -1,8 +1,8 @@
 # Remote delegation
 
-A local agent can delegate one step to an independently deployed remote agent. The C++ runtime stores the delegation before any network request. The host performs HTTP. The remote agent owns its own reasoning, tools, and task store. LarkX does not run that agent and does not claim exactly-once remote execution.
+A local agent can delegate one step to an independently deployed remote agent. The C++ runtime stores the delegation before any network request. The host speaks either the HTTP task protocol or A2A 1.0 JSON-RPC. The remote agent owns its own reasoning, tools, and task store. LarkX does not run that agent and does not claim exactly-once remote execution.
 
-A2A is the planned standard for talking to an independently deployed agent, including a LangGraph, Google ADK, or OpenAI Agents SDK service. This HTTP task protocol stays as a generic transport and as the test foundation. It is not a proprietary agent ecosystem, and it is not A2A.
+A2A 1.0 is the supported standard for an independently deployed agent, including the LangGraph example. The HTTP task protocol stays as a generic transport and as a test foundation. It is not a proprietary agent ecosystem. The two transports are not mixed on one delegation. See [a2a.md](a2a.md).
 
 ## Three different setups
 
@@ -84,7 +84,7 @@ Status values are `accepted`, `working`, `input_required`, `completed`, `failed`
 
 `GET /tasks/{taskId}` polls. `GET /operations/{operationId}` reconciles a lost acceptance. `POST /tasks/{taskId}/cancel` cancels. The HTTP connection is not held open for the life of the task. The host polls at the configured interval (50 to 60000 ms, default 1000). Transport failures back off by doubling that interval, capped at 30 seconds. A later `accepted` or `working` status is a live task and clears that backoff. The host does not use `AbortSignal.timeout` or `AbortSignal.any`. Each request uses an `AbortController` and a timer, so the same driver runs on Node.js and the documented React Native host. `timeoutMs` defaults to 15000 and must be from 1 to 120000.
 
-`input_required` keeps the task and blocks the parent with `remote_input_required`. Reconcile can complete or fail that run locally. Sending the missing input to the remote agent is not implemented.
+`input_required` keeps the task and blocks the parent with `remote_input_required`. On the HTTP transport, reconcile can complete or fail that run locally. Sending the missing input is not implemented for HTTP. On A2A, `run.provideInput` sends the text on the existing task. See [a2a.md](a2a.md).
 
 ## Delegation states
 
@@ -103,16 +103,16 @@ In one transaction, before the host is asked to send anything:
 - remote agent name and normalized endpoint
 - stable client operation id
 - the authorized arguments
-- transport id `http:` plus the endpoint
+- transport id `http:` or `a2a:` plus the endpoint
 - the declared capabilities
 - delegation state `SUBMITTING`
 - an outbox row
 
 The client operation id stays the same across retries. The remote task id is a different id, stored only after acceptance. The event journal records ids and the endpoint. It does not record the arguments, the result, or credentials.
 
-SQLite `application_id` stays `0x4C585254`. Fresh files are storage schema 2. An owned schema 1 file gains the `delegations` table. A newer schema is rejected. Files with any other application id are rejected and left unchanged.
+SQLite `application_id` stays `0x4C585254`. Fresh files are storage schema 3. An owned schema 1 file gains the `delegations` table and the A2A identity columns. An owned schema 2 file gains `context_id`, `remote_status`, `continuation_json`, `remote_identity`, and `remote_message`. A newer schema is rejected. Files with any other application id are rejected and left unchanged.
 
-The C ABI is version 3. Request kind 10 is `LARKX_REQUEST_DELEGATE`. The host submits the outcome with `larkx_run_submit_delegation`. A stale owner cannot commit that outcome.
+The C ABI is version 4. `larkx_remote_spec.transport` is `http` or `a2a`. A null transport remains HTTP, so an older zeroed spec still registers an HTTP agent. Request kind 10 is `LARKX_REQUEST_DELEGATE`. The host submits the outcome with `larkx_run_submit_delegation` and answers an A2A input request with `larkx_run_provide_input`. A stale owner cannot commit that outcome.
 
 ## Recovery
 
@@ -145,7 +145,7 @@ A crash before the acceptance is stored looks the same as a crash before the req
 
 The default is local-only. Remote delegation runs only for a registered remote agent, only to that agent's endpoint, and only with the arguments the model put on that call. The conversation, local history, files, images, and artifacts are not added. The same check runs on retries and after restart. A re-registered agent with a different endpoint fails closed and does not send.
 
-The host rejects redirects. `fetch` is called with `redirect: "manual"`, and a 3xx response is a temporary transport result. Delegation arguments and credential headers are not sent to the redirect location. Endpoint parsing is the same in TypeScript and C++: `http` or `https`, no userinfo, no query, no fragment, no ASCII whitespace, at most 200 characters after normalization, and a trailing slash is removed only when the path is empty. The stored transport id is `http:` plus that normalized endpoint. A recovery whose registered endpoint or transport id differs from the stored row is unauthorized.
+The host rejects redirects. `fetch` is called with `redirect: "manual"`, and a 3xx response is a temporary transport result. Delegation arguments and credential headers are not sent to the redirect location. Endpoint parsing is the same in TypeScript and C++: `http` or `https`, no userinfo, no query, no fragment, no ASCII whitespace, at most 200 characters after normalization, and a trailing slash is removed only when the path is empty. The stored transport id is `http:` or `a2a:` plus that normalized endpoint. A recovery whose registered endpoint or transport id differs from the stored row is unauthorized. An A2A Agent Card cannot replace the authorized endpoint.
 
 These checks do not sandbox arbitrary application tools. A local tool can still use the network on its own.
 
@@ -154,5 +154,7 @@ These checks do not sandbox arbitrary application tools. A local tool can still 
 `examples/remote-task` is a development HTTP fixture with a JSON file, delayed completion, dedupe, lookup, cancel, a simulated failure, and a dropped acceptance. Callers that use it declare all six capabilities. The fixture does not advertise them, and omitting `dedupe` or `lookup` on the client does not make this process a safe retry peer. Its supplier recommendations are marked `simulated: true`. It is not a hosting product.
 
 `examples/node-hybrid` is the field-inspection agent. It reads local notes, calls the fixture, and saves a local report. `--crash-during` stops the local process with `SIGKILL` while the fixture keeps the task. `--resume` continues the parent. No LarkX Cloud account is required.
+
+`examples/a2a-fixture` is the A2A 1.0 failure-injection peer. It does not deduplicate message ids. `examples/langgraph-a2a-agent` is a real LangGraph graph behind the official `@a2a-js/sdk` server. `examples/node-hybrid --transport a2a` is the private Node path used by the process-death tests.
 
 See those directories for the commands. Physical-device steps are in [on-device-agent.md](../validation/on-device-agent.md). This repository has not run them on a phone.

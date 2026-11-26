@@ -958,6 +958,83 @@ void test_remote_invalid_poll_does_not_fail_a_known_task() {
   std::remove(path.c_str());
 }
 
+void test_a2a_continuation_blocks_when_the_acknowledgement_is_lost() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  auto remote = procurement(1, 1, 1, 1);
+  remote.transport = "a2a";
+  larkx_agent_spec denied_spec{};
+  denied_spec.name = "field";
+  denied_spec.version = 1;
+  denied_spec.instructions = "Inspect equipment.";
+  denied_spec.model_id = "scripted";
+  denied_spec.model_name = "scripted-1";
+  denied_spec.tool_calling = 1;
+  denied_spec.remote_agents = &remote;
+  denied_spec.remote_count = 1;
+  denied_spec.allow_remote = 1;
+  larkx_error error{};
+  CHECK(larkx_agent_register(runtime, &denied_spec, &error) == LARKX_ERR_INVALID_ARGUMENT);
+
+  remote.dedupe = 0;
+  remote.lookup = 0;
+  register_remote_agent(runtime, &remote, 1, "a2a-field");
+  start_run(runtime, "a2a-field", 1, "a2a-lost", "Inspect pump P-104");
+  const auto lost = delegate_after_model(runtime, "a2a-lost");
+  CHECK(contains(lost.detail, "\"transport\":\"a2a\""));
+  submit_remote(runtime, "a2a-lost", lost.request.request_id, "{\"action\":\"submit\",\"outcome\":\"network\"}", 40);
+  const auto waiting_lost = drive(runtime, "a2a-lost", 40);
+  CHECK(waiting_lost.request.kind == LARKX_REQUEST_WAIT);
+  const auto blocked_lost = drive(runtime, "a2a-lost", 140);
+  CHECK(blocked_lost.request.kind == LARKX_REQUEST_RECONCILE);
+  CHECK(larkx_run_submit_reconcile(runtime, "a2a-lost", blocked_lost.request.request_id, "retry", "null", "again", 55, &error) !=
+        LARKX_OK);
+
+  start_run(runtime, "a2a-field", 1, "a2a-1", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "a2a-1");
+  submit_remote(runtime, "a2a-1", request.request.request_id,
+                "{\"action\":\"submit\",\"contextId\":\"ctx-a2a\",\"message\":\"What is the model number?\","
+                "\"outcome\":\"input_required\",\"remoteIdentity\":\"Procurement\",\"remoteStatus\":\"TASK_STATE_INPUT_REQUIRED\","
+                "\"taskId\":\"task-a2a\"}");
+  const auto blocked = drive(runtime, "a2a-1", 60);
+  CHECK(blocked.request.kind == LARKX_REQUEST_RECONCILE);
+  CHECK(contains(blocked.detail, "remote_input_required"));
+  CHECK(contains(blocked.detail, "What is the model number?"));
+  CHECK(larkx_run_provide_input(runtime, "a2a-1", blocked.request.step_key, "Model 12", 70, &error) == LARKX_OK);
+  const auto continuation = drive(runtime, "a2a-1", 80);
+  CHECK(continuation.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(continuation.detail, "\"action\":\"continue\""));
+  CHECK(contains(continuation.detail, "ctx-a2a"));
+  CHECK(contains(continuation.detail, "Model 12"));
+  CHECK(!contains(continuation.detail, "Inspect pump"));
+  submit_remote(runtime, "a2a-1", continuation.request.request_id, "{\"action\":\"continue\",\"outcome\":\"network\"}", 90);
+  const auto unknown = drive(runtime, "a2a-1", 100);
+  CHECK(unknown.request.kind == LARKX_REQUEST_RECONCILE);
+  CHECK(larkx_run_submit_reconcile(runtime, "a2a-1", unknown.request.request_id, "retry", "null", "again", 110, &error) ==
+        LARKX_OK);
+  const auto polled = drive(runtime, "a2a-1", 120);
+  CHECK(polled.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(polled.detail, "\"action\":\"poll\""));
+  CHECK(!contains(polled.detail, "\"action\":\"continue\""));
+  CHECK(!contains(polled.detail, "\"action\":\"submit\""));
+
+  start_run(runtime, "a2a-field", 1, "a2a-known", "Inspect pump P-104");
+  const auto known = delegate_after_model(runtime, "a2a-known");
+  submit_remote(runtime, "a2a-known", known.request.request_id,
+                "{\"action\":\"submit\",\"contextId\":\"ctx-known\",\"outcome\":\"accepted\",\"remoteStatus\":\"TASK_STATE_SUBMITTED\","
+                "\"taskId\":\"task-known\"}");
+  larkx_runtime_close(runtime);
+  auto* recovered = open_runtime(path);
+  register_remote_agent(recovered, &remote, 1, "a2a-field");
+  const auto poll = drive(recovered, "a2a-known", 200);
+  CHECK(poll.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(poll.detail, "\"action\":\"poll\""));
+  CHECK(contains(poll.detail, "task-known"));
+  CHECK(!contains(poll.detail, "\"action\":\"submit\""));
+  larkx_runtime_close(recovered);
+  std::remove(path.c_str());
+}
+
 void test_context_limit_does_not_invoke_the_model() {
   const auto path = temp_db();
   auto* runtime = open_runtime(path);
@@ -973,7 +1050,7 @@ void test_context_limit_does_not_invoke_the_model() {
 }  // namespace
 
 int main() {
-  CHECK(larkx_abi_version() == 3);
+  CHECK(larkx_abi_version() == 4);
   test_single_turn_persists_before_the_model_runs();
   test_dynamic_tool_calls_keep_stable_keys();
   test_invalid_tools_do_not_ask_the_host_to_execute_them();
@@ -995,6 +1072,7 @@ int main() {
   test_remote_omitted_dedupe_does_not_resubmit();
   test_remote_invalid_responses_do_not_fail_a_possible_submission();
   test_remote_invalid_poll_does_not_fail_a_known_task();
+  test_a2a_continuation_blocks_when_the_acknowledgement_is_lost();
   test_run_list_returns_persisted_runs();
   if (g_failed != 0) {
     std::fprintf(stderr, "%d checks failed\n", g_failed);

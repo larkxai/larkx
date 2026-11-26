@@ -73,6 +73,53 @@ export interface RemoteHttpResponse {
   readonly body: string;
 }
 
+/**
+ * A2A protocol 1.0 does not guarantee that a message id is a dedupe key or
+ * that a client can look up a submission before it knows the task id.
+ * Callers cannot turn those capabilities on.
+ */
+export const A2A_PROTOCOL_VERSION = "1.0" as const;
+
+export const A2A_REMOTE_CAPABILITIES: RemoteCapabilities = {
+  dedupe: false,
+  lookup: false,
+  taskId: true,
+  poll: true,
+  cancel: true,
+  persistent: true,
+};
+
+export interface RemoteA2aTransport {
+  readonly type: "a2a";
+  /** Authorized JSON-RPC endpoint. An Agent Card cannot replace it. */
+  readonly endpoint: string;
+  /** Only 1.0 is supported. Omitted means 1.0. */
+  readonly protocolVersion?: typeof A2A_PROTOCOL_VERSION;
+  /**
+   * Fetch and validate the Agent Card before the first submission.
+   * The card's JSON-RPC 1.0 interface must be this endpoint.
+   */
+  readonly discover?: boolean;
+  readonly pollIntervalMs?: number;
+  readonly timeoutMs?: number;
+  readonly headers?: (endpoint: string) => Record<string, string> | Promise<Record<string, string>>;
+  /** Test hook that replaces `fetch`. Production callers leave this unset. */
+  readonly execute?: (request: RemoteA2aCall) => Promise<RemoteHttpResponse>;
+}
+
+export interface RemoteA2aCall {
+  readonly action: "discover" | "submit" | "continue" | "poll" | "cancel";
+  readonly method: "GET" | "POST";
+  readonly url: string;
+  readonly endpoint: string;
+  readonly operationId: string;
+  readonly taskId?: string;
+  readonly body?: string;
+  readonly signal: AbortSignal;
+}
+
+export type RemoteTransport = RemoteHttpTransport | RemoteA2aTransport;
+
 export interface RemoteAgent {
   readonly name: string;
   readonly description: string;
@@ -82,33 +129,44 @@ export interface RemoteAgent {
     readonly required?: readonly string[];
     readonly additionalProperties?: boolean;
   };
-  readonly transport: RemoteHttpTransport;
+  readonly transport: RemoteTransport;
 }
 
 export interface DelegationView {
   readonly cancelIntent: boolean;
+  readonly contextId: string | null;
   readonly endpoint: string;
   readonly operationId: string;
+  readonly prompt: string | null;
   readonly remoteAgent: string;
+  readonly remoteIdentity: string | null;
+  readonly remoteStatus: string | null;
   readonly state: string;
   readonly stepKey: string;
   readonly taskId: string | null;
+  readonly transport: string;
 }
 
 export interface DelegationCommand {
   readonly action: string;
+  readonly contextId?: string;
+  readonly continuation?: string;
   readonly endpoint: string;
   readonly input: JsonValue;
   readonly operationId: string;
   readonly pollIntervalMs: number;
   readonly remoteAgent: string;
   readonly taskId?: string;
+  readonly transport: "http" | "a2a";
   readonly transportId: string;
 }
 
 export interface DelegationReport {
   readonly outcome: string;
   readonly taskId?: string;
+  readonly contextId?: string;
+  readonly remoteStatus?: string;
+  readonly remoteIdentity?: string;
   readonly result?: JsonValue;
   readonly message?: string;
 }
@@ -120,7 +178,7 @@ export function remoteAgent(definition: {
   readonly name: string;
   readonly description: string;
   readonly schema?: RemoteAgent["schema"];
-  readonly transport: RemoteHttpTransport;
+  readonly transport: RemoteTransport;
 }): RemoteAgent {
   if (!AGENT_NAME.test(definition.name)) {
     throw invalid(`Remote agent name "${definition.name}" must match ${AGENT_NAME.source}.`);
@@ -128,8 +186,17 @@ export function remoteAgent(definition: {
   if (definition.description.trim().length === 0) {
     throw invalid(`Remote agent "${definition.name}" needs a description.`);
   }
-  if (definition.transport.type !== "http") {
-    throw invalid(`Remote agent "${definition.name}" needs an HTTP transport.`);
+  if (definition.transport.type !== "http" && definition.transport.type !== "a2a") {
+    throw invalid(`Remote agent "${definition.name}" needs an HTTP or A2A transport.`);
+  }
+  if (
+    definition.transport.type === "a2a" &&
+    definition.transport.protocolVersion !== undefined &&
+    definition.transport.protocolVersion !== A2A_PROTOCOL_VERSION
+  ) {
+    throw invalid(
+      `Remote agent "${definition.name}" only supports A2A protocol ${A2A_PROTOCOL_VERSION}.`,
+    );
   }
   const endpoint = normalizeEndpoint(definition.transport.endpoint);
   const schema = definition.schema ?? { type: "object", additionalProperties: true };
@@ -156,11 +223,18 @@ export function remoteAgent(definition: {
     name: definition.name,
     description: definition.description,
     schema,
-    transport: {
-      ...definition.transport,
-      endpoint,
-      capabilities: resolvedCapabilities(definition.transport.capabilities),
-    },
+    transport:
+      definition.transport.type === "a2a"
+        ? {
+            ...definition.transport,
+            endpoint,
+            protocolVersion: A2A_PROTOCOL_VERSION,
+          }
+        : {
+            ...definition.transport,
+            endpoint,
+            capabilities: resolvedCapabilities(definition.transport.capabilities),
+          },
   };
 }
 
@@ -232,8 +306,11 @@ export function normalizeEndpoint(endpoint: string): string {
   return value;
 }
 
-export function transportId(endpoint: string): string {
-  return `http:${endpoint}`;
+export function transportId(transport: {
+  readonly type: "http" | "a2a";
+  readonly endpoint: string;
+}): string {
+  return `${transport.type}:${transport.endpoint}`;
 }
 
 export async function performHttpDelegation(input: {

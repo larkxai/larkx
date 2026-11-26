@@ -358,6 +358,7 @@ Status Session::invoke(const std::string& method, const std::string& args_json, 
       bool poll = false;
       bool cancel = false;
       bool persistent = false;
+      std::string transport = "http";
     };
     std::vector<StoredRemote> stored_remotes;
     const Json* remotes = field(*agent, "remoteAgents");
@@ -377,6 +378,10 @@ Status Session::invoke(const std::string& method, const std::string& args_json, 
         item.poll = bool_field(remote, "poll", false);
         item.cancel = bool_field(remote, "cancel", false);
         item.persistent = bool_field(remote, "persistent", false);
+        item.transport = string_field(remote, "transport");
+        if (item.transport.empty()) {
+          item.transport = "http";
+        }
         if (!numbers.ok()) {
           return numbers;
         }
@@ -432,6 +437,7 @@ Status Session::invoke(const std::string& method, const std::string& args_json, 
       remote_specs[index].cancel = stored_remotes[index].cancel ? 1 : 0;
       remote_specs[index].persistent = stored_remotes[index].persistent ? 1 : 0;
       remote_specs[index].poll_interval_ms = stored_remotes[index].poll_interval_ms;
+      remote_specs[index].transport = stored_remotes[index].transport.c_str();
     }
     spec.remote_agents = remote_specs.empty() ? nullptr : remote_specs.data();
     spec.remote_count = static_cast<int32_t>(remote_specs.size());
@@ -491,6 +497,12 @@ Status Session::invoke(const std::string& method, const std::string& args_json, 
                                     retryable, now, &error)
             : larkx_run_submit_tool(runtime_, run_id.c_str(), request_id.c_str(), body.c_str(), error_code.c_str(), error_message.c_str(),
                                    retryable, now, &error);
+    out = "{}";
+    return call_code(code, error);
+  }
+  if (method == "provideInput") {
+    const larkx_code code = larkx_run_provide_input(runtime_, run_id.c_str(), string_field(args, "stepKey").c_str(),
+                                                   string_field(args, "text").c_str(), now, &error);
     out = "{}";
     return call_code(code, error);
   }

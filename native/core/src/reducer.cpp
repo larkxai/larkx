@@ -1034,6 +1034,53 @@ Status block_remote_input(State& state, const BlockRemoteInput& input) {
   return append_event(state, input.run_event_id, "WORKFLOW_BLOCKED", blocked, input.now_ms);
 }
 
+Status accept_remote_continuation(State& state, const AcceptRemoteContinuation& input) {
+  if (auto status = require_fence(state.run, input.fence); !status.ok()) {
+    return status;
+  }
+  if (state.run.status != WorkflowStatus::Blocked) {
+    return state_error("Remote input can be supplied only while the run is blocked.");
+  }
+  Step* step = find_step(state, input.step_key);
+  Delegation* row = find_delegation(state, input.step_key);
+  if (step == nullptr || row == nullptr) {
+    return state_error("Remote delegation is missing.");
+  }
+  if (row->state != DelegationState::InputRequired || !row->task_id.has_value()) {
+    return state_error("This delegation is not waiting for remote input.");
+  }
+  if (row->continuation_json.has_value()) {
+    return state_error("A continuation is already waiting to be sent.");
+  }
+  if (row->transport_id.rfind("a2a:", 0) != 0) {
+    return state_error("This remote transport cannot send additional input.");
+  }
+  if (step->status != StepStatus::WaitingRemote || !can_transition(step->status, StepStatus::RetryScheduled)) {
+    return state_error("Remote input cannot be recorded from " + std::string(to_string(step->status)) + ".");
+  }
+  if (!can_transition(state.run.status, WorkflowStatus::Running)) {
+    return state_error("Workflow transition is not legal.");
+  }
+  step->status = StepStatus::RetryScheduled;
+  step->next_attempt_at = input.now_ms;
+  step->updated_at = input.now_ms;
+  row->continuation_json = input.continuation_json;
+  row->state = DelegationState::Queued;
+  row->poll_failures = 0;
+  row->poll_inflight = false;
+  row->inflight_action.clear();
+  row->updated_at = input.now_ms;
+  state.run.status = WorkflowStatus::Running;
+  state.run.blocked_reason = std::nullopt;
+  state.run.updated_at = input.now_ms;
+  const std::string payload = object_payload({
+      {"operationId", jstring(row->operation_id)},
+      {"stepKey", jstring(row->step_key)},
+      {"taskId", jstring(*row->task_id)},
+  });
+  return append_event(state, input.event_id, "REMOTE_DISPATCH_QUEUED", payload, input.now_ms);
+}
+
 Status complete_delegation(State& state, const CompleteDelegationInput& input) {
   if (auto status = require_fence(state.run, input.fence); !status.ok()) {
     return status;
