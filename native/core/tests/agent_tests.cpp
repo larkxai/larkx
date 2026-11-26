@@ -775,6 +775,189 @@ void test_remote_failure_is_not_a_successful_result() {
   std::remove(path.c_str());
 }
 
+std::string listed_delegations(larkx_runtime* runtime, const char* run_id) {
+  char listed[2048];
+  size_t needed = 0;
+  larkx_error error{};
+  const auto code = larkx_run_delegations(runtime, run_id, listed, sizeof(listed), &needed, &error);
+  CHECK(code == LARKX_OK);
+  return listed;
+}
+
+bool register_remote_ok(larkx_runtime* runtime, const larkx_remote_spec* remote) {
+  larkx_agent_spec spec{};
+  spec.name = "field";
+  spec.version = 1;
+  spec.instructions = "Inspect equipment.";
+  spec.model_id = "scripted";
+  spec.model_name = "scripted-1";
+  spec.tool_calling = 1;
+  spec.remote_agents = remote;
+  spec.remote_count = 1;
+  spec.allow_remote = 1;
+  larkx_error error{};
+  return larkx_agent_register(runtime, &spec, &error) == LARKX_OK;
+}
+
+void expect_endpoint_rejected(const char* endpoint) {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  auto remote = procurement(0, 0, 1, 0);
+  remote.endpoint = endpoint;
+  CHECK(!register_remote_ok(runtime, &remote));
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
+void test_remote_endpoint_identity() {
+  expect_endpoint_rejected("http://user:pass@127.0.0.1:8787");
+  expect_endpoint_rejected("http://127.0.0.1:8787?x=1");
+  expect_endpoint_rejected("http://127.0.0.1:8787#frag");
+  expect_endpoint_rejected("http://127.0.0.1:8787/a b");
+  expect_endpoint_rejected("ftp://127.0.0.1:8787");
+  expect_endpoint_rejected("http://127.0.0.1:8787\f");
+  expect_endpoint_rejected("\vhttp://127.0.0.1:8787");
+
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  auto remote = procurement(0, 0, 1, 0);
+  remote.endpoint = " http://127.0.0.1:8787/ ";
+  register_remote_agent(runtime, &remote, 1);
+  start_run(runtime, "field", 1, "endpoint-1", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "endpoint-1");
+  CHECK(contains(request.detail, "\"endpoint\":\"http://127.0.0.1:8787\""));
+  CHECK(contains(request.detail, "\"transportId\":\"http:http://127.0.0.1:8787\""));
+  CHECK(!contains(request.detail, "8787/"));
+  CHECK(contains(request.detail, "\"dedupe\":false"));
+  CHECK(contains(request.detail, "\"lookup\":false"));
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
+void test_remote_offline_lookup_preserves_uncertainty() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  const auto remote = procurement(0, 1, 1, 0);
+  register_remote_agent(runtime, &remote, 1);
+  start_run(runtime, "field", 1, "offline-1", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "offline-1");
+  const std::string operation = request.request.operation_id;
+  submit_remote(runtime, "offline-1", request.request.request_id, "{\"action\":\"submit\",\"outcome\":\"network\"}", 40);
+  const auto early = drive(runtime, "offline-1", 40);
+  CHECK(early.request.kind == LARKX_REQUEST_WAIT);
+  CHECK(contains(early.detail, "network"));
+  const auto lookup = drive(runtime, "offline-1", 140);
+  CHECK(lookup.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(lookup.detail, "\"action\":\"lookup\""));
+  CHECK(!contains(lookup.detail, "\"action\":\"submit\""));
+  CHECK(std::strcmp(lookup.request.operation_id, operation.c_str()) == 0);
+  submit_remote(runtime, "offline-1", lookup.request.request_id, "{\"action\":\"lookup\",\"outcome\":\"offline\"}", 140);
+  const auto waiting = drive(runtime, "offline-1", 140);
+  CHECK(waiting.request.kind == LARKX_REQUEST_WAIT);
+  CHECK(contains(waiting.detail, "network"));
+  const auto listed = listed_delegations(runtime, "offline-1");
+  CHECK(contains(listed, "\"state\":\"SUBMITTING\""));
+  CHECK(!contains(listed, "QUEUED"));
+  larkx_runtime_close(runtime);
+
+  auto* recovered = open_runtime(path);
+  register_remote_agent(recovered, &remote, 1);
+  const auto again = drive(recovered, "offline-1", 400);
+  CHECK(again.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(again.detail, "\"action\":\"lookup\""));
+  CHECK(!contains(again.detail, "\"action\":\"submit\""));
+  CHECK(std::strcmp(again.request.operation_id, operation.c_str()) == 0);
+  submit_remote(recovered, "offline-1", again.request.request_id,
+                "{\"action\":\"lookup\",\"outcome\":\"accepted\",\"taskId\":\"task-9\"}", 400);
+  const auto poll_wait = drive(recovered, "offline-1", 400);
+  CHECK(poll_wait.request.kind == LARKX_REQUEST_WAIT);
+  CHECK(contains(poll_wait.detail, "remote"));
+  const auto poll = drive(recovered, "offline-1", 460);
+  CHECK(poll.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(poll.detail, "\"action\":\"poll\""));
+  CHECK(contains(poll.detail, "task-9"));
+  larkx_runtime_close(recovered);
+  std::remove(path.c_str());
+}
+
+void test_remote_omitted_dedupe_does_not_resubmit() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  const auto remote = procurement(0, 0, 1, 0);
+  register_remote_agent(runtime, &remote, 1);
+  start_run(runtime, "field", 1, "omit-1", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "omit-1");
+  const std::string operation = request.request.operation_id;
+  submit_remote(runtime, "omit-1", request.request.request_id, "{\"action\":\"submit\",\"outcome\":\"network\"}", 40);
+  const auto waiting = drive(runtime, "omit-1", 40);
+  CHECK(waiting.request.kind == LARKX_REQUEST_WAIT);
+  const auto blocked = drive(runtime, "omit-1", 140);
+  CHECK(blocked.request.kind == LARKX_REQUEST_RECONCILE);
+  CHECK(blocked.request.kind != LARKX_REQUEST_FAILED);
+  CHECK(std::strcmp(blocked.request.operation_id, operation.c_str()) == 0);
+  const auto listed = listed_delegations(runtime, "omit-1");
+  CHECK(contains(listed, "\"state\":\"UNKNOWN_OUTCOME\""));
+  larkx_error error{};
+  CHECK(larkx_run_submit_reconcile(runtime, "omit-1", blocked.request.request_id, "retry", "null", "try again", 150, &error) !=
+        LARKX_OK);
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
+void test_remote_invalid_responses_do_not_fail_a_possible_submission() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  const auto remote = procurement(0, 1, 1, 0);
+  register_remote_agent(runtime, &remote, 1);
+  start_run(runtime, "field", 1, "invalid-1", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "invalid-1");
+  submit_remote(runtime, "invalid-1", request.request.request_id, "{\"action\":\"submit\",\"outcome\":\"invalid\"}", 40);
+  const auto lookup = drive(runtime, "invalid-1", 140);
+  CHECK(lookup.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(lookup.detail, "\"action\":\"lookup\""));
+  submit_remote(runtime, "invalid-1", lookup.request.request_id, "{\"action\":\"lookup\",\"outcome\":\"invalid\"}", 140);
+  const auto again = drive(runtime, "invalid-1", 340);
+  CHECK(again.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(again.detail, "\"action\":\"lookup\""));
+  submit_remote(runtime, "invalid-1", again.request.request_id, "{\"action\":\"lookup\",\"outcome\":\"invalid\"}", 340);
+  const auto blocked = drive(runtime, "invalid-1", 340);
+  CHECK(blocked.request.kind == LARKX_REQUEST_RECONCILE);
+  CHECK(blocked.request.kind != LARKX_REQUEST_FAILED);
+  CHECK(contains(listed_delegations(runtime, "invalid-1"), "\"state\":\"UNKNOWN_OUTCOME\""));
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
+void test_remote_invalid_poll_does_not_fail_a_known_task() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  const auto remote = procurement(0, 1, 1, 0);
+  register_remote_agent(runtime, &remote, 1);
+  start_run(runtime, "field", 1, "working-1", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "working-1");
+  submit_remote(runtime, "working-1", request.request.request_id,
+                "{\"action\":\"submit\",\"outcome\":\"accepted\",\"taskId\":\"task-4\"}", 40);
+  const auto poll = drive(runtime, "working-1", 90);
+  CHECK(contains(poll.detail, "\"action\":\"poll\""));
+  submit_remote(runtime, "working-1", poll.request.request_id,
+                "{\"action\":\"poll\",\"outcome\":\"invalid\",\"taskId\":\"task-4\"}", 90);
+  const auto backed_off = drive(runtime, "working-1", 100);
+  CHECK(backed_off.request.kind == LARKX_REQUEST_WAIT);
+  const auto second = drive(runtime, "working-1", 190);
+  CHECK(contains(second.detail, "\"action\":\"poll\""));
+  submit_remote(runtime, "working-1", second.request.request_id,
+                "{\"action\":\"poll\",\"outcome\":\"working\",\"taskId\":\"task-4\"}", 190);
+  const auto steady = drive(runtime, "working-1", 200);
+  CHECK(steady.request.kind == LARKX_REQUEST_WAIT);
+  CHECK(contains(steady.detail, "remote"));
+  const auto third = drive(runtime, "working-1", 240);
+  CHECK(third.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(third.detail, "\"action\":\"poll\""));
+  CHECK(contains(listed_delegations(runtime, "working-1"), "\"state\":\"WORKING\""));
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
 void test_context_limit_does_not_invoke_the_model() {
   const auto path = temp_db();
   auto* runtime = open_runtime(path);
@@ -807,6 +990,11 @@ int main() {
   test_remote_lost_ack_without_lookup_or_dedupe_blocks();
   test_remote_cancel_and_stale_owner();
   test_remote_failure_is_not_a_successful_result();
+  test_remote_endpoint_identity();
+  test_remote_offline_lookup_preserves_uncertainty();
+  test_remote_omitted_dedupe_does_not_resubmit();
+  test_remote_invalid_responses_do_not_fail_a_possible_submission();
+  test_remote_invalid_poll_does_not_fail_a_known_task();
   test_run_list_returns_persisted_runs();
   if (g_failed != 0) {
     std::fprintf(stderr, "%d checks failed\n", g_failed);

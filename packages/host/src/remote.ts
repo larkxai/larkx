@@ -15,14 +15,23 @@ export interface RemoteCapabilities {
   readonly persistent: boolean;
 }
 
+/**
+ * Defaults for an arbitrary HTTP endpoint. Dedupe and lookup stay off until the
+ * caller declares them. An Idempotency-Key header is not that declaration.
+ * `taskId`, `poll`, `cancel`, and `persistent` describe this task protocol and
+ * still have to be turned off when a peer does not implement them.
+ */
 export const HTTP_REMOTE_CAPABILITIES: RemoteCapabilities = {
-  dedupe: true,
-  lookup: true,
+  dedupe: false,
+  lookup: false,
   taskId: true,
   poll: true,
   cancel: true,
   persistent: true,
 };
+
+/** Transport timeout used when `timeoutMs` is omitted. */
+export const DEFAULT_REMOTE_TIMEOUT_MS = 15_000;
 
 export interface RemoteHttpTransport {
   readonly type: "http";
@@ -31,6 +40,11 @@ export interface RemoteHttpTransport {
   readonly capabilities?: Partial<RemoteCapabilities>;
   /** Milliseconds between status polls. 0 uses the runtime default of 1000. */
   readonly pollIntervalMs?: number;
+  /**
+   * Per-request timeout. Omitted means {@link DEFAULT_REMOTE_TIMEOUT_MS}.
+   * The host aborts the request with an AbortController. It does not follow redirects.
+   */
+  readonly timeoutMs?: number;
   /**
    * Host-resolved request headers. The callback result is not passed to the
    * runtime and is not written to the execution database.
@@ -131,6 +145,13 @@ export function remoteAgent(definition: {
   ) {
     throw invalid("Remote poll interval must be 0 or between 50 and 60000 milliseconds.");
   }
+  const timeoutMs = definition.transport.timeoutMs;
+  if (
+    timeoutMs !== undefined &&
+    (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120_000)
+  ) {
+    throw invalid("Remote transport timeout must be from 1 to 120000 milliseconds.");
+  }
   return {
     name: definition.name,
     description: definition.description,
@@ -149,13 +170,48 @@ export function resolvedCapabilities(
   return { ...HTTP_REMOTE_CAPABILITIES, ...partial };
 }
 
+/** Same character checks as `normalize_endpoint` in the C++ runtime. */
+export function endpointHasForbiddenCharacter(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (
+      code === 0x09 ||
+      code === 0x0a ||
+      code === 0x0b ||
+      code === 0x0c ||
+      code === 0x0d ||
+      code === 0x20 ||
+      code === 0x23 ||
+      code === 0x3f
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Match `trim_copy` in the C++ runtime: space, tab, CR, and LF only. */
+function trimEndpoint(value: string): string {
+  let begin = 0;
+  let end = value.length;
+  const trimmable = (code: number): boolean =>
+    code === 0x09 || code === 0x0a || code === 0x0d || code === 0x20;
+  while (begin < end && trimmable(value.charCodeAt(begin))) {
+    begin += 1;
+  }
+  while (end > begin && trimmable(value.charCodeAt(end - 1))) {
+    end -= 1;
+  }
+  return value.slice(begin, end);
+}
+
 /** Match the C++ endpoint rules so the registered destination and the stored one agree. */
 export function normalizeEndpoint(endpoint: string): string {
-  let value = endpoint.trim();
+  let value = trimEndpoint(endpoint);
   if (!value.startsWith("https://") && !value.startsWith("http://")) {
     throw invalid("Remote endpoint must be an http or https URL.");
   }
-  if (/[\s#?]/.test(value)) {
+  if (endpointHasForbiddenCharacter(value)) {
     throw invalid("Remote endpoint cannot include whitespace, a query, or a fragment.");
   }
   const rest = value.slice(value.indexOf("://") + 3);
@@ -276,15 +332,54 @@ async function fetchHttp(
   for (const [name, value] of Object.entries(extra)) {
     headers[name.toLowerCase()] = value;
   }
-  const timeout = AbortSignal.timeout(15_000);
-  const signal = AbortSignal.any([call.signal, timeout]);
-  const response = await fetch(call.url, {
-    method: call.method,
-    headers,
-    ...(call.body !== undefined ? { body: call.body } : {}),
-    signal,
-  });
-  return { status: response.status, body: await response.text() };
+  const timeoutMs = transport.timeoutMs ?? DEFAULT_REMOTE_TIMEOUT_MS;
+  const linked = linkAbortSignal(call.signal, timeoutMs);
+  try {
+    const response = await fetch(call.url, {
+      method: call.method,
+      headers,
+      ...(call.body !== undefined ? { body: call.body } : {}),
+      redirect: "manual",
+      signal: linked.signal,
+    });
+    if (response.status >= 300 && response.status < 400) {
+      return { status: response.status, body: "" };
+    }
+    if (response.type === "opaqueredirect") {
+      return { status: 302, body: "" };
+    }
+    return { status: response.status, body: await response.text() };
+  } finally {
+    linked.stop();
+  }
+}
+
+/** Abort when `parent` aborts or `timeoutMs` elapses. Works without AbortSignal.timeout or AbortSignal.any. */
+export function linkAbortSignal(
+  parent: AbortSignal,
+  timeoutMs: number,
+): { readonly signal: AbortSignal; stop: () => void } {
+  const controller = new AbortController();
+  const abort = (): void => {
+    controller.abort();
+  };
+  if (parent.aborted) {
+    controller.abort();
+    return { signal: controller.signal, stop: () => undefined };
+  }
+  const timer = setTimeout(abort, timeoutMs);
+  parent.addEventListener("abort", abort);
+  let stopped = false;
+  const stop = (): void => {
+    if (stopped) {
+      return;
+    }
+    stopped = true;
+    clearTimeout(timer);
+    parent.removeEventListener("abort", abort);
+  };
+  controller.signal.addEventListener("abort", stop);
+  return { signal: controller.signal, stop };
 }
 
 function interpretHttp(
@@ -299,6 +394,12 @@ function interpretHttp(
     return {
       outcome: "conflict",
       message: "The remote peer rejected a different payload for this operation id.",
+    };
+  }
+  if (response.status >= 300 && response.status < 400) {
+    return {
+      outcome: "temporary",
+      message: "The remote peer returned a redirect. Redirects are not followed.",
     };
   }
   if (response.status === 404) {

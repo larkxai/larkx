@@ -38,6 +38,6 @@ node examples/node-hybrid/dist/main.js \
   --resume
 ```
 
-`--crash-during` also accepts `before-submit`, `after-submit`, `after-accept`, `before-commit`, and `after-commit`. Each one stops the local process with `SIGKILL`. `--offline` queues the delegation until a later `--resume` without that flag. `--capabilities none` declares no lookup and no dedupe, so a lost acknowledgement blocks for `--reconcile complete` or `--reconcile fail`.
+`--crash-during` also accepts `before-submit`, `after-submit`, `after-accept`, `before-commit`, and `after-commit`. Each one stops the local process with `SIGKILL`. `--offline` queues the delegation until a later `--resume` without that flag. The default `--capabilities full` is an explicit declaration that this fixture dedupes, looks up, polls, and cancels. `--capabilities none` declares no lookup and no dedupe, so a lost acknowledgement blocks for `--reconcile complete` or `--reconcile fail`.
 
 The log is the execution history. `GET http://127.0.0.1:8787/_tasks` shows the fixture's tasks. A completed local run prints the operation id and the remote task id. They are different.

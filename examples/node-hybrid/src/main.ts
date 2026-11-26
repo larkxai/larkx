@@ -369,6 +369,7 @@ function parseArgs(argv: readonly string[]): Args {
   };
 }
 
+/** Explicit declaration for `examples/remote-task`. These are not HTTP defaults. */
 function fullCapabilities(): RemoteCapabilities {
   return { dedupe: true, lookup: true, taskId: true, poll: true, cancel: true, persistent: true };
 }

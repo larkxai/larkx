@@ -195,7 +195,18 @@ import { createRuntime, remoteAgent, sqlite } from "@larkxai/node";
 const procurement = remoteAgent({
   name: "procurement-agent",
   description: "Find compatible replacement parts and suppliers.",
-  transport: { type: "http", endpoint: "http://127.0.0.1:8787" },
+  transport: {
+    type: "http",
+    endpoint: "http://127.0.0.1:8787",
+    capabilities: {
+      dedupe: true,
+      lookup: true,
+      taskId: true,
+      poll: true,
+      cancel: true,
+      persistent: true,
+    },
+  },
 });
 
 const runtime = await createRuntime({ storage: sqlite("./agent.db") });
@@ -213,7 +224,7 @@ const run = await agent.start({
 console.log(await run.result());
 ```
 
-The same `remoteAgent` export is on `@larkxai/react-native`. Registering a remote agent is the authorization to send those arguments to that endpoint. The default with no remote agents remains device-only. The client operation id and the remote task id are stored separately. A known task is polled after a restart and is not submitted again. If the peer cannot be looked up and does not dedupe, a lost acknowledgement blocks the parent instead of creating another task. Cancellation of the local run does not roll back a remote effect. A2A is not implemented. The protocol is [docs/architecture/remote-delegation.md](docs/architecture/remote-delegation.md).
+The same `remoteAgent` export is on `@larkxai/react-native`. Registering a remote agent is the authorization to send those arguments to that endpoint. The default with no remote agents remains device-only. The client operation id and the remote task id are stored separately. A known task is polled after a restart and is not submitted again. `dedupe` and `lookup` stay off unless that object declares them. If the peer cannot be looked up and does not dedupe, a lost acknowledgement blocks the parent instead of creating another task. Cancellation of the local run does not roll back a remote effect. A2A is not implemented. The protocol is [docs/architecture/remote-delegation.md](docs/architecture/remote-delegation.md).
 
 ## Architecture
 

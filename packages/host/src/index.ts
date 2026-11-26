@@ -3,6 +3,11 @@ export { bindNativeAppState, createRuntime, defineTool, scriptedModel, sqlite } 
 export {
   remoteAgent,
   HTTP_REMOTE_CAPABILITIES,
+  linkAbortSignal,
+  normalizeEndpoint,
+  performHttpDelegation,
+  resolvedCapabilities,
+  transportId,
   type DelegationView,
   type RemoteAgent,
   type RemoteCapabilities,

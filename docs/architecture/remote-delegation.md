@@ -56,13 +56,13 @@ An adapter declares the capabilities it will honor. The runtime stores that decl
 | `cancel`     | `POST /tasks/{taskId}/cancel` asks the peer to cancel.                    |
 | `persistent` | The peer keeps the task after this client disconnects.                    |
 
-The HTTP adapter defaults all six to true because this protocol defines them. Set one to false when the peer does not honor it. Sending `Idempotency-Key` does not prove the peer deduplicates.
+`dedupe` and `lookup` default to false. An arbitrary endpoint is not assumed to deduplicate submissions or to answer an operation lookup. Declare both when the peer implements them. `taskId`, `poll`, `cancel`, and `persistent` default to true because this task protocol defines them; set one to false when the peer does not honor it. Sending `Idempotency-Key` does not prove the peer deduplicates. A partial declaration does not turn `dedupe` or `lookup` back on.
 
 Actions are `submit`, `lookup`, `poll`, and `cancel`.
 
 ## HTTP task protocol
 
-Endpoint rules: `http` or `https`, no userinfo, no query, no fragment, no whitespace, at most 200 characters. A trailing slash is removed only when the path is empty. `http` exists so the local fixture and Node tests can run. A phone must use the computer's LAN address, not `localhost`.
+Endpoint rules match in TypeScript and C++: `http` or `https`, no userinfo, no query, no fragment, no ASCII whitespace, at most 200 characters after normalization. A trailing slash is removed only when the path is empty. `http` exists so the local fixture and Node tests can run. A phone must use the computer's LAN address, not `localhost`.
 
 ```http
 POST /tasks
@@ -82,7 +82,7 @@ Acceptance is HTTP 200 or 202:
 
 Status values are `accepted`, `working`, `input_required`, `completed`, `failed`, and `cancelled`. Task ids match `^[A-Za-z0-9._:-]{1,128}$`. The stored input is at most 32768 canonical bytes. A result is at most 65536 canonical bytes.
 
-`GET /tasks/{taskId}` polls. `GET /operations/{operationId}` reconciles a lost acceptance. `POST /tasks/{taskId}/cancel` cancels. The HTTP connection is not held open for the life of the task. The host polls at the configured interval (50 to 60000 ms, default 1000) and backs off, capped at 30 seconds.
+`GET /tasks/{taskId}` polls. `GET /operations/{operationId}` reconciles a lost acceptance. `POST /tasks/{taskId}/cancel` cancels. The HTTP connection is not held open for the life of the task. The host polls at the configured interval (50 to 60000 ms, default 1000). Transport failures back off by doubling that interval, capped at 30 seconds. A later `accepted` or `working` status is a live task and clears that backoff. The host does not use `AbortSignal.timeout` or `AbortSignal.any`. Each request uses an `AbortController` and a timer, so the same driver runs on Node.js and the documented React Native host. `timeoutMs` defaults to 15000 and must be from 1 to 120000.
 
 `input_required` keeps the task and blocks the parent with `remote_input_required`. Reconcile can complete or fail that run locally. Sending the missing input to the remote agent is not implemented.
 
@@ -122,8 +122,11 @@ A crash before the acceptance is stored looks the same as a crash before the req
 - No task id, and lookup was declared: look the operation up. `not_found` plus dedupe allows the original submission. `not_found` without dedupe is `UNKNOWN_OUTCOME`.
 - No task id, no lookup, and dedupe was declared: submit the original operation id again.
 - Neither lookup nor dedupe: `UNKNOWN_OUTCOME`, the parent is `BLOCKED`, and nothing is submitted. `run.reconcile` can complete or fail it. Retry is rejected.
-- The host reports `offline` or `not_sent` only when it did not transmit. A dropped connection after send is `network` or `timeout`, which is uncertain.
+- The host reports `offline` or `not_sent` only when that attempt did not transmit. A dropped connection after send is `network` or `timeout`, which is uncertain.
+- `offline` on the first submission, before any transport result, stores `QUEUED` and waits for a network. `offline` during lookup, polling, or a later submission keeps the existing state. It does not turn `SUBMITTING` back into `QUEUED`.
+- Waiting with no stored task id is waiting for a network. Waiting with a task id is waiting on the remote task. Coming back online does not clear an uncertain submission.
 - After a task id is known, a later network failure waits and polls. It does not create another task.
+- Repeated invalid responses before a task id is stored become `UNKNOWN_OUTCOME`. They do not fail the parent. Invalid responses after a task id is known keep polling with the capped backoff. Exhausting that backoff does not mark an uncertain or accepted task as safely failed.
 
 `run.reconcile({ resolution: "complete" })` stores the supplied output as the local observation. It does not contact the remote agent.
 
@@ -142,11 +145,13 @@ A crash before the acceptance is stored looks the same as a crash before the req
 
 The default is local-only. Remote delegation runs only for a registered remote agent, only to that agent's endpoint, and only with the arguments the model put on that call. The conversation, local history, files, images, and artifacts are not added. The same check runs on retries and after restart. A re-registered agent with a different endpoint fails closed and does not send.
 
+The host rejects redirects. `fetch` is called with `redirect: "manual"`, and a 3xx response is a temporary transport result. Delegation arguments and credential headers are not sent to the redirect location. Endpoint parsing is the same in TypeScript and C++: `http` or `https`, no userinfo, no query, no fragment, no ASCII whitespace, at most 200 characters after normalization, and a trailing slash is removed only when the path is empty. The stored transport id is `http:` plus that normalized endpoint. A recovery whose registered endpoint or transport id differs from the stored row is unauthorized.
+
 These checks do not sandbox arbitrary application tools. A local tool can still use the network on its own.
 
 ## Reference fixture and example
 
-`examples/remote-task` is a development HTTP fixture with a JSON file, delayed completion, dedupe, lookup, cancel, a simulated failure, and a dropped acceptance. Its supplier recommendations are marked `simulated: true`. It is not a hosting product.
+`examples/remote-task` is a development HTTP fixture with a JSON file, delayed completion, dedupe, lookup, cancel, a simulated failure, and a dropped acceptance. Callers that use it declare all six capabilities. The fixture does not advertise them, and omitting `dedupe` or `lookup` on the client does not make this process a safe retry peer. Its supplier recommendations are marked `simulated: true`. It is not a hosting product.
 
 `examples/node-hybrid` is the field-inspection agent. It reads local notes, calls the fixture, and saves a local report. `--crash-during` stops the local process with `SIGKILL` while the fixture keeps the task. `--resume` continues the parent. No LarkX Cloud account is required.
 

@@ -5,6 +5,9 @@ import { readFileSync, renameSync, writeFileSync } from "node:fs";
  * Development fixture for the HTTP task protocol.
  * It is not a LarkX product and it does not run an agent loop.
  * Supplier recommendations are simulated and labeled as such.
+ *
+ * This process supports dedupe, lookup, durable task ids, poll, cancel, and
+ * persistence. Callers declare those capabilities. This server does not.
  */
 
 interface Task {

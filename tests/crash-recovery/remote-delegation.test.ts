@@ -1,5 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { createServer as createHttpServer, type Server } from "node:http";
 import { createServer } from "node:net";
+import { once } from "node:events";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +13,8 @@ import {
   remoteAgent,
   scriptedModel,
   sqlite,
+  type RemoteCapabilities,
+  type Runtime,
   type Run,
 } from "@larkxai/node";
 import { describe, expect, it } from "vitest";
@@ -366,7 +370,278 @@ describe("durable remote delegation", () => {
     expect(again.status).toBe(409);
     await server.stop();
   });
+
+  it("recovers the original task after a lost acknowledgement and an offline lookup", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "larkx-remote-ack-"));
+    const server = await startServer(directory, 0);
+    await control(server, { dropNextAck: true });
+    const database = join(directory, "agent.db");
+    let online = true;
+    let sawOfflineLookup = false;
+    let releaseParked: () => void = () => undefined;
+    const parked = new Promise<void>((resolve) => {
+      releaseParked = resolve;
+    });
+    const runtime = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "field-assistant",
+      leaseMs: 0,
+      isOnline: () => online,
+    });
+    runtime.holdExecution((event) => {
+      if (event.type === "remote-response" && event.action === "submit") {
+        online = false;
+      }
+      if (
+        event.type === "remote-response" &&
+        event.action === "lookup" &&
+        event.outcome === "offline"
+      ) {
+        sawOfflineLookup = true;
+      }
+      if (event.type === "remote-waiting" && event.waitingFor === "network" && sawOfflineLookup) {
+        releaseParked();
+      }
+    });
+    const agent = runtime.createAgent({
+      name: "field-assistant",
+      version: 1,
+      model: inspectionModel(),
+      instructions: "Inspect equipment and identify replacement parts.",
+      tools: localTools(),
+      remoteAgents: [procurement(server.endpoint, lookupOnly)],
+    });
+    const run = await agent.start({ message: "Inspect pump P-104" });
+    const pending = run.result().then(
+      () => undefined,
+      () => undefined,
+    );
+    await parked;
+    const before = await run.getDelegations();
+    expect(before[0]?.state).toBe("SUBMITTING");
+    expect(before[0]?.taskId).toBeNull();
+    const operationId = before[0]?.operationId;
+    const stored = await snapshot(server);
+    expect(stored.posts).toBe(1);
+    expect(stored.created).toBe(1);
+    expect(stored.tasks[0]?.operationId).toBe(operationId);
+    const taskId = stored.tasks[0]?.taskId;
+    await runtime.close();
+    await pending;
+
+    const resumed = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "field-assistant",
+      leaseMs: 0,
+      isOnline: () => true,
+    });
+    resumed.createAgent({
+      name: "field-assistant",
+      version: 1,
+      model: inspectionModel(),
+      instructions: "Inspect equipment and identify replacement parts.",
+      tools: localTools(),
+      remoteAgents: [procurement(server.endpoint, lookupOnly)],
+    });
+    const continued = await resumed.resume(run.runId);
+    expect((await continued.result()).message).toBe("Done.");
+    const after = await continued.getDelegations();
+    expect(after[0]?.state).toBe("COMPLETED");
+    expect(after[0]?.operationId).toBe(operationId);
+    expect(after[0]?.taskId).toBe(taskId);
+    expect(await snapshot(server)).toMatchObject({ posts: 1, created: 1 });
+    await resumed.close();
+    await server.stop();
+  });
+
+  it("does not resubmit a lost acknowledgement when dedupe and lookup are omitted", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "larkx-remote-omit-"));
+    const server = await startServer(directory, 0);
+    await control(server, { dropNextAck: true });
+    const database = join(directory, "agent.db");
+    const runtime = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "field-assistant",
+      leaseMs: 0,
+    });
+    const blocked = waitForReconcile(runtime);
+    const agent = runtime.createAgent({
+      name: "field-assistant",
+      version: 1,
+      model: inspectionModel(),
+      instructions: "Inspect equipment and identify replacement parts.",
+      tools: localTools(),
+      remoteAgents: [procurement(server.endpoint)],
+    });
+    const run = await agent.start({ message: "Inspect pump P-104" });
+    const pending = run.result().then(
+      () => undefined,
+      () => undefined,
+    );
+    await blocked;
+    const before = await run.getDelegations();
+    expect(before[0]?.state).toBe("UNKNOWN_OUTCOME");
+    const operationId = before[0]?.operationId;
+    expect((await snapshot(server)).posts).toBe(1);
+    await runtime.close();
+    await pending;
+
+    const resumed = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "field-assistant",
+      leaseMs: 0,
+    });
+    const blockedAgain = waitForReconcile(resumed);
+    resumed.createAgent({
+      name: "field-assistant",
+      version: 1,
+      model: inspectionModel(),
+      instructions: "Inspect equipment and identify replacement parts.",
+      tools: localTools(),
+      remoteAgents: [procurement(server.endpoint)],
+    });
+    const continued = await resumed.resume(run.runId);
+    const still = continued.result().then(
+      () => undefined,
+      () => undefined,
+    );
+    await blockedAgain;
+    const after = await continued.getDelegations();
+    expect(after[0]?.state).toBe("UNKNOWN_OUTCOME");
+    expect(after[0]?.operationId).toBe(operationId);
+    expect(await snapshot(server)).toMatchObject({ posts: 1, created: 1 });
+    await resumed.close();
+    await still;
+    await server.stop();
+  });
+
+  it("rejects recovery at an endpoint that was not registered for the task", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "larkx-remote-moved-"));
+    const server = await startServer(directory, 0);
+    const database = join(directory, "agent.db");
+    const hits: string[] = [];
+    const moved = createMovedServer(hits);
+    const movedPort = await listen(moved);
+    let releaseAccepted: () => void = () => undefined;
+    const accepted = new Promise<void>((resolve) => {
+      releaseAccepted = resolve;
+    });
+    const runtime = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "field-assistant",
+      leaseMs: 0,
+    });
+    runtime.holdExecution(async (event) => {
+      if (event.type === "remote-requested" && event.action === "poll") {
+        releaseAccepted();
+        await runtime.close();
+      }
+    });
+    const agent = runtime.createAgent({
+      name: "field-assistant",
+      version: 1,
+      model: inspectionModel(),
+      instructions: "Inspect equipment and identify replacement parts.",
+      tools: localTools(),
+      remoteAgents: [procurement(server.endpoint, referenceCapabilities)],
+    });
+    const run = await agent.start({ message: "Inspect pump P-104" });
+    const pending = run.result().then(
+      () => undefined,
+      () => undefined,
+    );
+    await accepted;
+    await pending;
+    expect((await snapshot(server)).posts).toBe(1);
+
+    const resumed = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "field-assistant",
+      leaseMs: 0,
+    });
+    resumed.createAgent({
+      name: "field-assistant",
+      version: 1,
+      model: inspectionModel(),
+      instructions: "Inspect equipment and identify replacement parts.",
+      tools: localTools(),
+      remoteAgents: [procurement(`http://127.0.0.1:${String(movedPort)}`, referenceCapabilities)],
+    });
+    const continued = await resumed.resume(run.runId);
+    await expect(continued.result()).rejects.toThrow(/not registered|not authorized/);
+    expect(hits).toEqual([]);
+    expect(await snapshot(server)).toMatchObject({ posts: 1, created: 1 });
+    await resumed.close();
+    await closeServer(moved);
+    await server.stop();
+  });
 });
+
+const referenceCapabilities: RemoteCapabilities = {
+  dedupe: true,
+  lookup: true,
+  taskId: true,
+  poll: true,
+  cancel: true,
+  persistent: true,
+};
+
+const lookupOnly: RemoteCapabilities = { ...referenceCapabilities, dedupe: false };
+
+function procurement(endpoint: string, capabilities?: RemoteCapabilities) {
+  return remoteAgent({
+    name: "procurement-agent",
+    description: "Find compatible replacement parts and suppliers.",
+    transport: {
+      type: "http",
+      endpoint,
+      pollIntervalMs: 50,
+      ...(capabilities !== undefined ? { capabilities } : {}),
+    },
+  });
+}
+
+function waitForReconcile(runtime: Runtime): Promise<void> {
+  return new Promise((resolve) => {
+    runtime.observe((event) => {
+      if (event.type === "reconcile-required") {
+        resolve();
+      }
+    });
+  });
+}
+
+function createMovedServer(hits: string[]): Server {
+  return createHttpServer((request, response) => {
+    hits.push(
+      `${request.method ?? ""} ${request.url ?? ""} ${request.headers.authorization ?? ""}`,
+    );
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ taskId: "task-moved", status: "accepted" }));
+  });
+}
+
+async function listen(server: Server): Promise<number> {
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address();
+  if (address === null || typeof address === "string") {
+    throw new Error("The recovery server did not bind a port.");
+  }
+  return address.port;
+}
+
+function closeServer(server: Server): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error !== undefined) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
 
 function inspectionModel() {
   let invocations = 0;

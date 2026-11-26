@@ -13,3 +13,5 @@ The process listens on all interfaces so a phone on the same network can reach i
 `POST /_control` accepts `{ "dropNextAck": true }`, `{ "failNext": true }`, and `{ "delayMs": 2000 }`. `GET /_tasks` lists stored tasks for tests. Those two routes are fixture controls, not the client protocol.
 
 The client protocol is `POST /tasks`, `GET /tasks/{taskId}`, `GET /operations/{operationId}`, and `POST /tasks/{taskId}/cancel`.
+
+This fixture supports dedupe, operation lookup, durable task ids, polling, cancel, and persistence. A client must declare that set. Leaving `dedupe` or `lookup` unset does not make a lost acknowledgement safe to submit again.

@@ -384,14 +384,20 @@ bool task_id_ok(const std::string& id) {
   return true;
 }
 
+bool endpoint_forbidden(unsigned char character) {
+  return character == ' ' || character == '\t' || character == '\n' || character == '\r' || character == '\v' ||
+         character == '\f' || character == '#' || character == '?';
+}
+
 Status normalize_endpoint(std::string& endpoint) {
   endpoint = trim_copy(endpoint);
   if (endpoint.rfind("https://", 0) != 0 && endpoint.rfind("http://", 0) != 0) {
     return Status::fail(Code::InvalidArgument, "Remote endpoint must be an http or https URL.");
   }
-  if (endpoint.find(' ') != std::string::npos || endpoint.find('#') != std::string::npos ||
-      endpoint.find('?') != std::string::npos) {
-    return Status::fail(Code::InvalidArgument, "Remote endpoint cannot include whitespace, a query, or a fragment.");
+  for (unsigned char character : endpoint) {
+    if (endpoint_forbidden(character)) {
+      return Status::fail(Code::InvalidArgument, "Remote endpoint cannot include whitespace, a query, or a fragment.");
+    }
   }
   const auto scheme = endpoint.find("://");
   const std::string rest = endpoint.substr(scheme + 3);
@@ -403,11 +409,11 @@ Status normalize_endpoint(std::string& endpoint) {
   if (host.empty() || host.front() == ':') {
     return Status::fail(Code::InvalidArgument, "Remote endpoint is missing a host.");
   }
-  if (endpoint.size() > 200) {
-    return Status::fail(Code::InvalidArgument, "Remote endpoint is too long.");
-  }
   if (slash != std::string::npos && slash + 1 == rest.size()) {
     endpoint.pop_back();
+  }
+  if (endpoint.size() > 200) {
+    return Status::fail(Code::InvalidArgument, "Remote endpoint is too long.");
   }
   return Status::success();
 }
@@ -1215,7 +1221,10 @@ struct Runtime::Impl {
   }
 
   int64_t remote_delay(const Delegation& row, int32_t failures) const {
-    const int32_t shift = failures > 4 ? 4 : failures;
+    int32_t shift = failures > 4 ? 4 : failures;
+    if (shift < 0) {
+      shift = 0;
+    }
     int64_t delay = row.poll_interval_ms << shift;
     if (delay < row.poll_interval_ms) {
       delay = row.poll_interval_ms;
@@ -1410,12 +1419,23 @@ struct Runtime::Impl {
       out.wait_until_ms = *recorded.next_attempt_at;
       out.effect_type = "non-idempotent";
       out.cancel_requested = state.run.cancel_requested;
-      const char* waiting_for = row->state == DelegationState::Queued ? "network" : "remote";
+      const char* waiting_for = row->task_id.has_value() ? "remote" : "network";
       out.detail_json = obj({{"until", jnum(*recorded.next_attempt_at)}, {"waitingFor", jstr(waiting_for)}});
       return Status::success();
     }
     const RemoteAction action = remote_recovery_action(*row);
     if (action.name == "unknown") {
+      if (recorded.status == StepStatus::RetryScheduled) {
+        std::string attempt;
+        if (auto status = begin_frontier(state, fence, now_ms, recorded.step_key, recorded.step_order, EffectType::NonIdempotent,
+                                       ExecutionTarget::Hybrid, recorded.operation_id, attempt);
+            !status.ok()) {
+          return status;
+        }
+        if (auto status = load(state.run.run_id, state); !status.ok()) {
+          return status;
+        }
+      }
       again = true;
       return unknown_remote(std::move(state), fence, now_ms, recorded.step_key, action.reason);
     }
@@ -2600,7 +2620,8 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
     resolve.attempt_id = attempt_id;
     resolve.step_to = StepStatus::RetryScheduled;
     resolve.attempt_status = AttemptStatus::Interrupted;
-    resolve.next_attempt_at = now_ms + saved.poll_interval_ms;
+    const int32_t failures = saved.poll_failures + add_failures;
+    resolve.next_attempt_at = now_ms + impl_->remote_delay(saved, failures);
     resolve.reason = "remote_uncertain";
     resolve.error_json = error_json("transient_execution_failure", "The remote acknowledgement was not committed.", true);
     resolve.event_id = event_id(state, 0);
@@ -2615,13 +2636,16 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
           row.state = DelegationState::Submitting;
           row.inflight_action.clear();
           row.poll_inflight = false;
-          row.poll_failures = saved.poll_failures + add_failures;
+          row.poll_failures = failures;
           row.updated_at = now_ms;
         }
       }
       return Status::success();
     });
   };
+  // Offline means this attempt sent nothing. It does not erase an earlier attempt that may have been sent.
+  const bool never_transmitted = saved.inflight_action == "submit" && !saved.task_id.has_value() && saved.poll_failures == 0 &&
+                                 (saved.state == DelegationState::Queued || saved.state == DelegationState::Submitting);
   auto queue_offline = [&]() -> Status {
     if (!open_attempt) {
       return impl_->schedule_remote_wait(fence, now_ms, run_id, saved.step_key, saved.state, saved.poll_failures, false);
@@ -2645,7 +2669,7 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
       }
       for (auto& row : next.delegations) {
         if (row.step_key == saved.step_key) {
-          row.state = DelegationState::Queued;
+          row.state = never_transmitted ? DelegationState::Queued : saved.state;
           row.inflight_action.clear();
           row.poll_inflight = false;
           row.updated_at = now_ms;
@@ -2667,11 +2691,11 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
     }
   }
   if (outcome == "invalid") {
-    if (saved.poll_failures + 1 >= 3) {
-      return impl_->fail_remote(std::move(state), fence, now_ms, saved.step_key, "permanent_execution_failure",
-                               "The remote task response was invalid.");
-    }
     if (!saved.task_id.has_value()) {
+      if (saved.poll_failures + 1 >= 3) {
+        return impl_->unknown_remote(std::move(state), fence, now_ms, saved.step_key,
+                                    "The remote task response was invalid and the submission may already have started.");
+      }
       return uncertain(1);
     }
     outcome = "temporary";
@@ -2706,7 +2730,7 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
       impl_->remote_issued.erase(run_id);
       return impl_->schedule_remote_wait(fence, now_ms, run_id, saved.step_key, saved.state, saved.poll_failures + 1, false);
     }
-    return uncertain(0);
+    return uncertain(1);
   }
   if (outcome == "unauthorized") {
     return impl_->fail_remote(std::move(state), fence, now_ms, saved.step_key, "unauthorized_destination",
@@ -2844,12 +2868,13 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
         if (auto status = park_delegation(next, park); !status.ok()) {
           return status;
         }
-        if (cancel_after) {
-          for (auto& row : next.delegations) {
-            if (row.step_key == saved.step_key) {
+        for (auto& row : next.delegations) {
+          if (row.step_key == saved.step_key) {
+            row.poll_failures = 0;
+            if (cancel_after) {
               row.cancel_intent = true;
-              row.updated_at = now_ms;
             }
+            row.updated_at = now_ms;
           }
         }
         return Status::success();
