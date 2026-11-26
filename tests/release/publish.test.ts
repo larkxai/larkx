@@ -58,11 +58,8 @@ describe("npm publish layout", () => {
   };
   const license = readFileSync(join(root, "LICENSE"));
 
-  it("publishes only the Node and React Native SDKs", () => {
-    expect(libraries.map(({ pkg }) => pkg.name).sort()).toEqual([
-      "@larkxai/node",
-      "@larkxai/react-native",
-    ]);
+  it("publishes only the React Native SDK", () => {
+    expect(libraries.map(({ pkg }) => pkg.name)).toEqual(["@larkxai/react-native"]);
     for (const { dir, pkg } of libraries) {
       const directory = relative(root, dir);
       expect(pkg.license).toBe("Apache-2.0");
@@ -85,9 +82,6 @@ describe("npm publish layout", () => {
         expect(name.startsWith("@larkxai/")).toBe(false);
       }
     }
-    expect(libraries.find(({ pkg }) => pkg.name === "@larkxai/node")?.pkg.engines).toEqual({
-      node: ">=22.13.0",
-    });
     const reactNative = libraries.find(({ pkg }) => pkg.name === "@larkxai/react-native")?.pkg;
     expect(reactNative?.exports).toMatchObject({
       ".": expect.any(Object),
@@ -98,10 +92,11 @@ describe("npm publish layout", () => {
     });
   });
 
-  it("keeps host, protocol, cactus, and telemetry private", () => {
+  it("keeps the Node host and the other workspace packages private", () => {
     expect(internal.map(({ pkg }) => pkg.name).sort()).toEqual([
       "@larkxai/cactus",
       "@larkxai/host",
+      "@larkxai/node",
       "@larkxai/protocol",
       "@larkxai/telemetry",
     ]);
@@ -129,16 +124,16 @@ describe("npm publish layout", () => {
   });
 
   it("keeps the telemetry sdk version aligned with the public SDK", () => {
-    const node = libraries.find(({ pkg }) => pkg.name === "@larkxai/node");
-    if (!node) throw new Error("missing @larkxai/node");
+    const reactNative = libraries.find(({ pkg }) => pkg.name === "@larkxai/react-native");
+    if (!reactNative) throw new Error("missing @larkxai/react-native");
     const source = readFileSync(join(root, "packages/telemetry/src/project.ts"), "utf8");
-    expect(source).toContain(`export const SDK_VERSION = "${node.pkg.version}";`);
+    expect(source).toContain(`export const SDK_VERSION = "${reactNative.pkg.version}";`);
   });
 
   it("publishes the public libraries to GitHub Packages", () => {
     const names = libraryPackageDirs(root).map((dir) => basename(dir));
-    expect(names.sort()).toEqual(["node", "react-native"]);
-    expect(changeset.fixed).toEqual([["@larkxai/node", "@larkxai/react-native"]]);
+    expect(names).toEqual(["react-native"]);
+    expect(changeset.fixed).toEqual([]);
     expect(isAlreadyPublished("You cannot publish over the previously published versions")).toBe(
       true,
     );

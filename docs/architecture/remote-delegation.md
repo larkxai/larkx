@@ -2,7 +2,7 @@
 
 A local agent can delegate one step to an independently deployed remote agent. The C++ runtime stores the delegation before any network request. The host performs HTTP. The remote agent owns its own reasoning, tools, and task store. LarkX does not run that agent and does not claim exactly-once remote execution.
 
-A2A is a later milestone. This protocol is the custom HTTP task API that A2A can sit on. It is not an existing standard.
+A2A is the planned standard for talking to an independently deployed agent, including a LangGraph, Google ADK, or OpenAI Agents SDK service. This HTTP task protocol stays as a generic transport and as the test foundation. It is not a proprietary agent ecosystem, and it is not A2A.
 
 ## Three different setups
 
@@ -12,10 +12,10 @@ A2A is a later milestone. This protocol is the custom HTTP task API that A2A can
 
 ## Public API
 
-`remoteAgent` is exported from `@larkxai/node` and `@larkxai/react-native`. There is no third package.
+`remoteAgent` is exported from `@larkxai/react-native`, the public SDK. The private Node host exports the same function for tests. There is no third package.
 
 ```typescript
-import { createRuntime, defineTool, remoteAgent, sqlite } from "@larkxai/node";
+import { createRuntime, defineTool, remoteAgent, sqlite } from "@larkxai/react-native";
 
 const procurement = remoteAgent({
   name: "procurement-agent",

@@ -1,6 +1,6 @@
 # RFC 0001 — Architecture
 
-Status: superseded. The current engine is the C++ runtime in `native/`. Node and React Native bind it. The package diagram below describes the removed TypeScript engine and is kept for the decisions that still hold: one state machine, storage written by that state machine, and model providers outside the core. See [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md). A Rust port and a managed coordinator are not planned.
+Status: superseded. The current engine is the C++ runtime in `native/`. `@larkxai/react-native` is the public SDK. Node is an internal test host. The package diagram below describes the removed TypeScript engine and is kept for the decisions that still hold: one state machine, storage written by that state machine, and model providers outside the core. See [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md). A Rust port, a competing server framework, and a managed coordinator are not planned.
 
 ## Problem
 

@@ -1,6 +1,6 @@
 # Native core
 
-This directory is the C++20 execution engine. Node.js, React Native, and the Swift sample bind it. There is no TypeScript execution engine beside it.
+This directory is the C++20 execution engine. React Native is the public binding. The Node host and the Swift sample bind the same core. Swift and Kotlin product SDKs are planned. There is no TypeScript execution engine beside it.
 
 ABI version 2, in `abi/include/larkx.h`, persists protocol transitions and runs the agent loop. `larkx_run_drive` returns one request. The host invokes the model or the tool and submits the result. The core does not call the host, a model SDK, or a device API. It does not submit a remote task or export telemetry.
 

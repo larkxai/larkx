@@ -5,59 +5,51 @@
 [![@larkxai/react-native](https://img.shields.io/npm/v/@larkxai/react-native?label=%40larkxai%2Freact-native)](https://www.npmjs.com/package/@larkxai/react-native)
 [![Apache-2.0](https://img.shields.io/github/license/larkxai/larkx)](./LICENSE)
 
-**Durable orchestration for on-device AI agents.**
+**The missing execution layer for on-device AI agents.**
 
-AI agents do more than generate text. They make decisions, call tools, and carry out multi-step work. On a phone or another edge device the process can be suspended or killed at any of those steps.
+LarkX is an open-source, mobile-first execution runtime for building durable, offline-first AI agents that can collaborate with existing remote agents.
 
-LarkX stores the agent run and continues it from that record when the application starts again.
+**Inference engines run models. LarkX brings durable agent execution to devices.**
 
-Inference engines run models. LarkX runs agents.
+A phone can run its own agent. It does not have to be only a client of a remote one. When the network and an external system are available, the local agent can delegate one task to an agent that already runs on LangGraph, Google ADK, the OpenAI Agents SDK, or another framework. LarkX does not replace those frameworks, and it does not host their servers.
 
 [Website](https://larkx.ai) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)
 
-## Why on-device agents need durable orchestration
+## Why a mobile agent needs its own runtime
 
-A model call and a tool call are separate effects. The process can die after a tool has changed local data and before that result is stored, or after a decision is stored and before the next tool runs. Restarting the prompt from scratch repeats work and can repeat a side effect.
+A model call and a tool call are separate effects. The operating system can suspend or kill the process after a tool has changed local data and before that result is stored, or after a decision is stored and before the next tool runs. Starting the prompt over repeats work and can repeat a side effect.
 
-LarkX keeps one execution record in SQLite. The C++ runtime decides the next model or tool call. The application supplies the model and the tools. When the process runs again, the same agent registration resumes the same run.
+LarkX keeps one execution record in SQLite on the device. The C++ runtime decides the next model call, tool call, or remote delegation. The application supplies the model and the native tools. When the application starts again, the same agent registration resumes the same run.
 
-## Installation
+Established agent frameworks already orchestrate, persist, and recover work on servers. LarkX is specialized for the device: offline operation, the mobile process lifecycle, embedded storage, constrained resources, and durable coordination with a remote agent.
 
-React Native:
+## Public SDK
+
+| Platform     | Distribution          | Status      |
+| ------------ | --------------------- | ----------- |
+| React Native | npm                   | Implemented |
+| Swift        | Swift Package Manager | Planned     |
+| Kotlin       | Maven                 | Planned     |
 
 ```bash
 npm install @larkxai/react-native
 ```
 
-Node.js:
-
-```bash
-npm install @larkxai/node
+```typescript
+import { createRuntime, defineTool, sqlite, remoteAgent } from "@larkxai/react-native";
 ```
 
-Those are the only packages an application installs. The next release of both is 0.2.0.
-
-The Node SDK compiles its native addon from the packaged C++ sources. After installation:
-
-```bash
-sh node_modules/@larkxai/node/scripts/build-native.sh
-```
-
-That build needs Node.js 22.13 or newer, CMake 3.20 or newer, a C++20 compiler, SQLite 3 development headers, and Node.js headers (`node_api.h`). It is a source build for Linux x64 and macOS arm64/x64. Prebuilt binaries are not published. Windows is not supported. If the addon is missing, `createRuntime` throws with those requirements and the command above. Set `LARKX_NATIVE_ADDON` only when you already have a `larkx_native.node` you built yourself.
-
-From this repository, the same command is `sh packages/node/scripts/build-native.sh`.
-
-React Native loads the native module through Expo autolinking, CocoaPods, and Gradle. Expo Go cannot load it. Use a development build. There is no JavaScript fallback.
+React Native loads the native module through Expo autolinking, CocoaPods, and Gradle. Expo Go cannot load it. Use a development build. There is no JavaScript fallback. The current published line is 0.2.0. Node.js remains in this repository for tests and is not an application install. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Quick start
 
-This script runs on Node.js after the addon build. The model is defined in the file. Nothing else is required.
+The model in this example is scripted so the snippet can run without a downloaded model. A device app uses the same runtime calls.
 
 ```typescript
-import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/node";
+import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native";
 
 const runtime = await createRuntime({
-  storage: sqlite("./agent.db"),
+  storage: sqlite(),
   ownerId: "notes",
 });
 
@@ -90,17 +82,11 @@ console.log(result.message);
 await runtime.close();
 ```
 
-`agent.start` registers the agent, stores the run, and starts the driver. `run.result()` waits for the terminal message. It does not start a second driver. `run.schedule()` starts the driver when you already hold the run and want it to proceed in the background.
-
-React Native uses the same calls from `@larkxai/react-native`. `sqlite()` with no path stores `larkx.db` in the application document directory.
-
-```typescript
-import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native";
-```
+`agent.start` registers the agent, stores the run, and starts the driver. `run.result()` waits for the terminal message. It does not start a second driver. `run.schedule()` starts the driver when you already hold the run and want it to proceed in the background. `sqlite()` with no path stores `larkx.db` in the application document directory.
 
 ## Local AI model integration
 
-Cactus is optional and is part of the React Native SDK. The root import does not load it. Install `cactus-react-native` 1.13.1 and `react-native-nitro-modules` 0.33.9 or newer in the app, then use a development build. Node.js does not use this module.
+Cactus is an optional local inference engine. LarkX does not ship its own. The root import does not load Cactus. Install `cactus-react-native` 1.13.1 and `react-native-nitro-modules` 0.33.9 or newer in the app, then use a development build.
 
 `qwen3-0.6b` is the model name the adapter passes to Cactus. The Cactus SDK's default quantization is int8, so a loaded model reports a name such as `qwen3-0.6b-int8`. Download and initialization happen before the run. They are not agent steps.
 
@@ -140,10 +126,10 @@ Completions for one model instance are queued. Cancelling a call that is still w
 Recovery happens when the process runs again and opens the same database. Register the same agent name and version, then resume the run id.
 
 ```typescript
-import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/node";
+import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native";
 
 const runtime = await createRuntime({
-  storage: sqlite("./agent.db"),
+  storage: sqlite(),
   ownerId: "notes",
 });
 
@@ -187,10 +173,10 @@ Open a new database file. This runtime stamps SQLite `application_id` `LXRT` (`0
 
 ## Hybrid delegation
 
-A local agent can hand one task to an independent remote agent and keep the parent run locally. This is not a local model, and it is not a local agent calling a cloud model. The remote agent has its own runtime. LarkX stores the delegation, then the host sends it.
+A local agent can hand one task to an independently deployed remote agent and keep the parent run on the device. The remote agent has its own runtime. It can be a LangGraph service, a Google ADK service, an OpenAI Agents SDK service, or another peer. LarkX stores the delegation, then the host sends it. The current transport is the HTTP task protocol. A2A is the planned standard for this link and is not implemented. This repository does not host the remote agent.
 
 ```typescript
-import { createRuntime, remoteAgent, sqlite } from "@larkxai/node";
+import { createRuntime, remoteAgent, sqlite } from "@larkxai/react-native";
 
 const procurement = remoteAgent({
   name: "procurement-agent",
@@ -209,7 +195,7 @@ const procurement = remoteAgent({
   },
 });
 
-const runtime = await createRuntime({ storage: sqlite("./agent.db") });
+const runtime = await createRuntime({ storage: sqlite() });
 const agent = runtime.createAgent({
   name: "field-assistant",
   version: 1,
@@ -224,25 +210,29 @@ const run = await agent.start({
 console.log(await run.result());
 ```
 
-The same `remoteAgent` export is on `@larkxai/react-native`. Registering a remote agent is the authorization to send those arguments to that endpoint. The default with no remote agents remains device-only. The client operation id and the remote task id are stored separately. A known task is polled after a restart and is not submitted again. `dedupe` and `lookup` stay off unless that object declares them. If the peer cannot be looked up and does not dedupe, a lost acknowledgement blocks the parent instead of creating another task. Cancellation of the local run does not roll back a remote effect. A2A is not implemented. The protocol is [docs/architecture/remote-delegation.md](docs/architecture/remote-delegation.md).
+Registering a remote agent is the authorization to send those arguments to that endpoint. The default with no remote agents remains device-only. The client operation id and the remote task id are stored separately. A known task is polled after a restart and is not submitted again. `dedupe` and `lookup` stay off unless that object declares them. If the peer cannot be looked up and does not dedupe, a lost acknowledgement blocks the parent instead of creating another task. Cancellation of the local run does not roll back a remote effect. The protocol is [docs/architecture/remote-delegation.md](docs/architecture/remote-delegation.md).
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  app["Application"] --> sdk["@larkxai/node or @larkxai/react-native"]
-  sdk --> driver["Host driver"]
-  driver --> abi["C ABI"]
-  abi --> core["C++ runtime"]
+  app["Mobile application"] --> rn["@larkxai/react-native"]
+  swift["Swift SDK, planned"] --> core["C++ runtime"]
+  kotlin["Kotlin SDK, planned"] --> core
+  rn --> driver["Host driver"]
+  driver --> core
   core --> db["SQLite"]
-  driver --> model["Model adapter"]
-  driver --> tools["Application tools"]
-  driver --> remote["Remote agent"]
+  driver --> inference["Local inference engines"]
+  driver --> tools["Native device tools"]
+  driver --> remote["Independent remote agents"]
+  remote --> http["HTTP task transport"]
+  remote --> a2a["A2A, planned"]
+  cloud["LarkX Cloud, optional"]
 ```
 
-The C++ runtime owns orchestration, the SQLite record, replay, retries, operation ids, ownership fencing, cancellation, unknown outcomes, reconciliation, and remote delegation state. The host driver performs the model call, tool call, or HTTP request the runtime asked for and submits the result. It does not plan the next step and it does not keep a second database.
+Implemented today: the React Native SDK, the shared C++ runtime, SQLite, native tools, optional Cactus, and the HTTP delegation transport. Planned: Swift, Kotlin, A2A, and optional LarkX Cloud. The C++ runtime owns orchestration, the SQLite record, replay, retries, operation ids, ownership fencing, cancellation, unknown outcomes, reconciliation, and remote delegation state. The host driver performs the model call, tool call, or HTTP request the runtime asked for and submits the result. It does not plan the next step and it does not keep a second database.
 
-React Native and Node.js use that same core and the same driver. Cactus, other model adapters, and application tools stay outside the core. LarkX Cloud does not own local execution state. Remote agents are deployed by the application, not by this repository.
+Local inference engines, native tools, and remote agent frameworks stay outside the core. LarkX Cloud does not own local execution state. Remote agents are deployed by their own projects, not by this repository. The private Node host uses the same core for tests. It is not a second product runtime.
 
 ## Execution guarantees
 
@@ -258,11 +248,11 @@ React Native and Node.js use that same core and the same driver. Cactus, other m
 
 Implemented:
 
-- One C++ agent runtime, shared by Node.js and React Native.
+- One C++ agent runtime. React Native is the public SDK. Node.js is the internal test host.
 - SQLite persistence, committed replay, retries, cancellation, pause and resume, ownership fencing, unknown outcomes, and reconciliation.
 - Scripted models for tests and the examples.
 - Optional Cactus adapter in `@larkxai/react-native/cactus`, including the per-model queue.
-- Process-death tests that kill the Node example with `SIGKILL` and reopen the database.
+- Process-death tests that kill the Node example with `SIGKILL` and reopen the database. Those tests stand in for mobile process death. They are not a phone run.
 - Durable delegation to an independent remote agent over the HTTP task protocol, including lost acknowledgements, offline queueing, cancellation, and a reference fixture.
 
 Not implemented, and not claimed by a green host test:
@@ -277,15 +267,17 @@ The metadata telemetry client remains in the repository. The C++ runtime does no
 
 | Example                                                    | What it shows                                                                                      |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| [examples/node-agent](examples/node-agent/README.md)       | Scripted agent, local tools, SQLite, and process termination                                       |
-| [examples/node-hybrid](examples/node-hybrid/README.md)     | Local field agent delegating to the reference remote task fixture                                  |
+| [examples/node-agent](examples/node-agent/README.md)       | Internal Node host: scripted agent, local tools, SQLite, and process termination                   |
+| [examples/node-hybrid](examples/node-hybrid/README.md)     | Internal Node host delegating to the reference remote task fixture                                 |
 | [examples/remote-task](examples/remote-task/README.md)     | HTTP task fixture used by the hybrid example. Not a hosted product                                 |
 | [examples/react-native-agent](examples/react-native-agent) | Scripted agent, Cactus download and init, field inspection, idempotent and non-idempotent recovery |
 | [examples/swift-agent](examples/swift-agent)               | Small Swift program that calls the C ABI. It is not a Swift SDK                                    |
 
 ## Roadmap
 
-The order of later work is in [ROADMAP.md](ROADMAP.md). Physical-device validation can proceed beside that work and remains the gate for claiming mobile support.
+The order of later work is in [ROADMAP.md](ROADMAP.md). Physical-device validation remains the gate for claiming mobile support.
+
+The intended flagship demonstration is a field-inspection agent on a phone. It uses an on-device model and native tools, delegates supplier research to an independently deployed LangGraph agent, survives termination, and finishes the report locally. That demonstration belongs to the interoperability milestone. It is not validated yet.
 
 ## Contributing and license
 

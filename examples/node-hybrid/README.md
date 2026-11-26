@@ -1,6 +1,6 @@
 # Node hybrid field inspection
 
-A local agent reads inspection notes, looks up a local specification, delegates supplier research, and saves the report. The remote task lives in `examples/remote-task`. No LarkX Cloud account is required.
+Internal Node host for a local agent that reads inspection notes, looks up a local specification, delegates supplier research, and saves the report. It is not the public SDK and it is not the validated phone demonstration. The remote task lives in `examples/remote-task`. No LarkX Cloud account is required.
 
 ```bash
 pnpm install

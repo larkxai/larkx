@@ -26,7 +26,7 @@ sh packages/react-native/scripts/build-host-tests.sh
 Read [AGENTS.md](AGENTS.md) before editing the runtime.
 
 - Do not add an empty package and describe it as available.
-- Do not publish `@larkxai/host`, `@larkxai/protocol`, `@larkxai/cactus`, or `@larkxai/telemetry`. They are private workspace modules. The public SDKs bundle the JavaScript they need.
+- Do not publish `@larkxai/node`, `@larkxai/host`, `@larkxai/protocol`, `@larkxai/cactus`, or `@larkxai/telemetry`. They are private workspace packages. `@larkxai/react-native` is the public npm SDK and bundles the JavaScript it needs.
 - Do not import Node, React Native, a database driver, or a model provider from `@larkxai/protocol`, `@larkxai/host`, or `@larkxai/telemetry`.
 - Do not add a model provider dependency to `native/`.
 - State-machine changes start in the C++ reducer and the protocol tables together.
@@ -38,8 +38,8 @@ Read [AGENTS.md](AGENTS.md) before editing the runtime.
 
 | Package                 | Role                                                                |
 | ----------------------- | ------------------------------------------------------------------- |
-| `@larkxai/node`         | Public Node SDK. Source-built native addon                          |
-| `@larkxai/react-native` | Public React Native SDK, including the optional `./cactus` subpath  |
+| `@larkxai/react-native` | Public npm SDK, including the optional `./cactus` subpath           |
+| `@larkxai/node`         | Private Node host. Source-built native addon for tests and examples |
 | `@larkxai/host`         | Private driver. Submits the model or tool result the core requested |
 | `@larkxai/protocol`     | Private contracts and canonical JSON                                |
 | `@larkxai/cactus`       | Private Cactus adapter used by the React Native subpath             |
@@ -54,13 +54,27 @@ The root package and everything in `examples/` are private. Packages that are no
 - Do not claim device, emulator, or provider coverage that the diff does not exercise.
 - Do not add a registry token, an `.npmrc` auth line, or a second publish workflow.
 
+## Node.js development host
+
+Node.js is how this repository tests mobile execution semantics without building an application. It is not a public SDK. Do not add it back to the npm release, the public install instructions, or the Changesets version group.
+
+The internal host compiles its addon from the C++ sources:
+
+```bash
+sh packages/node/scripts/build-native.sh
+```
+
+That build needs Node.js 22.13 or newer, CMake 3.20 or newer, a C++20 compiler, SQLite 3 development headers, and Node.js headers (`node_api.h`). It covers Linux x64 and macOS arm64/x64. Prebuilt binaries are not published. Windows is not supported. `tests/release/node-install.test.ts` packs the private package, installs that tarball outside the repo, and builds the addon there. That test checks the internal artifact. It is not an instruction to publish `@larkxai/node`.
+
+`examples/node-agent` is the `SIGKILL` demo. `examples/node-hybrid` and `examples/remote-task` exercise durable delegation. Keep those tests.
+
 ## Publishing
 
-`@larkxai/node` and `@larkxai/react-native` publish together. Changesets uses a fixed group of those two packages, `access: public`, and `privatePackages.version: false`. Add a changeset for a user-visible SDK change. The pending changeset is a minor bump from 0.1.2, which versions both SDKs as 0.2.0. A push to `main` that still has changesets opens a Version packages pull request. Merging that pull request publishes the two SDKs.
+`@larkxai/react-native` is the only package this repository publishes. Changesets uses `access: public` and `privatePackages.version: false`. There is no fixed group. Add a changeset for a user-visible React Native change. A push to `main` that still has changesets opens a Version packages pull request. Merging that pull request publishes `@larkxai/react-native`.
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) is the build status. [`.github/workflows/release.yml`](.github/workflows/release.yml) runs after that build succeeds on `main`. It builds `dist`, publishes to npm, publishes the same versions to GitHub Packages, and opens a GitHub Release for each public package. The root package stays private because the unscoped name `larkx` belongs to an unrelated project.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) is the build status. [`.github/workflows/release.yml`](.github/workflows/release.yml) runs after that build succeeds on `main`. It builds `dist`, publishes to npm, publishes the same version to GitHub Packages, and opens a GitHub Release. The root package stays private because the unscoped name `larkx` belongs to an unrelated project. Versions of `@larkxai/node` that are already on npm stay there. This repository does not publish a newer Node package.
 
-One npm token covers the `@larkxai` scope. Do not commit it. Store it as the `NPM_TOKEN` Actions secret. `pnpm version-packages` bumps the public SDKs, refreshes the lockfile, and copies the `@larkxai/node` version into `SDK_VERSION`.
+One npm token covers the `@larkxai` scope. Do not commit it. Store it as the `NPM_TOKEN` Actions secret. `pnpm version-packages` bumps `@larkxai/react-native`, refreshes the lockfile, and copies that version into `SDK_VERSION`.
 
 ## Code style
 

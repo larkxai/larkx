@@ -12,4 +12,8 @@ Register the definition again after a process restart before resuming a run. The
 
 The label is not a proof. An idempotent tool still has to use the operation id.
 
-LarkX is this agent runtime. It does not offer a general workflow function, caller-supplied step keys, or a second loop.
+LarkX is this on-device agent runtime. It does not offer a general server workflow function, caller-supplied step keys, or a second loop.
+
+## Product boundary
+
+Build the on-device execution path: durable runs, the mobile lifecycle, offline operation, embedded SQLite, native tools, and coordination with a remote task. Integrate local inference, server-side agent frameworks, cloud models, and external tools. Adopt A2A for agent-to-agent communication when that work starts. Leave remote-agent hosting, model training, and a general-purpose server workflow engine out of this repository. The same table is in [AGENTS.md](../../AGENTS.md).
