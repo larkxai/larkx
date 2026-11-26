@@ -272,7 +272,20 @@ function installationSource(source: TelemetrySource): Record<string, string> {
 }
 
 function utf8Size(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
+  let size = 0;
+  for (const character of value) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code < 0x80) {
+      size += 1;
+    } else if (code < 0x800) {
+      size += 2;
+    } else if (code < 0x10000) {
+      size += 3;
+    } else {
+      size += 4;
+    }
+  }
+  return size;
 }
 
 function isScalar(value: JsonValue | undefined): value is JsonValue {

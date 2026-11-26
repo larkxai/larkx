@@ -1,6 +1,6 @@
 # Cloud observability specification
 
-Status: the batch contract is still what `@larkxai/telemetry` posts. The C++ runtime does not produce the journal. Native export is a later milestone. Sections that name `@larkxai/core`, `defineWorkflow`, the TypeScript storage adapters, or the removed crash tests describe that removed engine. They are historical context for the batch shape, not the current runtime. See [docs/architecture/telemetry.md](architecture/telemetry.md).
+Status: the batch contract is still what `@larkxai/telemetry` posts. The host reads it from the native journal when telemetry is configured. Sections that name `@larkxai/core`, `defineWorkflow`, the TypeScript storage adapters, or the removed crash tests describe that removed engine. They are historical context for the batch shape, not the current runtime. See [docs/architecture/telemetry.md](architecture/telemetry.md).
 
 Ingestion, accounts, and the dashboard stay in the private `larkxai/cloud` repository. This repository does not contain the Cloud API.
 
@@ -59,7 +59,7 @@ flowchart TB
 | `@larkxai/agent`          | `createAgent` and `defineTool` on the same engine. One local step per model decision and per tool call. No provider SDK.                                                            |
 | `@larkxai/cactus`         | Optional `cactus-react-native` 1.13.1 adapter. Not imported by the agent loop or the engine.                                                                                        |
 | `@larkxai/testing`        | Fake clocks and storage conformance cases.                                                                                                                                          |
-| `@larkxai/telemetry`      | Optional metadata-only exporter. Reads `readJournal`. Posts `/v1/telemetry/batches`. Does not execute workflows.                                                                    |
+| `@larkxai/telemetry`      | Optional metadata-only exporter. Reads a bounded journal page after the cursor. Posts `/v1/telemetry/batches`. Does not execute workflows.                                          |
 
 `@larkxai/protocol`, `@larkxai/core`, `@larkxai/storage-memory`, and `@larkxai/storage-sqlite` do not import `node:*`, `react-native`, `fs`, `path`, or a database driver.
 
@@ -523,7 +523,7 @@ Memory storage runs the same reducer and the same prefix check. It has no SQL. C
 
 `telemetryVersion` is `1`. It is not `PROTOCOL_VERSION` and not `STORAGE_SCHEMA_VERSION`. A batch carries all three so a consumer can refuse a journal it does not understand.
 
-The exporter reads `readJournal`. It does not open a second log inside the workflow engine and it does not query private SQLite workflow tables. The execution journal remains the source. The checkpoint of what Cloud has acknowledged is exporter state, outside `workflow_events`, and it is not an execution event.
+The exporter reads a bounded page of committed events after its cursor. It does not open a second execution log and it does not copy the journal into the cursor. The execution journal remains the source. The checkpoint of what Cloud has acknowledged is exporter state, outside `workflow_events`, and it is not an execution event.
 
 Export is pull-shaped from the device's point of view: the device sends when it can. Cloud does not call the device, and the response contains no command, cursor to execute, or reconcile instruction. Delivery is at least once. Execution does not wait for an acknowledgement. A device that never connects still completes, fails, or blocks locally.
 

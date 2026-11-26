@@ -56,6 +56,13 @@ Overview: observed runs, runs whose last event is non-terminal, completed runs, 
 
 Run detail: run id, agent name and version, installation id, last observed status, model and tool operations, local versus remote (`kind` and `transport`), delegation history (`operationId`, `remoteAgent`, `taskId`), recovery events, attempt numbers, and `durationMs` when present.
 
-Recovery: `WORKFLOW_RECOVERED`, a later `STEP_COMPLETED` for a step that already completed before that event (the committed result was reused), `STEP_RETRY_SCHEDULED`, `STEP_OUTCOME_UNKNOWN`, `STEP_RECONCILED`, and a remote task id that appears again after recovery.
+Recovery metrics have to follow events the runtime actually writes. Replaying a committed step does not append another `STEP_COMPLETED`. The handler is not called, and there is no event that means "this result was reused."
 
-Freshness: timestamp of the last stored event, last successful batch time, events whose `createdAt` is much earlier than the time they were ingested, and a runtime with no recent batch. Label that state stale. Do not label it terminated.
+- Committed before recovery: `STEP_COMPLETED` whose sequence is lower than `WORKFLOW_RECOVERED`.
+- Reused by replay: not a separate event. Do not infer it from a second completion. The absence of a new `STEP_STARTED` for that step key, after recovery, is the evidence that the committed result was kept.
+- Retried: `STEP_RETRY_SCHEDULED`, then `STEP_STARTED` and, when it finishes, `STEP_COMPLETED` or `STEP_FAILED` with a higher `attempt`.
+- Newly completed: `STEP_COMPLETED` after `WORKFLOW_RECOVERED` for a step key that had no earlier `STEP_COMPLETED`.
+- Unknown outcome and reconciliation: `STEP_OUTCOME_UNKNOWN` and `STEP_RECONCILED`.
+- Recovered remote task: the same `operationId` and `taskId` on events after `WORKFLOW_RECOVERED`. The runtime does not synthesize another `REMOTE_DISPATCH_ACCEPTED` for a task it already accepted.
+
+Freshness: timestamp of the last stored event, last successful batch time, events whose `createdAt` is much earlier than the time they were ingested, and a runtime with no recent batch. Label that state stale. Do not label it terminated. A missing batch does not prove the process exited, and the last observed status is not the current process state.

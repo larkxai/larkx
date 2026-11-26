@@ -519,7 +519,11 @@ export class Runtime {
     });
     this.initializationMs = Date.now() - started;
     this.opened = true;
-    this.telemetrySession?.start();
+    try {
+      await this.telemetrySession?.start();
+    } catch {
+      // Telemetry setup never blocks agent execution.
+    }
   }
 
   createAgent(options: AgentOptions): Agent {

@@ -7,10 +7,61 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <vector>
 
 struct sqlite3;
 
 namespace larkx {
+
+/** Run id, update time, and the highest committed sequence. No event payloads. */
+struct JournalHead {
+  std::string run_id;
+  int64_t updated_at = 0;
+  int64_t max_sequence = 0;
+};
+
+struct PageRun {
+  std::string run_id;
+  std::string workflow_name;
+  int32_t workflow_version = 0;
+  std::string status;
+  int64_t created_at = 0;
+  int64_t updated_at = 0;
+  int64_t ownership_epoch = 0;
+  int32_t protocol_version = 1;
+  std::string data_policy;
+  bool cancel_requested = false;
+  bool has_owner = false;
+  bool has_blocked_reason = false;
+  std::string blocked_reason;
+};
+
+struct PageStep {
+  std::string step_key;
+  int32_t step_order = 0;
+  std::string status;
+  std::string execution_target;
+  std::string selected_target;
+  std::string effect_type;
+  int32_t attempt_count = 0;
+  std::string operation_id;
+};
+
+struct PageEvent {
+  std::string event_id;
+  int64_t sequence = 0;
+  std::string type;
+  std::string payload_json;
+  int64_t created_at = 0;
+};
+
+struct EventPage {
+  bool found = false;
+  PageRun run;
+  int64_t max_sequence = 0;
+  std::vector<PageStep> steps;
+  std::vector<PageEvent> events;
+};
 
 class Store {
  public:
@@ -25,6 +76,8 @@ class Store {
   Status create_run(const CreateRunInput& input, bool& created);
   Status load_run(const std::string& run_id, std::optional<Run>& out);
   Status list_runs(std::vector<Run>& out);
+  Status journal_heads(std::vector<JournalHead>& out);
+  Status event_page(const std::string& run_id, int64_t after_sequence, int32_t limit, EventPage& out);
   Status load_state(const std::string& run_id, std::optional<State>& out);
   Status compatible(const std::string& run_id, const std::string& workflow_name, int32_t workflow_version,
                     const std::string& input_json);

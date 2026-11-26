@@ -1,6 +1,6 @@
 # @larkxai/telemetry
 
-Optional client that posts metadata batches to LarkX Cloud. This package is private and is not a public install target. The C++ runtime does not import this package and does not build a journal for it. Native telemetry export is a later milestone. A run completes whether or not a batch is acknowledged. Cloud does not retry steps, reconcile unknown outcomes, or cancel runs.
+Optional client that posts metadata batches to LarkX Cloud. This package is private and is not a public install target. The C++ runtime does not import this package. The host reads bounded journal pages and this client delivers them. A run completes whether or not a batch is acknowledged. Cloud does not retry steps, reconcile unknown outcomes, or cancel runs.
 
 ```typescript
 import {
@@ -13,10 +13,10 @@ const telemetry = createCloudTelemetry({
   endpoint: "https://cloud.example",
   apiKey: process.env.LARKX_INGESTION_KEY ?? "",
   journal: {
-    async listRuns() {
+    async listHeads() {
       return [];
     },
-    async readJournal() {
+    async readSlice() {
       return null;
     },
   },
@@ -65,6 +65,6 @@ These payload keys are never copied: `input`, `output`, `messages`, `prompt`, `t
 
 `createSqliteTelemetryStore` keeps one JSON document in `larkx_telemetry_state` on a driver you open. The driver is any object with `exec`, `get`, `run`, and `transaction`. `createMemoryTelemetryStore` dies with the process.
 
-The store holds one installation id. Cursors are per destination, hashed from the endpoint and the ingestion key. A batch is written before it is sent. The same body is retried until the acknowledgement names that batch. A `401` stops the timer.
+The store holds one installation id and a revision. A save is ignored when the stored revision is not the one the writer read, and a cursor is not replaced with a lower sequence. Cursors are per destination, hashed from the endpoint, the project id, and the ingestion key. The document does not store the key or the endpoint. Runs that already had events when the destination was first prepared are sealed and are not exported. A batch is written before it is sent. The same body is retried until the acknowledgement names that batch. A `401` or a redirect stops the timer. `stop()` aborts the current request and does not wait for the collector.
 
 The exporter does not delete agent data. If you delete the agent database and keep the telemetry file, a reused run id can conflict in Cloud. Delete both on reset.

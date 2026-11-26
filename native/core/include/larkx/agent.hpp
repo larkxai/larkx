@@ -97,6 +97,8 @@ class Runtime {
   Status step_output(const std::string& run_id, const std::string& step_key, std::string& out);
   Status event_count(const std::string& run_id, int32_t& count);
   Status event_payload(const std::string& run_id, int32_t index, std::string& out);
+  Status journal_heads_json(std::string& out);
+  Status event_page_json(const std::string& run_id, int64_t after_sequence, int32_t limit, std::string& out);
 
  private:
   struct Impl;

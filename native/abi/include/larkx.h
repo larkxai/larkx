@@ -605,6 +605,28 @@ larkx_code larkx_run_event_payload(
     size_t* needed,
     larkx_error* err);
 
+/**
+ * One row per run: run id, updated time, and maximum committed sequence.
+ * Event payloads are not read.
+ */
+larkx_code larkx_run_journal_heads(
+    larkx_runtime* runtime, char* buffer, size_t capacity, size_t* needed, larkx_error* err);
+
+/**
+ * Events with sequence greater than after_sequence, ordered by sequence, at most limit.
+ * limit is 1 through 500. The JSON also includes run and step metadata and maxSequence.
+ * Earlier event payloads, step inputs, and step outputs are not read.
+ */
+larkx_code larkx_run_event_page(
+    larkx_runtime* runtime,
+    const char* run_id,
+    int64_t after_sequence,
+    int32_t limit,
+    char* buffer,
+    size_t capacity,
+    size_t* needed,
+    larkx_error* err);
+
 #ifdef __cplusplus
 }
 #endif

@@ -17,6 +17,12 @@ export interface PendingBatch {
 export interface DestinationState {
   readonly cursors: Readonly<Record<string, number>>;
   readonly snapshots: Readonly<Record<string, string>>;
+  readonly observedAt: Readonly<Record<string, number>>;
+  /**
+   * Runs that already had events when this destination was authorized.
+   * Their history is not exported. A later sequence would be a gap in the version 1 contract.
+   */
+  readonly sealedRuns: readonly string[];
   readonly pending: PendingBatch | null;
   readonly backoffAttempt: number;
   readonly nextAttemptAt: number;
@@ -28,19 +34,28 @@ export interface DestinationState {
 
 export interface TelemetryDocument {
   readonly version: 1;
+  /** Increases by one on every successful store. Writers pass the revision they read. */
+  readonly revision: number;
   readonly installationId: string;
   readonly destinations: Readonly<Record<string, DestinationState>>;
 }
 
 export interface TelemetryStateStore {
   load(): Promise<TelemetryDocument | null>;
-  save(document: TelemetryDocument): Promise<void>;
+  /**
+   * Writes `document` when the stored revision is `expectedRevision`.
+   * `document.revision` must be `expectedRevision + 1`.
+   * Returns false when another writer stored a different revision. The cursor is unchanged.
+   */
+  save(document: TelemetryDocument, expectedRevision: number): Promise<boolean>;
 }
 
 export function emptyDestination(): DestinationState {
   return {
     cursors: {},
     snapshots: {},
+    observedAt: {},
+    sealedRuns: [],
     pending: null,
     backoffAttempt: 0,
     nextAttemptAt: 0,
@@ -53,12 +68,33 @@ export function emptyDestination(): DestinationState {
 
 export function createMemoryTelemetryStore(): TelemetryStateStore {
   let document: TelemetryDocument | null = null;
+  let tail: Promise<void> = Promise.resolve();
+  const exclusive = async <T>(work: () => T): Promise<T> => {
+    const previous = tail;
+    let release: () => void = () => undefined;
+    tail = new Promise((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    try {
+      return work();
+    } finally {
+      release();
+    }
+  };
   return {
     async load() {
-      return document === null ? null : cloneDocument(document);
+      return exclusive(() => (document === null ? null : cloneDocument(document)));
     },
-    async save(next) {
-      document = cloneDocument(next);
+    async save(next, expectedRevision) {
+      return exclusive(() => {
+        const currentRevision = document?.revision ?? 0;
+        if (currentRevision !== expectedRevision || next.revision !== expectedRevision + 1) {
+          return false;
+        }
+        document = cloneDocument(next);
+        return true;
+      });
     },
   };
 }
@@ -70,24 +106,61 @@ export function createSqliteTelemetryStore(driver: TelemetrySql): TelemetryState
       document_json TEXT NOT NULL
     );
   `);
+  let tail: Promise<void> = Promise.resolve();
+  const exclusive = async <T>(work: () => T): Promise<T> => {
+    const previous = tail;
+    let release: () => void = () => undefined;
+    tail = new Promise((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    try {
+      return work();
+    } finally {
+      release();
+    }
+  };
+  const readRow = (): TelemetryDocument | null => {
+    const row = driver.get<{ document_json: string }>(
+      "SELECT document_json FROM larkx_telemetry_state WHERE slot = 1",
+    );
+    if (!row) {
+      return null;
+    }
+    return parseDocument(row.document_json);
+  };
   return {
     async load() {
-      const row = driver.get<{ document_json: string }>(
-        "SELECT document_json FROM larkx_telemetry_state WHERE slot = 1",
-      );
-      if (!row) {
-        return null;
-      }
-      return parseDocument(row.document_json);
+      return exclusive(() => readRow());
     },
-    async save(document) {
-      const json = JSON.stringify(document);
-      driver.transaction(() => {
-        driver.run(
-          `INSERT INTO larkx_telemetry_state (slot, document_json) VALUES (1, ?)
-           ON CONFLICT(slot) DO UPDATE SET document_json = excluded.document_json`,
-          [json],
-        );
+    async save(document, expectedRevision) {
+      return exclusive(() => {
+        if (document.revision !== expectedRevision + 1) {
+          return false;
+        }
+        driver.exec("BEGIN IMMEDIATE");
+        try {
+          const current = readRow();
+          const currentRevision = current?.revision ?? 0;
+          if (currentRevision !== expectedRevision) {
+            driver.exec("ROLLBACK");
+            return false;
+          }
+          driver.run(
+            `INSERT INTO larkx_telemetry_state (slot, document_json) VALUES (1, ?)
+             ON CONFLICT(slot) DO UPDATE SET document_json = excluded.document_json`,
+            [JSON.stringify(document)],
+          );
+          driver.exec("COMMIT");
+          return true;
+        } catch (error) {
+          try {
+            driver.exec("ROLLBACK");
+          } catch {
+            // The original error is the one the caller needs.
+          }
+          throw error;
+        }
       });
     },
   };
@@ -116,8 +189,10 @@ export function parseDocument(encoded: string): TelemetryDocument | null {
       }
     }
   }
+  const revision = value["revision"];
   return {
     version: 1,
+    revision: isNonNegativeInteger(revision) ? revision : 0,
     installationId: value["installationId"],
     destinations,
   };
@@ -131,6 +206,8 @@ function parseDestination(value: unknown): DestinationState | null {
   return {
     cursors: numberMap(value["cursors"]),
     snapshots: stringMap(value["snapshots"]),
+    observedAt: numberMap(value["observedAt"]),
+    sealedRuns: stringList(value["sealedRuns"]),
     pending: parsePending(pending),
     backoffAttempt: nonNegative(value["backoffAttempt"]),
     nextAttemptAt: nonNegative(value["nextAttemptAt"]),
@@ -177,6 +254,19 @@ function cloneDocument(document: TelemetryDocument): TelemetryDocument {
     throw new Error("Telemetry state could not be stored.");
   }
   return parsed;
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const result: string[] = [];
+  for (const item of value) {
+    if (typeof item === "string" && item.length > 0 && item.length <= 200) {
+      result.push(item);
+    }
+  }
+  return result;
 }
 
 function numberMap(value: unknown): Record<string, number> {

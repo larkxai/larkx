@@ -3358,4 +3358,91 @@ Status Runtime::event_payload(const std::string& run_id, int32_t index, std::str
   return Status::success();
 }
 
+Status Runtime::journal_heads_json(std::string& out) {
+  std::lock_guard<std::mutex> lock(impl_->mutex);
+  std::vector<JournalHead> heads;
+  if (auto status = impl_->store->journal_heads(heads); !status.ok()) {
+    return status;
+  }
+  Json runs;
+  runs.kind = Json::Kind::Array;
+  for (const JournalHead& head : heads) {
+    Json item;
+    item.kind = Json::Kind::Object;
+    item.object = {{"maxSequence", jnum(head.max_sequence)},
+                   {"runId", jstr(head.run_id)},
+                   {"updatedAt", jnum(head.updated_at)}};
+    runs.array.push_back(std::move(item));
+  }
+  Json body;
+  body.kind = Json::Kind::Object;
+  body.object = {{"runs", std::move(runs)}};
+  out = canonical_json(body);
+  return Status::success();
+}
+
+Status Runtime::event_page_json(const std::string& run_id, int64_t after_sequence, int32_t limit, std::string& out) {
+  std::lock_guard<std::mutex> lock(impl_->mutex);
+  EventPage page;
+  if (auto status = impl_->store->event_page(run_id, after_sequence, limit, page); !status.ok()) {
+    return status;
+  }
+  Json events;
+  events.kind = Json::Kind::Array;
+  for (const PageEvent& event : page.events) {
+    Json payload;
+    std::string error;
+    if (!parse_json(event.payload_json, payload, error)) {
+      return Status::fail(Code::Serialization, "Stored event payload is not JSON.");
+    }
+    Json item;
+    item.kind = Json::Kind::Object;
+    item.object = {{"createdAt", jnum(event.created_at)},
+                   {"eventId", jstr(event.event_id)},
+                   {"payload", std::move(payload)},
+                   {"sequence", jnum(event.sequence)},
+                   {"type", jstr(event.type)}};
+    events.array.push_back(std::move(item));
+  }
+  Json steps;
+  steps.kind = Json::Kind::Array;
+  for (const PageStep& step : page.steps) {
+    Json item;
+    item.kind = Json::Kind::Object;
+    item.object = {{"attemptCount", jnum(step.attempt_count)},
+                   {"effectType", jstr(step.effect_type)},
+                   {"executionTarget", jstr(step.execution_target)},
+                   {"operationId", jstr(step.operation_id)},
+                   {"selectedTarget", jstr(step.selected_target)},
+                   {"status", jstr(step.status)},
+                   {"stepKey", jstr(step.step_key)},
+                   {"stepOrder", jnum(step.step_order)}};
+    steps.array.push_back(std::move(item));
+  }
+  const PageRun& run = page.run;
+  Json run_json;
+  run_json.kind = Json::Kind::Object;
+  run_json.object = {{"blockedReason", run.has_blocked_reason ? jstr(run.blocked_reason) : jstr("")},
+                     {"cancelRequested", jbool(run.cancel_requested)},
+                     {"createdAt", jnum(run.created_at)},
+                     {"dataPolicy", jstr(run.data_policy)},
+                     {"hasBlockedReason", jbool(run.has_blocked_reason)},
+                     {"hasOwner", jbool(run.has_owner)},
+                     {"ownershipEpoch", jnum(run.ownership_epoch)},
+                     {"protocolVersion", jnum(run.protocol_version)},
+                     {"runId", jstr(run.run_id)},
+                     {"status", jstr(run.status)},
+                     {"updatedAt", jnum(run.updated_at)},
+                     {"workflowName", jstr(run.workflow_name)},
+                     {"workflowVersion", jnum(run.workflow_version)}};
+  Json body;
+  body.kind = Json::Kind::Object;
+  body.object = {{"events", std::move(events)},
+                 {"maxSequence", jnum(page.max_sequence)},
+                 {"run", std::move(run_json)},
+                 {"steps", std::move(steps)}};
+  out = canonical_json(body);
+  return Status::success();
+}
+
 }  // namespace larkx

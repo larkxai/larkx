@@ -113,23 +113,52 @@ export async function createRuntime(
   });
 }
 
+const fileQueues = new Map<string, Promise<void>>();
+
 function fileTelemetryStore(databasePath: string): TelemetryCursorStore {
   const slash = databasePath.lastIndexOf("/");
   const directory = new Directory(slash >= 0 ? databasePath.slice(0, slash) : ".");
   const name = `${slash >= 0 ? databasePath.slice(slash + 1) : databasePath}.telemetry.json`;
   const file = new File(directory, name);
+  const key = file.uri;
+  const exclusive = async <T>(work: () => Promise<T>): Promise<T> => {
+    const previous = fileQueues.get(key) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => gate);
+    fileQueues.set(key, tail);
+    await previous;
+    try {
+      return await work();
+    } finally {
+      release();
+    }
+  };
   return {
     async load() {
-      if (!file.exists) {
-        return null;
-      }
-      return parseDocument(await file.text());
+      return exclusive(async () => {
+        if (!file.exists) {
+          return null;
+        }
+        return parseDocument(await file.text());
+      });
     },
-    async save(document: unknown) {
-      if (!directory.exists) {
-        directory.create();
-      }
-      file.write(JSON.stringify(document));
+    async save(document, expectedRevision) {
+      return exclusive(async () => {
+        const current = file.exists ? parseDocument(await file.text()) : null;
+        const currentRevision =
+          current !== null && typeof current.revision === "number" ? current.revision : 0;
+        if (currentRevision !== expectedRevision) {
+          return false;
+        }
+        if (!directory.exists) {
+          directory.create();
+        }
+        file.write(JSON.stringify(document));
+        return true;
+      });
     },
   };
 }

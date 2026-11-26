@@ -609,6 +609,114 @@ describe("native execution telemetry", () => {
       await closeServer(collector.server);
     }
   }, 60_000);
+
+  it("does not export runs that finished before telemetry was enabled", async () => {
+    const received: string[] = [];
+    const collector = await startCollector(async (body, response) => {
+      respondJson(response, 200, ack(JSON.parse(body) as BatchBody));
+    }, received);
+    const directory = mkdtempSync(join(tmpdir(), "larkx-telemetry-history-"));
+    const database = join(directory, "agent.db");
+    const first = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "telemetry",
+      leaseMs: 0,
+    });
+    const historical = first.createAgent({
+      name: "field-assistant",
+      version: 1,
+      instructions: SECRET_PROMPT,
+      model: scriptedModel([{ message: "Done.", finish: "stop", calls: [] }]),
+    });
+    await (await historical.start({ message: SECRET_PROMPT, runId: "old-run" })).result();
+    await first.close();
+    const second = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "telemetry",
+      leaseMs: 0,
+      telemetry: larkxCloud({
+        projectId: "field",
+        apiKey: "lkx_ing_history",
+        endpoint: collector.url,
+        flushIntervalMs: 0,
+      }),
+    });
+    expect((await second.flushTelemetry()).pendingEvents).toBe(0);
+    expect(received).toEqual([]);
+    const live = second.createAgent({
+      name: "field-assistant",
+      version: 1,
+      instructions: SECRET_PROMPT,
+      model: scriptedModel([{ message: "Done.", finish: "stop", calls: [] }]),
+    });
+    await (await live.start({ message: "new inspection", runId: "new-run" })).result();
+    expect((await second.flushTelemetry()).pendingEvents).toBe(0);
+    expect(received.join("\n")).toContain("new-run");
+    expect(received.join("\n")).not.toContain("old-run");
+    expect(received.join("\n")).not.toContain(SECRET_PROMPT);
+    await second.close();
+    await closeServer(collector.server);
+  });
+
+  it("closes promptly when the collector never answers and exports after restart", async () => {
+    const received: string[] = [];
+    let hang = true;
+    const server = createServer((request, response) => {
+      void readBody(request).then((body) => {
+        if (hang || body.length === 0) {
+          return;
+        }
+        received.push(body);
+        respondJson(response, 200, ack(JSON.parse(body) as BatchBody));
+      });
+    });
+    const port = await listen(server);
+    const directory = mkdtempSync(join(tmpdir(), "larkx-telemetry-shutdown-"));
+    const database = join(directory, "agent.db");
+    const endpoint = `http://127.0.0.1:${String(port)}`;
+    const runtime = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "telemetry",
+      leaseMs: 0,
+      telemetry: larkxCloud({
+        projectId: "field",
+        apiKey: "lkx_ing_shutdown",
+        endpoint,
+        flushIntervalMs: 0,
+        requestTimeoutMs: 30_000,
+      }),
+    });
+    const agent = runtime.createAgent({
+      name: "field-assistant",
+      version: 1,
+      instructions: SECRET_PROMPT,
+      model: scriptedModel([{ message: "Done.", finish: "stop", calls: [] }]),
+    });
+    await (await agent.start({ message: "pending", runId: "live-run" })).result();
+    const flushing = runtime.flushTelemetry();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const started = Date.now();
+    await runtime.close();
+    expect(Date.now() - started).toBeLessThan(1000);
+    await flushing;
+    hang = false;
+    const restarted = await createRuntime({
+      storage: sqlite(database),
+      ownerId: "telemetry",
+      leaseMs: 0,
+      telemetry: larkxCloud({
+        projectId: "field",
+        apiKey: "lkx_ing_shutdown",
+        endpoint,
+        flushIntervalMs: 0,
+      }),
+    });
+    expect((await restarted.flushTelemetry()).pendingEvents).toBe(0);
+    expect(received.join("\n")).toContain("live-run");
+    await restarted.close();
+    server.closeAllConnections();
+    await closeServer(server);
+  });
 });
 
 interface BatchBody {

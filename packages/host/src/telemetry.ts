@@ -3,8 +3,10 @@ import {
   createMemoryTelemetryStore,
   nodeInstallationMetadata,
   reactNativeInstallationMetadata,
+  readTelemetryResponse,
   type JournalDocument,
   type JournalEvent,
+  type JournalSlice,
   type JournalStep,
   type TelemetryStateStore,
 } from "@larkxai/telemetry";
@@ -38,6 +40,8 @@ export interface TelemetryDeliveryStatus {
 
 export interface TelemetryExporter {
   start(): void;
+  /** Called once after start, before the runtime accepts work. */
+  prepare?(): Promise<void>;
   setActive?(active: boolean): void;
   flush(options?: { readonly manual?: boolean }): Promise<{
     readonly delivered: boolean;
@@ -71,7 +75,11 @@ export interface TelemetryInstallationMetadata {
  */
 export interface TelemetryCursorStore {
   load(): Promise<unknown>;
-  save(document: unknown): Promise<void>;
+  /**
+   * Writes the document when the stored revision equals `expectedRevision`.
+   * Returns false when another writer stored a newer revision.
+   */
+  save(document: unknown, expectedRevision: number): Promise<boolean>;
 }
 
 export interface LarkxCloudOptions {
@@ -126,9 +134,14 @@ export class TelemetrySession {
     this.exporter = openExporter(options);
   }
 
-  start(): void {
+  async start(): Promise<void> {
     this.note("runtime-initialized");
     this.exporter.start();
+    try {
+      await this.exporter.prepare?.();
+    } catch {
+      // A failed anchor is retried on flush. It does not block the runtime.
+    }
   }
 
   setForeground(foreground: boolean): void {
@@ -148,14 +161,9 @@ export class TelemetrySession {
   async stop(): Promise<void> {
     this.note("runtime-closed");
     try {
-      await this.exporter.flush({ manual: true });
-    } catch {
-      // A failed final flush leaves the cursor where it was.
-    }
-    try {
       await this.exporter.stop();
     } catch {
-      // Shutdown of the exporter is independent of the runtime close.
+      // Closing aborts delivery. It does not wait for the collector.
     }
   }
 
@@ -220,8 +228,9 @@ function openExporter(options: SessionOptions): TelemetryExporter {
     appId: cloud.appId ?? projectId,
     runtime: options.runtimeName,
     journal: {
-      listRuns: () => listRuns(options.journal),
-      readJournal: (runId) => readJournal(options.journal, runId),
+      listHeads: () => listHeads(options.journal),
+      readSlice: (runId, afterSequence, limit) =>
+        readSlice(options.journal, runId, afterSequence, limit),
     },
     state: (options.state as TelemetryStateStore | undefined) ?? createMemoryTelemetryStore(),
     metadata:
@@ -254,10 +263,12 @@ function openExporter(options: SessionOptions): TelemetryExporter {
   });
 }
 
-async function listRuns(
+async function listHeads(
   journal: JournalCall,
-): Promise<readonly { readonly runId: string; readonly updatedAt: number }[]> {
-  const parsed = JSON.parse(await journal.call("listRuns", {})) as { runs?: unknown };
+): Promise<
+  readonly { readonly runId: string; readonly updatedAt: number; readonly maxSequence: number }[]
+> {
+  const parsed = JSON.parse(await journal.call("journalHeads", {})) as { runs?: unknown };
   if (!Array.isArray(parsed.runs)) {
     return [];
   }
@@ -266,64 +277,72 @@ async function listRuns(
     if (!isRecord(entry) || typeof entry.runId !== "string") {
       continue;
     }
-    const updatedAt = entry.updatedAt;
     runs.push({
       runId: entry.runId,
-      updatedAt: typeof updatedAt === "number" ? updatedAt : 0,
+      updatedAt: numberOf(entry.updatedAt),
+      maxSequence: numberOf(entry.maxSequence),
     });
   }
   return runs;
 }
 
-async function readJournal(journal: JournalCall, runId: string): Promise<JournalDocument | null> {
-  let inspected: unknown;
+async function readSlice(
+  journal: JournalCall,
+  runId: string,
+  afterSequence: number,
+  limit: number,
+): Promise<JournalSlice | null> {
+  let parsed: unknown;
   try {
-    inspected = JSON.parse(await journal.call("inspect", { runId }));
+    parsed = JSON.parse(
+      await journal.call("eventPage", {
+        runId,
+        afterSequence,
+        limit,
+      }),
+    );
   } catch {
     return null;
   }
-  if (!isRecord(inspected) || typeof inspected.runId !== "string") {
+  if (!isRecord(parsed) || !isRecord(parsed.run) || typeof parsed.run.runId !== "string") {
     return null;
   }
-  const events = await readEvents(journal, runId);
-  const steps = await readSteps(journal, runId);
+  const runRecord = parsed.run;
+  const recordedRunId = parsed.run.runId;
   const blocked =
-    typeof inspected.blockedReason === "string" ? reasonCode(inspected.blockedReason) : null;
-  const status = typeof inspected.status === "string" ? inspected.status : "RUNNING";
+    typeof runRecord.blockedReason === "string" ? reasonCode(runRecord.blockedReason) : null;
+  const status = typeof runRecord.status === "string" ? runRecord.status : "RUNNING";
+  const events: JournalEvent[] = [];
+  if (Array.isArray(parsed.events)) {
+    for (const entry of parsed.events) {
+      const event = projectEvent(runId, entry);
+      if (event) {
+        events.push(event);
+      }
+    }
+  }
   return {
     run: {
-      runId: inspected.runId,
-      workflowName: typeof inspected.workflowName === "string" ? inspected.workflowName : "agent",
-      workflowVersion: numberOf(inspected.workflowVersion),
+      runId: recordedRunId,
+      workflowName: typeof runRecord.workflowName === "string" ? runRecord.workflowName : "agent",
+      workflowVersion: numberOf(runRecord.workflowVersion),
       status: status as JournalDocument["run"]["status"],
-      dataPolicy: inspected.dataPolicy === "cloud-allowed" ? "cloud-allowed" : "device-only",
-      protocolVersion: numberOf(inspected.protocolVersion) || 1,
-      createdAt: numberOf(inspected.createdAt),
-      updatedAt: numberOf(inspected.updatedAt),
-      cancelRequested: inspected.cancelRequested === true,
-      ownershipEpoch: numberOf(inspected.ownershipEpoch),
-      ownerPresent: inspected.hasOwner === true,
+      dataPolicy: runRecord.dataPolicy === "cloud-allowed" ? "cloud-allowed" : "device-only",
+      protocolVersion: numberOf(runRecord.protocolVersion) || 1,
+      createdAt: numberOf(runRecord.createdAt),
+      updatedAt: numberOf(runRecord.updatedAt),
+      cancelRequested: runRecord.cancelRequested === true,
+      ownershipEpoch: numberOf(runRecord.ownershipEpoch),
+      ownerPresent: runRecord.hasOwner === true,
       errorCode: status === "FAILED" ? blocked : null,
       errorRetryable: null,
       blockedReasonCode: status === "BLOCKED" ? blocked : null,
     },
-    steps,
+    steps: readSteps(parsed.steps, runId),
     attempts: [],
     events,
+    maxSequence: numberOf(parsed.maxSequence),
   };
-}
-
-async function readEvents(journal: JournalCall, runId: string): Promise<JournalEvent[]> {
-  const count = numberOf(JSON.parse(await journal.call("eventCount", { runId })));
-  const events: JournalEvent[] = [];
-  for (let index = 0; index < count; index += 1) {
-    const parsed = JSON.parse(await journal.call("eventPayload", { runId, index })) as unknown;
-    const event = projectEvent(runId, parsed);
-    if (event) {
-      events.push(event);
-    }
-  }
-  return events;
 }
 
 function projectEvent(runId: string, value: unknown): JournalEvent | null {
@@ -343,11 +362,12 @@ function projectEvent(runId: string, value: unknown): JournalEvent | null {
   };
 }
 
-async function readSteps(journal: JournalCall, runId: string): Promise<JournalStep[]> {
-  const count = numberOf(JSON.parse(await journal.call("stepCount", { runId })));
+function readSteps(value: unknown, runId: string): JournalStep[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
   const steps: JournalStep[] = [];
-  for (let index = 0; index < count; index += 1) {
-    const parsed = JSON.parse(await journal.call("stepAt", { runId, index })) as unknown;
+  for (const parsed of value) {
     if (!isRecord(parsed) || typeof parsed.stepKey !== "string") {
       continue;
     }
@@ -427,8 +447,8 @@ async function defaultFetch(
     readonly signal: AbortSignal;
   },
 ): Promise<{ readonly status: number; text(): Promise<string> }> {
-  const response = await fetch(url, init);
-  return { status: response.status, text: () => response.text() };
+  const response = await fetch(url, { ...init, redirect: "manual" });
+  return readTelemetryResponse(response, url);
 }
 
 export function disabledTelemetryStatus(): TelemetryDeliveryStatus {

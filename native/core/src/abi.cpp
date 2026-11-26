@@ -960,6 +960,31 @@ larkx_code larkx_run_event_payload(larkx_runtime* runtime, const char* run_id, i
   return copy_buffer(json, buffer, capacity, needed, err);
 }
 
+larkx_code larkx_run_journal_heads(larkx_runtime* runtime, char* buffer, size_t capacity, size_t* needed, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Journal heads are missing a runtime."));
+  }
+  std::string json;
+  auto status = runtime->impl->journal_heads_json(json);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  return copy_buffer(json, buffer, capacity, needed, err);
+}
+
+larkx_code larkx_run_event_page(larkx_runtime* runtime, const char* run_id, int64_t after_sequence, int32_t limit,
+                               char* buffer, size_t capacity, size_t* needed, larkx_error* err) {
+  if (runtime == nullptr || runtime->impl == nullptr) {
+    return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Event page is missing a runtime."));
+  }
+  std::string json;
+  auto status = runtime->impl->event_page_json(run_id == nullptr ? "" : run_id, after_sequence, limit, json);
+  if (!status.ok()) {
+    return fail(err, status);
+  }
+  return copy_buffer(json, buffer, capacity, needed, err);
+}
+
 larkx_code larkx_run_count(larkx_runtime* runtime, int32_t* count, larkx_error* err) {
   if (runtime == nullptr || runtime->impl == nullptr || count == nullptr) {
     return fail(err, larkx::Status::fail(larkx::Code::InvalidArgument, "Run list is missing an argument."));

@@ -73,5 +73,9 @@ These steps have not been run on a phone. The Node exporter tests do not complet
 2. Enter a project id and an `lkx_ing_` key for a collector that accepts storage schema 3. Apply telemetry. Confirm the status line names the phase and the pending count.
 3. Start a run while the network is unavailable. Force-quit. Relaunch and flush. The collector should show the run's events, including a `WORKFLOW_RECOVERED` event if the run was still open. Prompts and tool results must not be in the batch.
 4. Confirm the app does not keep exporting after it leaves the foreground, and that a later flush sends what was still pending.
+5. Apply telemetry only after a scripted run has finished. Flush. That finished run must not appear in the collector. A run started after Apply telemetry must appear from its first event.
+6. Point the endpoint at an HTTP development collector that answers `302` to another host. The ingestion key must not arrive at the second host. Closing the screen while the collector is down must return the UI promptly, and the next flush after the collector is back must deliver the pending batch.
+
+React Native 0.88 follows redirects inside `NSURLSession` and OkHttp even when JavaScript passes `redirect: "manual"`. Step 6 is the check that this build does not deliver the ingestion key to that second host. Identifier generation without `crypto.randomUUID` is covered by the Node tests and has not been exercised on Hermes.
 
 Record the device, OS, and run id after a real run. Until that note exists, do not describe this checklist as completed.

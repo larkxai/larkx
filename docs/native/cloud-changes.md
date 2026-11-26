@@ -1,10 +1,10 @@
 # Cloud changes required later
 
-Nothing in `larkxai/cloud` changes because this repository now runs only the C++ engine. `@larkxai/telemetry` can still post metadata-only batches. The C++ runtime does not call it. Local execution must keep working when Cloud is absent or the export fails.
+Nothing in `larkxai/cloud` changes in this milestone. The host posts metadata-only batches from the native journal when the application passes telemetry. Local execution must keep working when Cloud is absent or the export fails. Cloud still has to accept storage schema 3 before those batches ingest.
 
 ## Keep telemetry version 1
 
-The exporter sends metadata-only batches to `POST /v1/telemetry/batches`. Those batches use telemetry version 1, protocol version 1, and storage schema version 1. When a native exporter exists, existing event types should stay on that contract:
+The exporter sends metadata-only batches to `POST /v1/telemetry/batches`. Those batches use telemetry version 1, protocol version 1, and storage schema version 3. Existing event types stay on that contract:
 
 - `source` already carries `sdkVersion`, `platform`, `osName`, `osVersion`, and `deviceModel`.
 - Run lifecycle, step, attempt, recovery, and reconciliation events already have names in protocol version 1.
