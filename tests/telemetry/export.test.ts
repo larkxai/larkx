@@ -199,6 +199,46 @@ describe("cloud telemetry export", () => {
     await telemetry.stop();
   });
 
+  it("does not acknowledge 302, 307, or 308, including a changed final URL", async () => {
+    const cases = [
+      { status: 302, url: "https://collector.example/v1/telemetry/batches" },
+      { status: 307, url: "https://other.example/collect" },
+      { status: 308, url: "http://collector.example/v1/telemetry/batches" },
+    ];
+    for (const item of cases) {
+      const calls: string[] = [];
+      const journal = mutableJournal();
+      const telemetry = createCloudTelemetry({
+        endpoint: ENDPOINT,
+        apiKey: API_KEY,
+        journal: journal.source,
+        state: createMemoryTelemetryStore(),
+        appId: "example-app",
+        runtime: "node",
+        intervalMs: 0,
+        fetch: async (url, init) => {
+          calls.push(url);
+          expect(init.headers.Authorization).toBe(`Bearer ${API_KEY}`);
+          expect(init.body?.length ?? 0).toBeGreaterThan(0);
+          return {
+            status: item.status,
+            url: item.url,
+            async text() {
+              return "not-an-ack";
+            },
+          };
+        },
+      });
+      await telemetry.prepare();
+      journal.documents.push(sampleJournal());
+      const flushed = await telemetry.flush();
+      expect(flushed.delivered).toBe(false);
+      expect(flushed.error).toBe("redirected");
+      expect(calls).toEqual([`${ENDPOINT}/v1/telemetry/batches`]);
+      await telemetry.stop();
+    }
+  });
+
   it("does not export runs that already existed when telemetry was enabled", async () => {
     const journal = mutableJournal([sampleJournal()]);
     const seen: string[] = [];
@@ -344,16 +384,14 @@ describe("cloud telemetry export", () => {
     }
   });
 
-  it("creates identifiers without crypto.randomUUID or TextEncoder", async () => {
+  it("requires an injected id when Web Crypto is missing", async () => {
     const cryptoApi = globalThis.crypto;
     const encoder = globalThis.TextEncoder;
     Object.defineProperty(globalThis, "crypto", { configurable: true, value: undefined });
     Object.defineProperty(globalThis, "TextEncoder", { configurable: true, value: undefined });
     try {
-      const left = createTelemetryId();
-      const right = createTelemetryId();
-      expect(left).not.toBe(right);
-      expect(left).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(() => createTelemetryId()).toThrow(/expo-crypto/);
+      let sequence = 0;
       const journal = mutableJournal();
       const telemetry = createCloudTelemetry({
         endpoint: ENDPOINT,
@@ -363,6 +401,7 @@ describe("cloud telemetry export", () => {
         appId: "example-app",
         runtime: "react-native",
         intervalMs: 0,
+        createId: () => `00000000-0000-4000-8000-${String(sequence++).padStart(12, "0")}`,
         fetch: async (_url, init) => accept(init.body),
       });
       await telemetry.prepare();

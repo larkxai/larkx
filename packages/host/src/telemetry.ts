@@ -93,6 +93,14 @@ export interface LarkxCloudOptions {
   readonly batchSize?: number;
   readonly requestTimeoutMs?: number;
   readonly metadata?: TelemetryInstallationMetadata;
+  /**
+   * UUID factory for installation and batch ids.
+   * React Native supplies `expo-crypto` `randomUUID`. Tests may inject a deterministic factory.
+   * The time-and-counter fallback is not used.
+   */
+  readonly createId?: () => string;
+  /** SHA-256 hex for the destination id. Hermes can pass `expo-crypto`. */
+  readonly sha256?: (data: Uint8Array) => Promise<string>;
 }
 
 export interface LarkxCloudTelemetry extends LarkxCloudOptions {
@@ -239,6 +247,8 @@ function openExporter(options: SessionOptions): TelemetryExporter {
         ? reactNativeInstallationMetadata({})
         : nodeInstallationMetadata()),
     intervalMs: cloud.flushIntervalMs ?? 15_000,
+    ...(cloud.createId === undefined ? {} : { createId: cloud.createId }),
+    ...(cloud.sha256 === undefined ? {} : { sha256: cloud.sha256 }),
     ...(cloud.batchSize === undefined ? {} : { maxEvents: cloud.batchSize }),
     ...(cloud.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: cloud.requestTimeoutMs }),
     fetch: async (url, init) => {

@@ -51,6 +51,7 @@
   },
   "peerDependencies": {
     "cactus-react-native": "1.13.1",
+    "expo-crypto": "*",
     "expo-file-system": "*",
     "react": "*",
     "react-native": "*",
@@ -58,6 +59,9 @@
   },
   "peerDependenciesMeta": {
     "cactus-react-native": {
+      "optional": true
+    },
+    "expo-crypto": {
       "optional": true
     },
     "react-native-nitro-modules": {
