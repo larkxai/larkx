@@ -269,10 +269,10 @@ Implemented:
 Not implemented, and not claimed by a green host test:
 
 - A development build on a physical iPhone or Android phone, real Cactus download and inference, offline tool calling, force-quit recovery, mobile lifecycle behavior, and a phone reaching the reference remote fixture or the LangGraph example. The checklist is [docs/validation/on-device-agent.md](docs/validation/on-device-agent.md).
-- Destination-specific redaction, native telemetry export, and LarkX Cloud.
+- Production Cloud ingestion. The device posts telemetry version 1 with storage schema 3. Current Cloud accepts schema 1 only, so those batches are rejected until the Cloud contract in [docs/cloud-native-telemetry.md](docs/cloud-native-telemetry.md) lands. The device-side exporter and the local collector fixture are implemented.
 - Production Swift and Kotlin SDKs.
 
-The metadata telemetry client remains in the repository. The C++ runtime does not call it.
+Opt-in telemetry reads the native journal and posts metadata. It is off by default. Prompts, model text, tool arguments, and tool results stay on the device. A failed export does not fail a run. See [docs/architecture/telemetry.md](docs/architecture/telemetry.md).
 
 ## Examples
 

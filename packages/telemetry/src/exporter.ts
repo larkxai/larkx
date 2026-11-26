@@ -1,5 +1,10 @@
 import type { JournalDocument } from "./journal.js";
 
+import {
+  normalizeTelemetryEndpoint,
+  readTelemetryResponse,
+  telemetryBatchUrl,
+} from "./endpoint.js";
 import { sanitizeInstallationMetadata, type InstallationMetadata } from "./metadata.js";
 import {
   MAX_BATCH_BYTES,
@@ -31,6 +36,7 @@ export type TelemetryError =
   | "malformed_ack"
   | "stopped"
   | "unsupported"
+  | "redirected"
   | null;
 
 export interface TelemetryStatus {
@@ -47,9 +53,29 @@ export interface FlushResult {
   readonly error: TelemetryError;
 }
 
+export interface JournalHead {
+  readonly runId: string;
+  readonly updatedAt: number;
+  readonly maxSequence: number;
+}
+
+/** One bounded page of committed events plus the run metadata for that page. */
+export interface JournalSlice {
+  readonly run: JournalDocument["run"];
+  readonly steps: JournalDocument["steps"];
+  readonly attempts: JournalDocument["attempts"];
+  readonly events: JournalDocument["events"];
+  readonly maxSequence: number;
+}
+
 export interface JournalSource {
-  listRuns(): Promise<readonly { readonly runId: string; readonly updatedAt: number }[]>;
-  readJournal(runId: string): Promise<JournalDocument | null>;
+  /** Run ids, update times, and maximum sequences. Does not read event payloads. */
+  listHeads(): Promise<readonly JournalHead[]>;
+  /**
+   * Events with sequence greater than `afterSequence`, in order, at most `limit`.
+   * Already acknowledged payloads are not part of the page.
+   */
+  readSlice(runId: string, afterSequence: number, limit: number): Promise<JournalSlice | null>;
 }
 
 export interface TelemetryFetch {
@@ -66,6 +92,11 @@ export interface TelemetryFetch {
 
 export interface CloudTelemetry {
   start(): void;
+  /**
+   * Records the export boundary for this destination.
+   * Runs that already have events are sealed and are not backfilled.
+   */
+  prepare(): Promise<void>;
   /** Stop the foreground timer without dropping unacknowledged batches. */
   setActive(active: boolean): void;
   /**
@@ -111,6 +142,16 @@ export interface CloudTelemetryOptions {
   readonly requestTimeoutMs?: number;
   readonly maxBackoffMs?: number;
   readonly fetch?: TelemetryFetch;
+  /**
+   * Runs after a batch is stored and before the request is sent.
+   * A throw is treated as an offline attempt. The stored batch is retried.
+   */
+  readonly beforeRequest?: () => void | Promise<void>;
+  /**
+   * Runs after the destination acknowledges a batch and before the local cursor advances.
+   * A throw leaves the same batch pending.
+   */
+  readonly beforeCheckpoint?: () => void | Promise<void>;
 }
 
 const RETRYABLE = new Set([408, 429, 500, 502, 503, 504]);
@@ -134,6 +175,8 @@ class CloudExporter implements CloudTelemetry {
   private readonly requestTimeoutMs: number;
   private readonly maxBackoffMs: number;
   private readonly fetchImpl: TelemetryFetch;
+  private readonly beforeRequest: (() => void | Promise<void>) | null;
+  private readonly beforeCheckpoint: (() => void | Promise<void>) | null;
   private readonly destinationIdPromise: Promise<string>;
   private document: TelemetryDocument | null = null;
   private timer: number | undefined;
@@ -147,7 +190,7 @@ class CloudExporter implements CloudTelemetry {
   private syncedAt: number | null = null;
 
   constructor(options: CloudTelemetryOptions) {
-    this.endpoint = options.endpoint.replace(/\/+$/, "");
+    this.endpoint = normalizeTelemetryEndpoint(options.endpoint);
     this.apiKey = options.apiKey;
     this.journal = options.journal;
     this.state = options.state;
@@ -161,13 +204,24 @@ class CloudExporter implements CloudTelemetry {
     this.requestTimeoutMs = options.requestTimeoutMs ?? 10_000;
     this.maxBackoffMs = options.maxBackoffMs ?? 60_000;
     this.fetchImpl = options.fetch ?? defaultFetch;
-    this.destinationIdPromise = destinationId(this.endpoint, this.apiKey, options.sha256);
+    this.beforeRequest = options.beforeRequest ?? null;
+    this.beforeCheckpoint = options.beforeCheckpoint ?? null;
+    this.destinationIdPromise = destinationId(
+      this.endpoint,
+      this.sourceBase.appId,
+      this.apiKey,
+      options.sha256,
+    );
   }
 
   start(): void {
     this.stopped = false;
     this.setActive(true);
-    void this.ensureDocument();
+  }
+
+  async prepare(): Promise<void> {
+    const loaded = await this.ensureDocument();
+    await this.ensureAnchor(loaded);
   }
 
   setActive(active: boolean): void {
@@ -222,8 +276,9 @@ class CloudExporter implements CloudTelemetry {
       return this.result(false);
     }
     const loaded = await this.ensureDocument();
+    await this.ensureAnchor(this.document ?? loaded);
     const destinationKey = await this.destinationIdPromise;
-    let destination = loaded.destinations[destinationKey] ?? emptyDestination();
+    let destination = (this.document ?? loaded).destinations[destinationKey] ?? emptyDestination();
     if (manual) {
       destination = {
         ...destination,
@@ -235,7 +290,7 @@ class CloudExporter implements CloudTelemetry {
     }
     if (!this.apiKey.startsWith("lkx_ing_")) {
       destination = { ...destination, authBlocked: true, lastError: "unauthorized" };
-      await this.persist(loaded, destinationKey, destination);
+      destination = await this.persist(destinationKey, destination);
       this.phase = "unauthorized";
       this.lastError = "unauthorized";
       return this.result(false);
@@ -285,9 +340,35 @@ class CloudExporter implements CloudTelemetry {
           this.lastError = asTelemetryError(built);
           break;
         }
-        pending = built;
-        destination = { ...destination, pending, hold: null };
-        await this.persist(loaded, destinationKey, destination);
+        if (built.kind === "touch") {
+          destination = {
+            ...destination,
+            observedAt: built.observedAt,
+            snapshots: built.snapshots,
+          };
+          destination = await this.persist(destinationKey, destination);
+          continue;
+        }
+        pending = built.pending;
+        destination = {
+          ...destination,
+          pending,
+          hold: null,
+          observedAt: built.observedAt,
+          snapshots: built.snapshots,
+        };
+        destination = await this.persist(destinationKey, destination);
+      }
+      if (this.stopped) {
+        this.lastError = "stopped";
+        break;
+      }
+      if (this.beforeRequest) {
+        await this.beforeRequest();
+      }
+      if (this.stopped) {
+        this.lastError = "stopped";
+        break;
       }
       const outcome = await this.post(pending);
       if (outcome.kind === "accepted") {
@@ -310,7 +391,10 @@ class CloudExporter implements CloudTelemetry {
         delivered = true;
         this.phase = "pending";
         this.lastError = null;
-        await this.persist(loaded, destinationKey, destination);
+        if (this.beforeCheckpoint) {
+          await this.beforeCheckpoint();
+        }
+        destination = await this.persist(destinationKey, destination);
         continue;
       }
       if (outcome.kind === "partial") {
@@ -331,7 +415,7 @@ class CloudExporter implements CloudTelemetry {
           lastSyncedAt: this.clock.now(),
         };
         delivered = true;
-        await this.persist(loaded, destinationKey, destination);
+        destination = await this.persist(destinationKey, destination);
         continue;
       }
       if (outcome.kind === "rewind") {
@@ -345,7 +429,7 @@ class CloudExporter implements CloudTelemetry {
           nextAttemptAt: 0,
         };
         this.lastError = "sequence_gap";
-        await this.persist(loaded, destinationKey, destination);
+        destination = await this.persist(destinationKey, destination);
         continue;
       }
       if (outcome.kind === "unauthorized") {
@@ -358,7 +442,7 @@ class CloudExporter implements CloudTelemetry {
         };
         this.phase = "unauthorized";
         this.lastError = "unauthorized";
-        await this.persist(loaded, destinationKey, destination);
+        destination = await this.persist(destinationKey, destination);
         break;
       }
       if (outcome.kind === "hold") {
@@ -371,7 +455,7 @@ class CloudExporter implements CloudTelemetry {
         };
         this.phase = "pending";
         this.lastError = outcome.error;
-        await this.persist(loaded, destinationKey, destination);
+        destination = await this.persist(destinationKey, destination);
         break;
       }
       const retryError = outcome.kind === "malformed" ? "malformed_ack" : "offline";
@@ -385,39 +469,44 @@ class CloudExporter implements CloudTelemetry {
       };
       this.phase = outcome.kind === "malformed" ? "pending" : "offline";
       this.lastError = retryError;
-      await this.persist(loaded, destinationKey, destination);
+      destination = await this.persist(destinationKey, destination);
       break;
     }
     this.syncedAt = destination.lastSyncedAt;
-    this.pendingEvents = await this.countPending(loaded.installationId, destination);
+    this.pendingEvents = await this.countPending(destination);
     if (this.pendingEvents === 0 && this.phase !== "unauthorized" && this.lastError === null) {
       this.phase = "idle";
     }
-    await this.persist(loaded, destinationKey, destination);
+    destination = await this.persist(destinationKey, destination);
     return this.result(delivered);
   }
 
   private async selectBatch(
     installationId: string,
     destination: DestinationState,
-  ): Promise<PendingBatch | "idle" | "too_large" | "unsupported" | "gap"> {
-    const runs = [...(await this.journal.listRuns())].sort(compareRuns);
+  ): Promise<BatchChoice> {
+    const runs = [...(await this.journal.listHeads())].sort(compareRuns);
     const metadata = await this.readMetadata();
+    const sealed = new Set(destination.sealedRuns);
+    const observedAt = { ...destination.observedAt };
+    const snapshots = { ...destination.snapshots };
+    let dirty = false;
     let blocked: "gap" | "unsupported" | null = null;
+    const source: TelemetrySource = { ...this.sourceBase, installationId, ...metadata };
     for (const listed of runs) {
-      const journal = await this.journal.readJournal(listed.runId);
-      if (!journal || journal.events.length === 0) {
+      if (sealed.has(listed.runId)) {
         continue;
       }
-      const maxSequence = journal.events.reduce((max, event) => Math.max(max, event.sequence), 0);
       const cursor = destination.cursors[listed.runId] ?? 0;
-      const hash = snapshotHash(journal);
-      const source: TelemetrySource = { ...this.sourceBase, installationId, ...metadata };
-      if (cursor < maxSequence) {
-        const fromSequence = cursor + 1;
+      if (cursor < listed.maxSequence) {
+        const slice = await this.journal.readSlice(listed.runId, cursor, this.maxEvents);
+        if (!slice || slice.events.length === 0) {
+          blocked = blocked ?? "gap";
+          continue;
+        }
         const built = buildRunBatch({
-          journal,
-          fromSequence,
+          journal: sliceDocument(slice),
+          fromSequence: cursor + 1,
           batchId: this.createId(),
           exportedAt: this.clock.now(),
           source,
@@ -425,7 +514,7 @@ class CloudExporter implements CloudTelemetry {
           maxBytes: MAX_BATCH_BYTES,
         });
         if (typeof built !== "string") {
-          return toPending(built);
+          return { kind: "batch", pending: toPending(built), observedAt, snapshots };
         }
         if (built === "too_large") {
           return built;
@@ -435,33 +524,48 @@ class CloudExporter implements CloudTelemetry {
         }
         continue;
       }
-      if (destination.snapshots[listed.runId] !== hash) {
-        const last = [...journal.events]
-          .sort((left, right) => left.sequence - right.sequence)
-          .at(-1);
-        if (!last) {
-          continue;
-        }
-        const built = buildRunBatch({
-          journal,
-          fromSequence: last.sequence,
-          onlySequence: last.sequence,
-          batchId: this.createId(),
-          exportedAt: this.clock.now(),
-          source,
-          maxEvents: 1,
-          maxBytes: MAX_BATCH_BYTES,
-        });
-        if (typeof built !== "string") {
-          return toPending(built);
-        }
-        if (built === "too_large") {
-          return built;
-        }
-        if (built === "gap" || built === "unsupported") {
-          blocked = built;
-        }
+      if (listed.maxSequence === 0) {
+        continue;
       }
+      if (snapshots[listed.runId] && observedAt[listed.runId] === listed.updatedAt) {
+        continue;
+      }
+      const slice = await this.journal.readSlice(listed.runId, listed.maxSequence - 1, 1);
+      if (!slice) {
+        continue;
+      }
+      const hash = snapshotHash(sliceDocument(slice));
+      if (snapshots[listed.runId] === hash) {
+        observedAt[listed.runId] = listed.updatedAt;
+        dirty = true;
+        continue;
+      }
+      const last = [...slice.events].sort((left, right) => left.sequence - right.sequence).at(-1);
+      if (!last) {
+        continue;
+      }
+      const built = buildRunBatch({
+        journal: sliceDocument(slice),
+        fromSequence: last.sequence,
+        onlySequence: last.sequence,
+        batchId: this.createId(),
+        exportedAt: this.clock.now(),
+        source,
+        maxEvents: 1,
+        maxBytes: MAX_BATCH_BYTES,
+      });
+      if (typeof built !== "string") {
+        return { kind: "batch", pending: toPending(built), observedAt, snapshots };
+      }
+      if (built === "too_large") {
+        return built;
+      }
+      if (built === "gap" || built === "unsupported") {
+        blocked = built;
+      }
+    }
+    if (dirty) {
+      return { kind: "touch", observedAt, snapshots };
     }
     return blocked ?? "idle";
   }
@@ -471,7 +575,7 @@ class CloudExporter implements CloudTelemetry {
     const timer = setTimeout(() => controller.abort(), this.requestTimeoutMs);
     this.abort = controller;
     try {
-      const response = await this.fetchImpl(`${this.endpoint}/v1/telemetry/batches`, {
+      const response = await this.fetchImpl(telemetryBatchUrl(this.endpoint), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
@@ -493,23 +597,15 @@ class CloudExporter implements CloudTelemetry {
     }
   }
 
-  private async countPending(
-    installationId: string,
-    destination: DestinationState,
-  ): Promise<number> {
-    if (!installationId) {
-      return destination.pending ? 1 : 0;
-    }
+  private async countPending(destination: DestinationState): Promise<number> {
+    const sealed = new Set(destination.sealedRuns);
     let count = 0;
-    const runs = await this.journal.listRuns();
-    for (const listed of runs) {
-      const journal = await this.journal.readJournal(listed.runId);
-      if (!journal) {
+    for (const head of await this.journal.listHeads()) {
+      if (sealed.has(head.runId)) {
         continue;
       }
-      const maxSequence = journal.events.reduce((max, event) => Math.max(max, event.sequence), 0);
-      const cursor = destination.cursors[listed.runId] ?? 0;
-      count += Math.max(0, maxSequence - cursor);
+      const cursor = destination.cursors[head.runId] ?? 0;
+      count += Math.max(0, head.maxSequence - cursor);
     }
     return count;
   }
@@ -539,26 +635,64 @@ class CloudExporter implements CloudTelemetry {
     }
     const created: TelemetryDocument = {
       version: 1,
+      revision: 1,
       installationId,
       destinations: {},
     };
-    await this.state.save(created);
-    this.document = created;
-    return created;
+    const saved = await this.state.save(created, 0);
+    if (saved) {
+      this.document = created;
+      return created;
+    }
+    const raced = await this.state.load();
+    if (!raced) {
+      throw new Error("Telemetry cursor was not stored.");
+    }
+    this.document = raced;
+    return raced;
+  }
+
+  private async ensureAnchor(document: TelemetryDocument): Promise<void> {
+    const destinationKey = await this.destinationIdPromise;
+    if (document.destinations[destinationKey]) {
+      return;
+    }
+    const heads = await this.journal.listHeads();
+    const sealedRuns = heads.filter((head) => head.maxSequence > 0).map((head) => head.runId);
+    await this.persist(destinationKey, { ...emptyDestination(), sealedRuns });
   }
 
   private async persist(
-    document: TelemetryDocument,
     destinationKey: string,
     destination: DestinationState,
-  ): Promise<void> {
-    const next: TelemetryDocument = {
-      version: 1,
-      installationId: document.installationId,
-      destinations: { ...document.destinations, [destinationKey]: destination },
-    };
-    await this.state.save(next);
-    this.document = next;
+  ): Promise<DestinationState> {
+    let nextDestination = destination;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const base = this.document ?? (await this.ensureDocument());
+      if (attempt > 0) {
+        const stored = base.destinations[destinationKey];
+        if (stored) {
+          nextDestination = mergeDestination(nextDestination, stored);
+        }
+      }
+      const next: TelemetryDocument = {
+        version: 1,
+        revision: base.revision + 1,
+        installationId: base.installationId,
+        destinations: { ...base.destinations, [destinationKey]: nextDestination },
+      };
+      const saved = await this.state.save(next, base.revision);
+      if (saved) {
+        this.document = next;
+        return nextDestination;
+      }
+      const reloaded = await this.state.load();
+      this.document = reloaded;
+      if (!reloaded) {
+        this.document = null;
+      }
+    }
+    throw new Error("Telemetry cursor was not stored.");
   }
 
   private result(delivered: boolean): FlushResult {
@@ -583,6 +717,92 @@ class CloudExporter implements CloudTelemetry {
   }
 }
 
+type BatchChoice =
+  | {
+      readonly kind: "batch";
+      readonly pending: PendingBatch;
+      readonly observedAt: Record<string, number>;
+      readonly snapshots: Record<string, string>;
+    }
+  | {
+      readonly kind: "touch";
+      readonly observedAt: Record<string, number>;
+      readonly snapshots: Record<string, string>;
+    }
+  | "idle"
+  | "too_large"
+  | "unsupported"
+  | "gap";
+
+function sliceDocument(slice: JournalSlice): JournalDocument {
+  return {
+    run: slice.run,
+    steps: slice.steps,
+    attempts: slice.attempts,
+    events: slice.events,
+  };
+}
+
+function mergeDestination(local: DestinationState, stored: DestinationState): DestinationState {
+  const cursors = { ...stored.cursors };
+  for (const [runId, sequence] of Object.entries(local.cursors)) {
+    cursors[runId] = Math.max(cursors[runId] ?? 0, sequence);
+  }
+  const snapshots = { ...stored.snapshots };
+  for (const [runId, hash] of Object.entries(local.snapshots)) {
+    if ((local.cursors[runId] ?? 0) >= (stored.cursors[runId] ?? 0)) {
+      snapshots[runId] = hash;
+    }
+  }
+  const observedAt = { ...stored.observedAt };
+  for (const [runId, at] of Object.entries(local.observedAt)) {
+    observedAt[runId] = Math.max(observedAt[runId] ?? 0, at);
+  }
+  const sealed = new Set([...stored.sealedRuns, ...local.sealedRuns]);
+  return {
+    cursors,
+    snapshots,
+    observedAt,
+    sealedRuns: [...sealed].sort(),
+    pending: pickPending(local.pending, stored.pending, cursors),
+    backoffAttempt: Math.max(local.backoffAttempt, stored.backoffAttempt),
+    nextAttemptAt: Math.max(local.nextAttemptAt, stored.nextAttemptAt),
+    authBlocked: local.authBlocked || stored.authBlocked,
+    hold: stored.hold ?? local.hold,
+    lastSyncedAt: later(local.lastSyncedAt, stored.lastSyncedAt),
+    lastError: stored.lastError ?? local.lastError,
+  };
+}
+
+function pickPending(
+  local: PendingBatch | null,
+  stored: PendingBatch | null,
+  cursors: Readonly<Record<string, number>>,
+): PendingBatch | null {
+  const usable = (batch: PendingBatch | null): batch is PendingBatch =>
+    batch !== null && batch.throughSequence > (cursors[batch.runId] ?? 0);
+  if (usable(stored) && stored.fromSequence === (cursors[stored.runId] ?? 0) + 1) {
+    return stored;
+  }
+  if (usable(local)) {
+    return local;
+  }
+  if (usable(stored)) {
+    return stored;
+  }
+  return null;
+}
+
+function later(left: number | null, right: number | null): number | null {
+  if (left === null) {
+    return right;
+  }
+  if (right === null) {
+    return left;
+  }
+  return Math.max(left, right);
+}
+
 type PostOutcome =
   | { kind: "accepted"; acceptedThrough: number }
   | { kind: "partial"; acceptedThrough: number }
@@ -593,6 +813,9 @@ type PostOutcome =
   | { kind: "retry" };
 
 function interpretResponse(status: number, text: string, pending: PendingBatch): PostOutcome {
+  if (status >= 300 && status < 400) {
+    return { kind: "hold", error: "redirected" };
+  }
   if (status === 401) {
     return { kind: "unauthorized" };
   }
@@ -699,7 +922,8 @@ function asTelemetryError(value: string | null): TelemetryError {
     value === "sensitive_payload" ||
     value === "malformed_ack" ||
     value === "stopped" ||
-    value === "unsupported"
+    value === "unsupported" ||
+    value === "redirected"
   ) {
     return value;
   }
@@ -708,10 +932,11 @@ function asTelemetryError(value: string | null): TelemetryError {
 
 async function destinationId(
   endpoint: string,
+  projectId: string,
   apiKey: string,
   sha256?: (data: Uint8Array) => Promise<string>,
 ): Promise<string> {
-  const encoded = new TextEncoder().encode(`${endpoint}\n${apiKey}`);
+  const encoded = encodeUtf8(`${endpoint}\n${projectId}\n${apiKey}`);
   if (sha256) {
     return sha256(encoded);
   }
@@ -727,7 +952,10 @@ interface SubtleDigest {
   digest(algorithm: "SHA-256", data: Uint8Array): Promise<ArrayBuffer>;
 }
 
-function randomUuid(): string {
+let fallbackCounter = 0;
+
+/** UUID-shaped id. Uses Web Crypto when the runtime has it, including Hermes `getRandomValues`. */
+export function createTelemetryId(): string {
   const cryptoApi = (
     globalThis as {
       crypto?: { randomUUID?: () => string; getRandomValues?: (bytes: Uint8Array) => Uint8Array };
@@ -736,17 +964,53 @@ function randomUuid(): string {
   if (typeof cryptoApi?.randomUUID === "function") {
     return cryptoApi.randomUUID();
   }
-  if (typeof cryptoApi?.getRandomValues !== "function") {
-    throw new Error(
-      "crypto.randomUUID or crypto.getRandomValues is required to create telemetry identifiers.",
-    );
-  }
   const bytes = new Uint8Array(16);
-  cryptoApi.getRandomValues(bytes);
+  if (typeof cryptoApi?.getRandomValues === "function") {
+    cryptoApi.getRandomValues(bytes);
+  } else {
+    fallbackCounter += 1;
+    const now = Date.now();
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+    bytes[0] = now & 0xff;
+    bytes[1] = (now >>> 8) & 0xff;
+    bytes[2] = fallbackCounter & 0xff;
+    bytes[3] = (fallbackCounter >>> 8) & 0xff;
+  }
   bytes[6] = (bytes[6]! & 0x0f) | 0x40;
   bytes[8] = (bytes[8]! & 0x3f) | 0x80;
   const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function randomUuid(): string {
+  return createTelemetryId();
+}
+
+function encodeUtf8(value: string): Uint8Array {
+  if (typeof TextEncoder === "function") {
+    return new TextEncoder().encode(value);
+  }
+  const bytes: number[] = [];
+  for (const character of value) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code < 0x80) {
+      bytes.push(code);
+    } else if (code < 0x800) {
+      bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+    } else if (code < 0x10000) {
+      bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+    } else {
+      bytes.push(
+        0xf0 | (code >> 18),
+        0x80 | ((code >> 12) & 0x3f),
+        0x80 | ((code >> 6) & 0x3f),
+        0x80 | (code & 0x3f),
+      );
+    }
+  }
+  return Uint8Array.from(bytes);
 }
 
 function rotr(value: number, bits: number): number {
@@ -840,11 +1104,31 @@ function defaultFetch(
     readonly signal: AbortSignal;
   },
 ): Promise<{ readonly status: number; text(): Promise<string> }> {
-  const fetchImpl = (globalThis as { fetch?: TelemetryFetch }).fetch;
+  const fetchImpl = (
+    globalThis as {
+      fetch?: (
+        url: string,
+        init: {
+          readonly method: "POST";
+          readonly headers: Readonly<Record<string, string>>;
+          readonly body: string;
+          readonly signal: AbortSignal;
+          readonly redirect: "manual";
+        },
+      ) => Promise<{
+        readonly status: number;
+        readonly url?: string;
+        readonly type?: string;
+        text(): Promise<string>;
+      }>;
+    }
+  ).fetch;
   if (!fetchImpl) {
     return Promise.reject(new Error("fetch is not available."));
   }
-  return fetchImpl(url, init);
+  return fetchImpl(url, { ...init, redirect: "manual" }).then((response) =>
+    readTelemetryResponse(response, url),
+  );
 }
 
 function compareRuns(

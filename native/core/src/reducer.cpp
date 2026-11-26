@@ -2,6 +2,7 @@
 
 #include "larkx/json.hpp"
 
+#include <cctype>
 #include <utility>
 
 namespace larkx {
@@ -131,6 +132,111 @@ std::string object_payload(std::vector<std::pair<std::string, Json>> fields) {
   object.kind = Json::Kind::Object;
   object.object = std::move(fields);
   return canonical_json(object);
+}
+
+std::string transport_name(const std::string& transport_id) {
+  if (transport_id.rfind("a2a:", 0) == 0) {
+    return "a2a";
+  }
+  if (transport_id.rfind("http:", 0) == 0) {
+    return "http";
+  }
+  return "";
+}
+
+std::string step_kind_name(const std::string& step_key, ExecutionTarget target) {
+  if (step_key.rfind("model-", 0) == 0) {
+    return "model";
+  }
+  if (target == ExecutionTarget::Hybrid) {
+    return "remote";
+  }
+  return "tool";
+}
+
+const Json* object_field(const Json& object, std::string_view key) {
+  if (object.kind != Json::Kind::Object) {
+    return nullptr;
+  }
+  for (const auto& entry : object.object) {
+    if (entry.first == key) {
+      return &entry.second;
+    }
+  }
+  return nullptr;
+}
+
+bool safe_label(const std::string& text) {
+  if (text.empty() || text.size() > 80) {
+    return false;
+  }
+  for (unsigned char character : text) {
+    if (std::isalnum(character) != 0 || character == '_' || character == '-' || character == '.' || character == ':' ||
+        character == '/') {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
+bool bounded_count(const Json* value, int64_t& out) {
+  if (value == nullptr || value->kind != Json::Kind::Number || value->text.empty() || value->text.size() > 12) {
+    return false;
+  }
+  if (value->text[0] == '-') {
+    return false;
+  }
+  int64_t parsed = 0;
+  for (char character : value->text) {
+    if (character < '0' || character > '9') {
+      return false;
+    }
+    parsed = parsed * 10 + (character - '0');
+  }
+  if (parsed > 1000000000) {
+    return false;
+  }
+  out = parsed;
+  return true;
+}
+
+void add_observation(std::vector<std::pair<std::string, Json>>& fields, const Json& output, const Step& step,
+                     int64_t started_at, int64_t now_ms) {
+  fields.push_back({"kind", jstring(step_kind_name(step.step_key, step.execution_target))});
+  if (now_ms >= started_at) {
+    fields.push_back({"durationMs", jint(now_ms - started_at)});
+  }
+  const std::string kind = step_kind_name(step.step_key, step.execution_target);
+  if (kind == "model") {
+    const Json* provider = object_field(output, "provider");
+    const Json* model = object_field(output, "model");
+    if (provider != nullptr && provider->kind == Json::Kind::String && safe_label(provider->text)) {
+      fields.push_back({"modelProvider", jstring(provider->text)});
+    }
+    if (model != nullptr && model->kind == Json::Kind::String && safe_label(model->text)) {
+      fields.push_back({"modelId", jstring(model->text)});
+    }
+  }
+  if (kind == "tool") {
+    const Json* name = object_field(output, "name");
+    if (name != nullptr && name->kind == Json::Kind::String && safe_label(name->text)) {
+      fields.push_back({"toolName", jstring(name->text)});
+    }
+  }
+  for (const char* key : {"inputTokens", "outputTokens", "timeToFirstTokenMs"}) {
+    int64_t count = 0;
+    if (bounded_count(object_field(output, key), count)) {
+      fields.push_back({key, jint(count)});
+    }
+  }
+}
+
+void add_transport(std::vector<std::pair<std::string, Json>>& fields, const std::string& transport_id) {
+  const std::string name = transport_name(transport_id);
+  if (!name.empty()) {
+    fields.push_back({"transport", jstring(name)});
+  }
 }
 
 }  // namespace
@@ -481,11 +587,15 @@ Status begin_step(State& state, const BeginStepInput& input) {
     state.attempts.push_back(std::move(attempt));
   }
   state.run.updated_at = input.now_ms;
+  const Step* begun = find_step(state, input.step_key);
+  const int64_t attempt_number = begun == nullptr ? 1 : begun->attempt_count;
   const std::string payload = object_payload({
       {"stepKey", jstring(input.step_key)},
       {"effects", jstring(to_string(input.effect_type))},
       {"execution", jstring(to_string(input.execution_target))},
       {"operationId", jstring(input.operation_id)},
+      {"kind", jstring(step_kind_name(input.step_key, input.execution_target))},
+      {"attempt", jint(attempt_number)},
   });
   return append_event(state, input.event_id, "STEP_STARTED", payload, input.now_ms);
 }
@@ -519,15 +629,26 @@ Status commit_step(State& state, const CommitStepInput& input) {
   step->error_json = std::nullopt;
   step->next_attempt_at = std::nullopt;
   step->updated_at = input.now_ms;
+  const int64_t started_at = attempt->started_at;
   close_attempt(state, input.attempt_id, AttemptStatus::Completed, input.now_ms, std::nullopt);
   state.run.updated_at = input.now_ms;
-  const std::string payload = object_payload({
+  std::vector<std::pair<std::string, Json>> fields = {
       {"stepKey", jstring(input.step_key)},
       {"effects", jstring(to_string(step->effect_type))},
       {"execution", jstring(to_string(step->execution_target))},
       {"attempt", jint(attempt_number)},
-  });
-  return append_event(state, input.event_id, "STEP_COMPLETED", payload, input.now_ms);
+  };
+  Json output;
+  std::string ignored;
+  if (parse_json(input.output_json, output, ignored)) {
+    add_observation(fields, output, *step, started_at, input.now_ms);
+  } else {
+    fields.push_back({"kind", jstring(step_kind_name(step->step_key, step->execution_target))});
+    if (input.now_ms >= started_at) {
+      fields.push_back({"durationMs", jint(input.now_ms - started_at)});
+    }
+  }
+  return append_event(state, input.event_id, "STEP_COMPLETED", object_payload(fields), input.now_ms);
 }
 
 Status resolve_step(State& state, const ResolveStepInput& input) {
@@ -568,6 +689,8 @@ Status resolve_step(State& state, const ResolveStepInput& input) {
       {"effects", jstring(to_string(step->effect_type))},
       {"reason", jstring(input.reason)},
       {"attemptStatus", jstring(to_string(input.attempt_status))},
+      {"kind", jstring(step_kind_name(step->step_key, step->execution_target))},
+      {"attempt", jint(attempt->attempt_number)},
   });
   if (auto status = append_event(state, input.event_id, event_type, payload, input.now_ms); !status.ok()) {
     return status;
@@ -632,11 +755,16 @@ Status mark_unknown(State& state, const MarkUnknownInput& input) {
     close_attempt(state, attempt->attempt_id, AttemptStatus::Interrupted, input.now_ms, error_json);
   }
   state.run.updated_at = input.now_ms;
-  const std::string step_payload = object_payload({
+  std::vector<std::pair<std::string, Json>> unknown_fields = {
       {"stepKey", jstring(input.step_key)},
       {"effects", jstring(to_string(step->effect_type))},
       {"reason", jstring(input.reason)},
-  });
+      {"kind", jstring(step_kind_name(step->step_key, step->execution_target))},
+  };
+  if (attempt != nullptr) {
+    unknown_fields.push_back({"attempt", jint(attempt->attempt_number)});
+  }
+  const std::string step_payload = object_payload(unknown_fields);
   if (auto status = append_event(state, input.step_event_id, "STEP_OUTCOME_UNKNOWN", step_payload, input.now_ms);
       !status.ok()) {
     return status;
@@ -862,13 +990,14 @@ Status park_delegation(State& state, const ParkDelegationInput& input) {
   }
   state.run.updated_at = input.now_ms;
   if (first_task) {
-    const std::string payload = object_payload({
+    std::vector<std::pair<std::string, Json>> fields = {
         {"operationId", jstring(row->operation_id)},
         {"remoteAgent", jstring(row->remote_agent)},
         {"stepKey", jstring(row->step_key)},
         {"taskId", jstring(*row->task_id)},
-    });
-    return append_event(state, input.event_id, "REMOTE_DISPATCH_ACCEPTED", payload, input.now_ms);
+    };
+    add_transport(fields, row->transport_id);
+    return append_event(state, input.event_id, "REMOTE_DISPATCH_ACCEPTED", object_payload(fields), input.now_ms);
   }
   return Status::success();
 }
@@ -1010,12 +1139,14 @@ Status block_remote_input(State& state, const BlockRemoteInput& input) {
   }
   state.run.updated_at = input.now_ms;
   if (first_task) {
-    const std::string accepted = object_payload({
+    std::vector<std::pair<std::string, Json>> accepted_fields = {
         {"operationId", jstring(row->operation_id)},
         {"remoteAgent", jstring(row->remote_agent)},
         {"stepKey", jstring(row->step_key)},
         {"taskId", jstring(*row->task_id)},
-    });
+    };
+    add_transport(accepted_fields, row->transport_id);
+    const std::string accepted = object_payload(accepted_fields);
     if (auto status = append_event(state, input.accepted_event_id, "REMOTE_DISPATCH_ACCEPTED", accepted, input.now_ms);
         !status.ok()) {
       return status;
@@ -1079,12 +1210,14 @@ Status accept_remote_continuation(State& state, const AcceptRemoteContinuation& 
   state.run.status = WorkflowStatus::Running;
   state.run.blocked_reason = std::nullopt;
   state.run.updated_at = input.now_ms;
-  const std::string payload = object_payload({
+  std::vector<std::pair<std::string, Json>> fields = {
       {"operationId", jstring(row->operation_id)},
+      {"remoteAgent", jstring(row->remote_agent)},
       {"stepKey", jstring(row->step_key)},
       {"taskId", jstring(*row->task_id)},
-  });
-  return append_event(state, input.event_id, "REMOTE_DISPATCH_QUEUED", payload, input.now_ms);
+  };
+  add_transport(fields, row->transport_id);
+  return append_event(state, input.event_id, "REMOTE_DISPATCH_QUEUED", object_payload(fields), input.now_ms);
 }
 
 Status complete_delegation(State& state, const CompleteDelegationInput& input) {
@@ -1140,6 +1273,7 @@ Status complete_delegation(State& state, const CompleteDelegationInput& input) {
   if (row->task_id.has_value()) {
     fields.push_back({"taskId", jstring(*row->task_id)});
   }
+  add_transport(fields, row->transport_id);
   return append_event(state, input.result_event_id, "REMOTE_RESULT_RECEIVED", object_payload(fields), input.now_ms);
 }
 

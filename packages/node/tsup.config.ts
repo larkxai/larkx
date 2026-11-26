@@ -7,6 +7,7 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   target: "node22",
+  platform: "node",
   splitting: false,
-  noExternal: ["@larkxai/host", "@larkxai/protocol"],
+  noExternal: ["@larkxai/host", "@larkxai/protocol", "@larkxai/telemetry"],
 });

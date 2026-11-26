@@ -7,7 +7,9 @@ import {
   type CreateRuntimeOptions,
   type Runtime,
   type SqliteStorage,
+  type TelemetryCursorStore,
 } from "@larkxai/host";
+import { parseDocument } from "@larkxai/telemetry";
 
 export {
   bindNativeAppState,
@@ -48,10 +50,15 @@ export {
   type ScriptedModel,
   type SqliteStorage,
   type StartInput,
+  type TelemetryConfig,
+  type TelemetryDeliveryStatus,
+  type TelemetryExporter,
   type Tool,
   type ToolCall,
   type ToolContext,
 } from "@larkxai/host";
+
+export { larkxCloud } from "@larkxai/host";
 
 interface NativeCoreModule {
   invoke(method: string, argsJson: string): Promise<string>;
@@ -88,13 +95,70 @@ export async function createRuntime(
     );
   }
   const module = native;
+  const storage = options.storage ?? sqlite();
+  const telemetryState =
+    options.telemetry !== undefined && options.telemetryState === undefined
+      ? fileTelemetryStore(storage.path)
+      : options.telemetryState;
   return openHostRuntime({
     ...options,
-    storage: options.storage ?? sqlite(),
+    storage,
+    runtimeName: "react-native",
+    ...(telemetryState !== undefined ? { telemetryState } : {}),
     transport: {
       invoke(method, args) {
         return module.invoke(method, JSON.stringify(args));
       },
     },
   });
+}
+
+const fileQueues = new Map<string, Promise<void>>();
+
+function fileTelemetryStore(databasePath: string): TelemetryCursorStore {
+  const slash = databasePath.lastIndexOf("/");
+  const directory = new Directory(slash >= 0 ? databasePath.slice(0, slash) : ".");
+  const name = `${slash >= 0 ? databasePath.slice(slash + 1) : databasePath}.telemetry.json`;
+  const file = new File(directory, name);
+  const key = file.uri;
+  const exclusive = async <T>(work: () => Promise<T>): Promise<T> => {
+    const previous = fileQueues.get(key) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => gate);
+    fileQueues.set(key, tail);
+    await previous;
+    try {
+      return await work();
+    } finally {
+      release();
+    }
+  };
+  return {
+    async load() {
+      return exclusive(async () => {
+        if (!file.exists) {
+          return null;
+        }
+        return parseDocument(await file.text());
+      });
+    },
+    async save(document, expectedRevision) {
+      return exclusive(async () => {
+        const current = file.exists ? parseDocument(await file.text()) : null;
+        const currentRevision =
+          current !== null && typeof current.revision === "number" ? current.revision : 0;
+        if (currentRevision !== expectedRevision) {
+          return false;
+        }
+        if (!directory.exists) {
+          directory.create();
+        }
+        file.write(JSON.stringify(document));
+        return true;
+      });
+    },
+  };
 }

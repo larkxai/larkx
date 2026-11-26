@@ -1248,4 +1248,146 @@ Status Store::list_runs(std::vector<Run>& out) {
   }
 }
 
+Status Store::journal_heads(std::vector<JournalHead>& out) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  out.clear();
+  sqlite3_stmt* raw = nullptr;
+  if (sqlite3_prepare_v2(
+          db_,
+          "SELECT r.run_id, r.updated_at, "
+          "IFNULL((SELECT MAX(e.sequence) FROM workflow_events e WHERE e.run_id = r.run_id), 0) "
+          "FROM workflow_runs r ORDER BY r.updated_at ASC, r.run_id ASC",
+          -1, &raw, nullptr) != SQLITE_OK) {
+    return storage(sqlite3_errmsg(db_));
+  }
+  Statement query(raw);
+  while (true) {
+    const int rc = sqlite3_step(query.get());
+    if (rc == SQLITE_DONE) {
+      return Status::success();
+    }
+    if (rc != SQLITE_ROW) {
+      return storage(sqlite3_errmsg(db_));
+    }
+    JournalHead head;
+    head.run_id = column_text(query.get(), 0);
+    head.updated_at = sqlite3_column_int64(query.get(), 1);
+    head.max_sequence = sqlite3_column_int64(query.get(), 2);
+    out.push_back(std::move(head));
+  }
+}
+
+Status Store::event_page(const std::string& run_id, int64_t after_sequence, int32_t limit, EventPage& out) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  out = EventPage{};
+  if (after_sequence < 0 || limit < 1 || limit > 500) {
+    return Status::fail(Code::InvalidArgument, "Event page bounds are invalid.");
+  }
+  sqlite3_stmt* run_raw = nullptr;
+  if (sqlite3_prepare_v2(
+          db_,
+          "SELECT run_id, workflow_name, workflow_version, status, created_at, updated_at, "
+          "owner_id IS NOT NULL, ownership_epoch, protocol_version, data_policy, cancel_requested, blocked_reason "
+          "FROM workflow_runs WHERE run_id = ?",
+          -1, &run_raw, nullptr) != SQLITE_OK) {
+    return storage(sqlite3_errmsg(db_));
+  }
+  Statement run_query(run_raw);
+  bind_text(run_query.get(), 1, run_id);
+  const int run_rc = sqlite3_step(run_query.get());
+  if (run_rc == SQLITE_DONE) {
+    return Status::fail(Code::NotFound, "Run was not found.");
+  }
+  if (run_rc != SQLITE_ROW) {
+    return storage(sqlite3_errmsg(db_));
+  }
+  out.found = true;
+  out.run.run_id = column_text(run_query.get(), 0);
+  out.run.workflow_name = column_text(run_query.get(), 1);
+  out.run.workflow_version = static_cast<int32_t>(sqlite3_column_int64(run_query.get(), 2));
+  out.run.status = column_text(run_query.get(), 3);
+  out.run.created_at = sqlite3_column_int64(run_query.get(), 4);
+  out.run.updated_at = sqlite3_column_int64(run_query.get(), 5);
+  out.run.has_owner = sqlite3_column_int64(run_query.get(), 6) != 0;
+  out.run.ownership_epoch = sqlite3_column_int64(run_query.get(), 7);
+  out.run.protocol_version = static_cast<int32_t>(sqlite3_column_int64(run_query.get(), 8));
+  out.run.data_policy = column_text(run_query.get(), 9);
+  out.run.cancel_requested = sqlite3_column_int64(run_query.get(), 10) != 0;
+  if (sqlite3_column_type(run_query.get(), 11) != SQLITE_NULL) {
+    out.run.has_blocked_reason = true;
+    out.run.blocked_reason = column_text(run_query.get(), 11);
+  }
+
+  sqlite3_stmt* max_raw = nullptr;
+  if (sqlite3_prepare_v2(db_, "SELECT IFNULL(MAX(sequence), 0) FROM workflow_events WHERE run_id = ?", -1, &max_raw,
+                         nullptr) != SQLITE_OK) {
+    return storage(sqlite3_errmsg(db_));
+  }
+  Statement max_query(max_raw);
+  bind_text(max_query.get(), 1, run_id);
+  if (sqlite3_step(max_query.get()) != SQLITE_ROW) {
+    return storage(sqlite3_errmsg(db_));
+  }
+  out.max_sequence = sqlite3_column_int64(max_query.get(), 0);
+
+  sqlite3_stmt* step_raw = nullptr;
+  if (sqlite3_prepare_v2(
+          db_,
+          "SELECT step_key, step_order, status, execution_target, selected_target, effect_type, attempt_count, "
+          "operation_id FROM workflow_steps WHERE run_id = ? ORDER BY step_order ASC",
+          -1, &step_raw, nullptr) != SQLITE_OK) {
+    return storage(sqlite3_errmsg(db_));
+  }
+  Statement steps(step_raw);
+  bind_text(steps.get(), 1, run_id);
+  while (true) {
+    const int step_rc = sqlite3_step(steps.get());
+    if (step_rc == SQLITE_DONE) {
+      break;
+    }
+    if (step_rc != SQLITE_ROW) {
+      return storage(sqlite3_errmsg(db_));
+    }
+    PageStep step;
+    step.step_key = column_text(steps.get(), 0);
+    step.step_order = static_cast<int32_t>(sqlite3_column_int64(steps.get(), 1));
+    step.status = column_text(steps.get(), 2);
+    step.execution_target = column_text(steps.get(), 3);
+    step.selected_target = column_text(steps.get(), 4);
+    step.effect_type = column_text(steps.get(), 5);
+    step.attempt_count = static_cast<int32_t>(sqlite3_column_int64(steps.get(), 6));
+    step.operation_id = column_text(steps.get(), 7);
+    out.steps.push_back(std::move(step));
+  }
+
+  sqlite3_stmt* event_raw = nullptr;
+  if (sqlite3_prepare_v2(
+          db_,
+          "SELECT event_id, sequence, event_type, payload_json, created_at FROM workflow_events "
+          "WHERE run_id = ? AND sequence > ? ORDER BY sequence ASC LIMIT ?",
+          -1, &event_raw, nullptr) != SQLITE_OK) {
+    return storage(sqlite3_errmsg(db_));
+  }
+  Statement events(event_raw);
+  bind_text(events.get(), 1, run_id);
+  sqlite3_bind_int64(events.get(), 2, after_sequence);
+  sqlite3_bind_int(events.get(), 3, limit);
+  while (true) {
+    const int event_rc = sqlite3_step(events.get());
+    if (event_rc == SQLITE_DONE) {
+      return Status::success();
+    }
+    if (event_rc != SQLITE_ROW) {
+      return storage(sqlite3_errmsg(db_));
+    }
+    PageEvent event;
+    event.event_id = column_text(events.get(), 0);
+    event.sequence = sqlite3_column_int64(events.get(), 1);
+    event.type = column_text(events.get(), 2);
+    event.payload_json = column_text(events.get(), 3);
+    event.created_at = sqlite3_column_int64(events.get(), 4);
+    out.events.push_back(std::move(event));
+  }
+}
+
 }  // namespace larkx

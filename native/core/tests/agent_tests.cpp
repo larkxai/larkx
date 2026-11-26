@@ -1,5 +1,7 @@
 #include "larkx.h"
 
+#include <sqlite3.h>
+
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -130,6 +132,19 @@ void test_single_turn_persists_before_the_model_runs() {
   const auto first = drive(reopened, "single-1");
   CHECK(first.code == LARKX_OK);
   CHECK(first.request.kind == LARKX_REQUEST_INVOKE_MODEL);
+  bool recovered_event = false;
+  int32_t recovered_events = 0;
+  CHECK(larkx_run_event_count(reopened, "single-1", &recovered_events, &error) == LARKX_OK);
+  for (int32_t index = 0; index < recovered_events; index += 1) {
+    char payload[2048];
+    size_t payload_needed = 0;
+    CHECK(larkx_run_event_payload(reopened, "single-1", index, payload, sizeof(payload), &payload_needed, &error) ==
+          LARKX_OK);
+    if (contains(payload, "WORKFLOW_RECOVERED") && contains(payload, "interrupted")) {
+      recovered_event = true;
+    }
+  }
+  CHECK(recovered_event);
   CHECK(contains(first.detail, "Secret instructions"));
   CHECK(contains(first.detail, "Hi"));
   submit_model(reopened, "single-1", first.request.request_id, "{\"message\":\"hello\",\"finish\":\"stop\",\"calls\":[]}");
@@ -1067,6 +1082,103 @@ void test_a2a_auth_required_is_not_remote_input() {
   std::remove(path.c_str());
 }
 
+std::string read_text(auto&& call) {
+  std::string buffer(4096, '\0');
+  size_t needed = 0;
+  larkx_error error{};
+  larkx_code code = call(buffer.data(), buffer.size(), &needed, &error);
+  if (code == LARKX_ERR_CAPACITY && needed > buffer.size()) {
+    buffer.assign(needed, '\0');
+    code = call(buffer.data(), buffer.size(), &needed, &error);
+  }
+  CHECK(code == LARKX_OK);
+  return buffer.c_str();
+}
+
+void test_event_page_reads_a_bounded_slice() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  register_agent(runtime, "bulk", 1, nullptr, 0);
+  start_run(runtime, "bulk", 1, "kept");
+  larkx_runtime_close(runtime);
+
+  sqlite3* database = nullptr;
+  CHECK(sqlite3_open(path.c_str(), &database) == SQLITE_OK);
+  char* sql_error = nullptr;
+  CHECK(sqlite3_exec(database, "BEGIN", nullptr, nullptr, &sql_error) == SQLITE_OK);
+  CHECK(sqlite3_exec(database,
+                     "INSERT INTO workflow_runs (run_id, workflow_name, workflow_version, input_json, status, "
+                     "created_at, updated_at, ownership_epoch, protocol_version, data_policy, cancel_requested) "
+                     "VALUES ('bulk-history', 'bulk', 1, '{\"message\":\"SECRET_INPUT\"}', 'COMPLETED', 1, 9, 0, 1, "
+                     "'device-only', 0)",
+                     nullptr, nullptr, &sql_error) == SQLITE_OK);
+  CHECK(sqlite3_exec(database,
+                     "INSERT INTO workflow_steps (run_id, step_key, step_order, status, execution_target, "
+                     "selected_target, effect_type, attempt_count, input_json, output_json, operation_id, "
+                     "descriptor_json, created_at, updated_at) VALUES ('bulk-history', 'read', 0, 'COMPLETED', 'local', "
+                     "'local', 'pure', 1, '{\"secret\":\"SECRET_STEP_INPUT\"}', '\"SECRET_STEP_OUTPUT\"', 'op-bulk', "
+                     "'{\"effects\":\"pure\",\"execution\":\"local\"}', 1, 2)",
+                     nullptr, nullptr, &sql_error) == SQLITE_OK);
+  sqlite3_stmt* insert = nullptr;
+  CHECK(sqlite3_prepare_v2(database,
+                           "INSERT INTO workflow_events (event_id, run_id, sequence, event_type, payload_json, "
+                           "created_at) VALUES (?, 'bulk-history', ?, 'STEP_COMPLETED', ?, 3)",
+                           -1, &insert, nullptr) == SQLITE_OK);
+  constexpr int kEvents = 2500;
+  for (int sequence = 1; sequence <= kEvents; sequence += 1) {
+    const std::string id = "ev-" + std::to_string(sequence);
+    const std::string marker = sequence <= 2000 ? "OLD-PAYLOAD" : "NEW-PAYLOAD";
+    const std::string payload = std::string("{\"stepKey\":\"read\",\"marker\":\"") + marker + "\"}";
+    sqlite3_bind_text(insert, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(insert, 2, sequence);
+    sqlite3_bind_text(insert, 3, payload.c_str(), -1, SQLITE_TRANSIENT);
+    CHECK(sqlite3_step(insert) == SQLITE_DONE);
+    sqlite3_reset(insert);
+    sqlite3_clear_bindings(insert);
+  }
+  sqlite3_finalize(insert);
+  CHECK(sqlite3_exec(database, "COMMIT", nullptr, nullptr, &sql_error) == SQLITE_OK);
+  sqlite3_close(database);
+
+  runtime = open_runtime(path);
+  const std::string heads = read_text([&](char* data, size_t capacity, size_t* needed, larkx_error* error) {
+    return larkx_run_journal_heads(runtime, data, capacity, needed, error);
+  });
+  CHECK(heads.find("SECRET_INPUT") == std::string::npos);
+  CHECK(heads.find("OLD-PAYLOAD") == std::string::npos);
+  CHECK(heads.find("\"maxSequence\":2500") != std::string::npos);
+  CHECK(heads.find("bulk-history") != std::string::npos);
+
+  size_t needed = 0;
+  larkx_error error{};
+  char small[64];
+  const larkx_code too_small = larkx_run_event_page(runtime, "bulk-history", 2000, 10, small, sizeof(small), &needed, &error);
+  CHECK(too_small == LARKX_ERR_CAPACITY);
+  CHECK(needed > sizeof(small));
+  CHECK(needed < 8000);
+  const std::string page = read_text([&](char* data, size_t capacity, size_t* needed_out, larkx_error* page_error) {
+    return larkx_run_event_page(runtime, "bulk-history", 2000, 10, data, capacity, needed_out, page_error);
+  });
+  CHECK(page.find("OLD-PAYLOAD") == std::string::npos);
+  CHECK(page.find("SECRET_STEP_OUTPUT") == std::string::npos);
+  CHECK(page.find("SECRET_STEP_INPUT") == std::string::npos);
+  CHECK(page.find("SECRET_INPUT") == std::string::npos);
+  int markers = 0;
+  for (size_t cursor = 0; (cursor = page.find("NEW-PAYLOAD", cursor)) != std::string::npos; cursor += 11) {
+    markers += 1;
+  }
+  CHECK(markers == 10);
+  CHECK(page.find("\"sequence\":2001") != std::string::npos);
+  CHECK(page.find("\"sequence\":2010") != std::string::npos);
+  CHECK(page.find("\"sequence\":2011") == std::string::npos);
+  CHECK(page.find("\"maxSequence\":2500") != std::string::npos);
+  larkx_error invalid{};
+  CHECK(larkx_run_event_page(runtime, "bulk-history", 0, 501, small, sizeof(small), &needed, &invalid) ==
+        LARKX_ERR_INVALID_ARGUMENT);
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
 void test_context_limit_does_not_invoke_the_model() {
   const auto path = temp_db();
   auto* runtime = open_runtime(path);
@@ -1094,6 +1206,7 @@ int main() {
   test_duplicate_and_stale_results_are_rejected();
   test_agent_version_and_effect_compatibility();
   test_open_attempt_can_be_submitted_after_reopen();
+  test_event_page_reads_a_bounded_slice();
   test_context_limit_does_not_invoke_the_model();
   test_remote_delegation_commits_before_the_parent_continues();
   test_remote_lost_ack_without_lookup_or_dedupe_blocks();

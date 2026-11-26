@@ -24,18 +24,39 @@ const SENSITIVE = new Set<string>(SENSITIVE_EVENT_KEYS);
 const ALLOWED_PAYLOAD_KEYS: Record<EventType, readonly string[]> = {
   WORKFLOW_CREATED: ["workflowName", "workflowVersion", "protocolVersion", "dataPolicy"],
   WORKFLOW_STARTED: ["workflowName", "workflowVersion", "resumed", "stepKey", "resolution"],
-  WORKFLOW_RECOVERED: ["from"],
+  WORKFLOW_RECOVERED: ["from", "stepKey"],
   WORKFLOW_WAITING: [],
   WORKFLOW_BLOCKED: ["code", "stepKey"],
-  STEP_STARTED: ["effects", "execution", "operationId", "stepKey"],
-  STEP_COMPLETED: ["attempt", "effects", "execution", "stepKey"],
-  STEP_FAILED: ["attemptStatus", "code", "stepKey"],
-  STEP_RETRY_SCHEDULED: ["effects", "reason", "stepKey", "attemptStatus", "code"],
-  STEP_OUTCOME_UNKNOWN: ["effects", "reason", "stepKey"],
+  STEP_STARTED: ["effects", "execution", "operationId", "stepKey", "kind", "attempt"],
+  STEP_COMPLETED: [
+    "attempt",
+    "effects",
+    "execution",
+    "stepKey",
+    "kind",
+    "durationMs",
+    "modelProvider",
+    "modelId",
+    "toolName",
+    "inputTokens",
+    "outputTokens",
+    "timeToFirstTokenMs",
+  ],
+  STEP_FAILED: ["attempt", "attemptStatus", "code", "stepKey", "kind"],
+  STEP_RETRY_SCHEDULED: [
+    "attempt",
+    "effects",
+    "reason",
+    "stepKey",
+    "attemptStatus",
+    "code",
+    "kind",
+  ],
+  STEP_OUTCOME_UNKNOWN: ["attempt", "effects", "reason", "stepKey", "kind"],
   STEP_RECONCILED: ["stepKey", "resolution"],
-  REMOTE_DISPATCH_QUEUED: [],
-  REMOTE_DISPATCH_ACCEPTED: [],
-  REMOTE_RESULT_RECEIVED: [],
+  REMOTE_DISPATCH_QUEUED: ["operationId", "remoteAgent", "stepKey", "taskId", "transport"],
+  REMOTE_DISPATCH_ACCEPTED: ["operationId", "remoteAgent", "stepKey", "taskId", "transport"],
+  REMOTE_RESULT_RECEIVED: ["operationId", "remoteAgent", "stepKey", "taskId", "transport"],
   WORKFLOW_COMPLETED: [],
   WORKFLOW_FAILED: ["code", "stepKey", "resolution"],
   WORKFLOW_CANCELLED: ["reason"],
@@ -251,7 +272,20 @@ function installationSource(source: TelemetrySource): Record<string, string> {
 }
 
 function utf8Size(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
+  let size = 0;
+  for (const character of value) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code < 0x80) {
+      size += 1;
+    } else if (code < 0x800) {
+      size += 2;
+    } else if (code < 0x10000) {
+      size += 3;
+    } else {
+      size += 4;
+    }
+  }
+  return size;
 }
 
 function isScalar(value: JsonValue | undefined): value is JsonValue {

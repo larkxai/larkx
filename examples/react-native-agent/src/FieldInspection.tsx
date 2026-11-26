@@ -5,6 +5,7 @@ import type { CactusModel } from "@larkxai/react-native/cactus";
 import {
   applicationDatabase,
   createRuntime,
+  larkxCloud,
   remoteAgent,
   sqlite,
   type HostEvent,
@@ -15,6 +16,7 @@ import {
   type RunStatus,
   type Runtime,
   type RuntimeDiagnostics,
+  type TelemetryDeliveryStatus,
 } from "@larkxai/react-native";
 
 import {
@@ -58,7 +60,14 @@ export function FieldInspection() {
   const [transport, setTransport] = useState<"http" | "a2a">("http");
   const [remoteInput, setRemoteInput] = useState("");
   const [online, setOnline] = useState(true);
+  const [telemetryProject, setTelemetryProject] = useState("");
+  const [telemetryKey, setTelemetryKey] = useState("");
+  const [telemetryEndpoint, setTelemetryEndpoint] = useState("");
+  const [telemetryStatus, setTelemetryStatus] = useState("Telemetry disabled.");
   const onlineRef = useRef(true);
+  const telemetryProjectRef = useRef("");
+  const telemetryKeyRef = useRef("");
+  const telemetryEndpointRef = useRef("");
   const endpointRef = useRef("");
   const transportRef = useRef<"http" | "a2a">("http");
   const registeredEndpoint = useRef("");
@@ -96,10 +105,23 @@ export function FieldInspection() {
     registeredMode.current = null;
     agentRef.current = null;
     const started = Date.now();
+    const projectId = telemetryProjectRef.current.trim();
+    const apiKey = telemetryKeyRef.current.trim();
+    const cloudEndpoint = telemetryEndpointRef.current.trim();
     const runtime = await createRuntime({
       storage: sqlite(DATABASE),
       isOnline: () => onlineRef.current,
+      ...(projectId.length > 0 && apiKey.length > 0
+        ? {
+            telemetry: larkxCloud({
+              projectId,
+              apiKey,
+              ...(cloudEndpoint.length > 0 ? { endpoint: cloudEndpoint } : {}),
+            }),
+          }
+        : {}),
     });
+    setTelemetryStatus(formatTelemetry(runtime.telemetryStatus()));
     push(`Runtime opened in ${String(Date.now() - started)} ms.`);
     runtime.observe((event) => {
       push(formatEvent(event));
@@ -114,9 +136,37 @@ export function FieldInspection() {
     return runtime;
   }
 
+  async function reopen(): Promise<void> {
+    setBusy(true);
+    try {
+      const current = runtimeRef.current;
+      runtimeRef.current = null;
+      runRef.current = null;
+      await current?.close();
+      const runtime = await open();
+      runtimeRef.current = runtime;
+      await refresh(runtime);
+    } catch (error) {
+      push(textOf(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function flushTelemetry(): Promise<void> {
+    const runtime = runtimeRef.current;
+    if (runtime === null) {
+      return;
+    }
+    const status = await runtime.flushTelemetry();
+    setTelemetryStatus(formatTelemetry(status));
+    push(status.enabled ? "Telemetry flush finished." : "Telemetry is disabled.");
+  }
+
   async function refresh(runtime: Runtime): Promise<void> {
     const listed = await runtime.listRuns();
     setRuns(listed);
+    setTelemetryStatus(formatTelemetry(runtime.telemetryStatus()));
     push(
       listed.length === 0
         ? "No persisted runs."
@@ -499,6 +549,68 @@ export function FieldInspection() {
           <Text style={styles.actionText}>Release boundary</Text>
         </Pressable>
       </View>
+      <Text style={styles.label}>
+        Telemetry is off until a project id and an ingestion key are applied. The key must be a
+        scoped lkx_ing_ credential. Leave the endpoint empty to use https://cloud.larkx.ai. The
+        inspection keeps running when Cloud is unreachable.
+      </Text>
+      <TextInput
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={(value) => {
+          telemetryProjectRef.current = value;
+          setTelemetryProject(value);
+        }}
+        placeholder="Project id"
+        placeholderTextColor="#7f9086"
+        value={telemetryProject}
+        style={styles.input}
+      />
+      <TextInput
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={(value) => {
+          telemetryKeyRef.current = value;
+          setTelemetryKey(value);
+        }}
+        placeholder="lkx_ing_…"
+        placeholderTextColor="#7f9086"
+        secureTextEntry
+        value={telemetryKey}
+        style={styles.input}
+      />
+      <TextInput
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={(value) => {
+          telemetryEndpointRef.current = value;
+          setTelemetryEndpoint(value);
+        }}
+        placeholder="Cloud origin, optional"
+        placeholderTextColor="#7f9086"
+        value={telemetryEndpoint}
+        style={styles.input}
+      />
+      <Text style={styles.label}>{telemetryStatus}</Text>
+      <View style={styles.row}>
+        <Pressable
+          disabled={busy}
+          onPress={() => {
+            void reopen();
+          }}
+          style={styles.action}
+        >
+          <Text style={styles.actionText}>Apply telemetry</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            void flushTelemetry();
+          }}
+          style={styles.action}
+        >
+          <Text style={styles.actionText}>Flush telemetry</Text>
+        </Pressable>
+      </View>
       <Text style={styles.label}>Persisted runs</Text>
       {runs.map((run) => (
         <Pressable key={run.runId} onPress={() => void recover(run.runId)} style={styles.action}>
@@ -642,6 +754,17 @@ function formatDiagnostics(diagnostics: RuntimeDiagnostics, versions: Runtime["v
 
 function textOf(error: unknown): string {
   return error instanceof Error ? error.message : "The native runtime stopped.";
+}
+
+function formatTelemetry(status: TelemetryDeliveryStatus): string {
+  if (!status.enabled) {
+    return "Telemetry disabled.";
+  }
+  const synced =
+    status.lastSyncedAt === null ? "never" : new Date(status.lastSyncedAt).toISOString();
+  const error = status.lastError === null ? "none" : status.lastError;
+  const behind = status.exportBehind ? " Export is behind the journal window." : "";
+  return `Telemetry ${status.phase}. Pending ${String(status.pendingEvents)}. Last sync ${synced}. Last error ${error}.${behind}`;
 }
 
 const styles = StyleSheet.create({

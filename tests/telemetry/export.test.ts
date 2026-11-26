@@ -8,9 +8,12 @@ import {
   createCloudTelemetry,
   createMemoryTelemetryStore,
   createSqliteTelemetryStore,
+  createTelemetryId,
   nodeInstallationMetadata,
+  normalizeTelemetryEndpoint,
   sanitizeInstallationMetadata,
   type JournalDocument,
+  type JournalSource,
   type TelemetryFetch,
   type TelemetrySql,
 } from "@larkxai/telemetry";
@@ -23,10 +26,11 @@ const SECRET = "secret-prompt-do-not-upload";
 describe("cloud telemetry export", () => {
   it("sends one metadata batch and does not repeat it", async () => {
     const seen: string[] = [];
+    const journal = mutableJournal();
     const telemetry = createCloudTelemetry({
       endpoint: ENDPOINT,
       apiKey: API_KEY,
-      journal: journalOf(sampleJournal()),
+      journal: journal.source,
       state: createMemoryTelemetryStore(),
       appId: "example-app",
       runtime: "node",
@@ -38,6 +42,8 @@ describe("cloud telemetry export", () => {
         return accept(init.body);
       },
     });
+    await telemetry.prepare();
+    journal.documents.push(sampleJournal());
     expect((await telemetry.flush()).delivered).toBe(true);
     expect((await telemetry.flush({ manual: false })).delivered).toBe(false);
     expect(seen).toHaveLength(1);
@@ -49,10 +55,11 @@ describe("cloud telemetry export", () => {
   it("keeps the batch id when the first send fails", async () => {
     const bodies: string[] = [];
     let calls = 0;
+    const journal = mutableJournal();
     const telemetry = createCloudTelemetry({
       endpoint: ENDPOINT,
       apiKey: API_KEY,
-      journal: journalOf(sampleJournal()),
+      journal: journal.source,
       state: createMemoryTelemetryStore(),
       appId: "example-app",
       runtime: "node",
@@ -66,6 +73,8 @@ describe("cloud telemetry export", () => {
         return accept(init.body);
       },
     });
+    await telemetry.prepare();
+    journal.documents.push(sampleJournal());
     expect((await telemetry.flush()).delivered).toBe(false);
     expect((await telemetry.flush({ manual: true })).delivered).toBe(true);
     expect(JSON.parse(bodies[0] ?? "{}").batchId).toBe(JSON.parse(bodies[1] ?? "{}").batchId);
@@ -91,25 +100,33 @@ describe("cloud telemetry export", () => {
     const directory = mkdtempSync(join(tmpdir(), "larkx-telemetry-"));
     try {
       const database = new DatabaseSync(join(directory, "telemetry.sqlite"));
+      const journal = mutableJournal();
       const telemetry = createCloudTelemetry({
         endpoint: ENDPOINT,
         apiKey: API_KEY,
-        journal: journalOf(sampleJournal()),
+        journal: journal.source,
         state: createSqliteTelemetryStore(sqlStore(database)),
         appId: "example-app",
         runtime: "node",
         intervalMs: 0,
         fetch: async (_url, init) => accept(init.body),
       });
+      await telemetry.prepare();
+      journal.documents.push(sampleJournal());
       expect((await telemetry.flush()).delivered).toBe(true);
       await telemetry.stop();
+      const stored = database.prepare("SELECT document_json FROM larkx_telemetry_state").get() as {
+        document_json: string;
+      };
+      expect(stored.document_json).not.toContain(API_KEY);
+      expect(stored.document_json).not.toContain(ENDPOINT);
       database.close();
       const reopened = new DatabaseSync(join(directory, "telemetry.sqlite"));
       let calls = 0;
       const resumed = createCloudTelemetry({
         endpoint: ENDPOINT,
         apiKey: API_KEY,
-        journal: journalOf(sampleJournal()),
+        journal: journal.source,
         state: createSqliteTelemetryStore(sqlStore(reopened)),
         appId: "example-app",
         runtime: "node",
@@ -138,12 +155,275 @@ describe("cloud telemetry export", () => {
     expect(nodeInstallationMetadata({ appName: "Notes" }).deviceModel).toBeUndefined();
     expect(nodeInstallationMetadata({ appName: "Notes" }).platform).toBe("node");
   });
+
+  it("rejects malformed endpoints and does not follow redirects", async () => {
+    expect(normalizeTelemetryEndpoint(" https://cloud.larkx.ai/ ")).toBe("https://cloud.larkx.ai");
+    expect(() => normalizeTelemetryEndpoint("http://user:secret@collector.example")).toThrow(
+      /credentials/,
+    );
+    expect(() => normalizeTelemetryEndpoint("https://collector.example/path?token=secret")).toThrow(
+      /query/,
+    );
+    expect(() => normalizeTelemetryEndpoint("ftp://collector.example")).toThrow(/http or https/);
+    const calls: string[] = [];
+    const journal = mutableJournal();
+    const telemetry = createCloudTelemetry({
+      endpoint: "http://127.0.0.1:9",
+      apiKey: API_KEY,
+      journal: journal.source,
+      state: createMemoryTelemetryStore(),
+      appId: "example-app",
+      runtime: "node",
+      intervalMs: 0,
+      fetch: async (url, init) => {
+        calls.push(url);
+        expect(init.headers.Authorization).toBe(`Bearer ${API_KEY}`);
+        expect(url).toBe("http://127.0.0.1:9/v1/telemetry/batches");
+        return {
+          status: 302,
+          async text() {
+            return "";
+          },
+        };
+      },
+    });
+    await telemetry.prepare();
+    journal.documents.push(sampleJournal());
+    const flushed = await telemetry.flush();
+    expect(flushed.delivered).toBe(false);
+    expect(flushed.error).toBe("redirected");
+    expect(calls).toEqual(["http://127.0.0.1:9/v1/telemetry/batches"]);
+    calls.length = 0;
+    expect((await telemetry.flush({ manual: false })).delivered).toBe(false);
+    expect(calls).toEqual([]);
+    await telemetry.stop();
+  });
+
+  it("does not export runs that already existed when telemetry was enabled", async () => {
+    const journal = mutableJournal([sampleJournal()]);
+    const seen: string[] = [];
+    const telemetry = createCloudTelemetry({
+      endpoint: ENDPOINT,
+      apiKey: API_KEY,
+      journal: journal.source,
+      state: createMemoryTelemetryStore(),
+      appId: "example-app",
+      runtime: "node",
+      intervalMs: 0,
+      fetch: async (_url, init) => {
+        seen.push(init.body);
+        return accept(init.body);
+      },
+    });
+    await telemetry.prepare();
+    expect((await telemetry.flush()).delivered).toBe(false);
+    expect(seen).toEqual([]);
+    journal.documents.push(sampleJournal("letters-2"));
+    expect((await telemetry.flush()).delivered).toBe(true);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain("letters-2");
+    expect(seen[0]).not.toContain("letters-1");
+    await telemetry.stop();
+
+    const moved = createCloudTelemetry({
+      endpoint: "https://other.larkx.test",
+      apiKey: "lkx_ing_other",
+      journal: journal.source,
+      state: createMemoryTelemetryStore(),
+      appId: "other-project",
+      runtime: "node",
+      intervalMs: 0,
+      fetch: async (_url, init) => {
+        seen.push(init.body);
+        return accept(init.body);
+      },
+    });
+    await moved.prepare();
+    expect((await moved.flush()).delivered).toBe(false);
+    expect(seen).toHaveLength(1);
+    await moved.stop();
+  });
+
+  it("reads one bounded page from a large history", async () => {
+    const pages: Array<{ runId: string; after: number; limit: number }> = [];
+    const documents = [largeJournal("old-run", 1000), largeJournal("new-run", 800)];
+    const source: JournalSource = {
+      async listHeads() {
+        return documents.map((document) => ({
+          runId: document.run.runId,
+          updatedAt: document.run.updatedAt,
+          maxSequence: document.events.length,
+        }));
+      },
+      async readSlice(runId, afterSequence, limit) {
+        pages.push({ runId, after: afterSequence, limit });
+        const document = documents.find((item) => item.run.runId === runId);
+        if (!document) {
+          return null;
+        }
+        return {
+          run: document.run,
+          steps: document.steps,
+          attempts: document.attempts,
+          events: document.events.filter((event) => event.sequence > afterSequence).slice(0, limit),
+          maxSequence: document.events.length,
+        };
+      },
+    };
+    const telemetry = createCloudTelemetry({
+      endpoint: ENDPOINT,
+      apiKey: API_KEY,
+      journal: source,
+      state: createMemoryTelemetryStore(),
+      appId: "example-app",
+      runtime: "node",
+      intervalMs: 0,
+      maxEvents: 25,
+      fetch: async (_url, init) => accept(init.body),
+    });
+    await telemetry.prepare();
+    documents.push(largeJournal("live-run", 400));
+    expect((await telemetry.flush()).delivered).toBe(true);
+    expect(pages).toEqual(
+      [0, 25, 50, 75, 100, 125, 150, 175].map((after) => ({
+        runId: "live-run",
+        after,
+        limit: 25,
+      })),
+    );
+    expect(telemetry.current().pendingEvents).toBe(200);
+    expect((await telemetry.flush()).delivered).toBe(true);
+    expect(pages[8]).toEqual({ runId: "live-run", after: 200, limit: 25 });
+    await telemetry.stop();
+  });
+
+  it("does not move a cursor backward when two exporters share a store", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "larkx-telemetry-race-"));
+    try {
+      const database = new DatabaseSync(join(directory, "telemetry.sqlite"));
+      const store = createSqliteTelemetryStore(sqlStore(database));
+      const journal = mutableJournal();
+      const seen: string[] = [];
+      const options = {
+        endpoint: ENDPOINT,
+        apiKey: API_KEY,
+        journal: journal.source,
+        state: store,
+        appId: "example-app" as const,
+        runtime: "node" as const,
+        intervalMs: 0,
+        fetch: async (_url: string, init: { body: string }) => {
+          seen.push(init.body);
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          return accept(init.body);
+        },
+      };
+      const first = createCloudTelemetry(options);
+      const second = createCloudTelemetry(options);
+      await Promise.all([first.prepare(), second.prepare()]);
+      journal.documents.push(sampleJournal());
+      await Promise.all([first.flush(), second.flush()]);
+      const third = createCloudTelemetry({
+        ...options,
+        fetch: async () => {
+          throw new Error("cursor should already cover the run");
+        },
+      });
+      expect((await third.flush({ manual: false })).delivered).toBe(false);
+      const stored = database.prepare("SELECT document_json FROM larkx_telemetry_state").get() as {
+        document_json: string;
+      };
+      expect(stored.document_json).not.toContain(API_KEY);
+      expect(stored.document_json).toContain("letters-1");
+      await first.stop();
+      await second.stop();
+      await third.stop();
+      database.close();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("creates identifiers without crypto.randomUUID or TextEncoder", async () => {
+    const cryptoApi = globalThis.crypto;
+    const encoder = globalThis.TextEncoder;
+    Object.defineProperty(globalThis, "crypto", { configurable: true, value: undefined });
+    Object.defineProperty(globalThis, "TextEncoder", { configurable: true, value: undefined });
+    try {
+      const left = createTelemetryId();
+      const right = createTelemetryId();
+      expect(left).not.toBe(right);
+      expect(left).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      const journal = mutableJournal();
+      const telemetry = createCloudTelemetry({
+        endpoint: ENDPOINT,
+        apiKey: API_KEY,
+        journal: journal.source,
+        state: createMemoryTelemetryStore(),
+        appId: "example-app",
+        runtime: "react-native",
+        intervalMs: 0,
+        fetch: async (_url, init) => accept(init.body),
+      });
+      await telemetry.prepare();
+      journal.documents.push(sampleJournal());
+      expect((await telemetry.flush()).delivered).toBe(true);
+      await telemetry.stop();
+    } finally {
+      Object.defineProperty(globalThis, "crypto", { configurable: true, value: cryptoApi });
+      Object.defineProperty(globalThis, "TextEncoder", { configurable: true, value: encoder });
+    }
+  });
+
+  it("stops without waiting for an unavailable collector", async () => {
+    const journal = mutableJournal();
+    const state = createMemoryTelemetryStore();
+    let aborted = false;
+    const telemetry = createCloudTelemetry({
+      endpoint: ENDPOINT,
+      apiKey: API_KEY,
+      journal: journal.source,
+      state,
+      appId: "example-app",
+      runtime: "node",
+      intervalMs: 0,
+      requestTimeoutMs: 30_000,
+      fetch: (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener("abort", () => {
+            aborted = true;
+            reject(new Error("aborted"));
+          });
+        }),
+    });
+    await telemetry.prepare();
+    journal.documents.push(sampleJournal());
+    const flushing = telemetry.flush();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const started = Date.now();
+    await telemetry.stop();
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(aborted).toBe(true);
+    await flushing;
+    const resumed = createCloudTelemetry({
+      endpoint: ENDPOINT,
+      apiKey: API_KEY,
+      journal: journal.source,
+      state,
+      appId: "example-app",
+      runtime: "node",
+      intervalMs: 0,
+      fetch: async (_url, init) => accept(init.body),
+    });
+    expect((await resumed.flush({ manual: true })).delivered).toBe(true);
+    await resumed.stop();
+  });
 });
 
-function sampleJournal(): JournalDocument {
+function sampleJournal(runId = "letters-1"): JournalDocument {
   return {
     run: {
-      runId: "letters-1",
+      runId,
       workflowName: "count-letters",
       workflowVersion: 1,
       status: "COMPLETED",
@@ -186,14 +466,59 @@ function sampleJournal(): JournalDocument {
   };
 }
 
-function journalOf(document: JournalDocument) {
+function mutableJournal(initial: JournalDocument[] = []): {
+  documents: JournalDocument[];
+  source: JournalSource;
+} {
+  const documents = [...initial];
   return {
-    async listRuns() {
-      return [{ runId: document.run.runId, updatedAt: document.run.updatedAt }];
+    documents,
+    source: {
+      async listHeads() {
+        return documents.map((document) => ({
+          runId: document.run.runId,
+          updatedAt: document.run.updatedAt,
+          maxSequence: document.events.reduce((max, event) => Math.max(max, event.sequence), 0),
+        }));
+      },
+      async readSlice(runId, afterSequence, limit) {
+        const document = documents.find((item) => item.run.runId === runId);
+        if (!document) {
+          return null;
+        }
+        const maxSequence = document.events.reduce(
+          (max, event) => Math.max(max, event.sequence),
+          0,
+        );
+        return {
+          run: document.run,
+          steps: document.steps,
+          attempts: document.attempts,
+          events: [...document.events]
+            .filter((event) => event.sequence > afterSequence)
+            .sort((left, right) => left.sequence - right.sequence)
+            .slice(0, limit),
+          maxSequence,
+        };
+      },
     },
-    async readJournal() {
-      return document;
-    },
+  };
+}
+
+function largeJournal(runId: string, count: number): JournalDocument {
+  const document = sampleJournal(runId);
+  const events = Array.from({ length: count }, (_unused, index) => ({
+    eventId: `${runId}-${String(index + 1)}`,
+    runId,
+    sequence: index + 1,
+    type: index === count - 1 ? ("WORKFLOW_COMPLETED" as const) : ("WORKFLOW_STARTED" as const),
+    createdAt: index + 1,
+    payload: index === 0 ? document.events[0]!.payload : {},
+  }));
+  return {
+    ...document,
+    run: { ...document.run, updatedAt: count },
+    events,
   };
 }
 

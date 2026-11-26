@@ -15,5 +15,5 @@ export default defineConfig({
     "cactus-react-native",
     "react-native-nitro-modules",
   ],
-  noExternal: ["@larkxai/host", "@larkxai/protocol", "@larkxai/cactus"],
+  noExternal: ["@larkxai/host", "@larkxai/protocol", "@larkxai/cactus", "@larkxai/telemetry"],
 });

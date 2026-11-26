@@ -1,4 +1,15 @@
 export { bindNativeAppState, createRuntime, defineTool, scriptedModel, sqlite } from "./runtime.js";
+export {
+  larkxCloud,
+  type HostObservation,
+  type LarkxCloudOptions,
+  type LarkxCloudTelemetry,
+  type TelemetryConfig,
+  type TelemetryCursorStore,
+  type TelemetryDeliveryStatus,
+  type TelemetryExporter,
+  type TelemetryInstallationMetadata,
+} from "./telemetry.js";
 
 export {
   remoteAgent,

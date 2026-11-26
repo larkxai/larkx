@@ -609,6 +609,46 @@ Status Session::invoke(const std::string& method, const std::string& args_json, 
     out = buffer.c_str();
     return {};
   }
+  if (method == "journalHeads") {
+    std::string buffer(4096, '\0');
+    size_t needed = 0;
+    larkx_code code = larkx_run_journal_heads(runtime_, buffer.data(), buffer.size(), &needed, &error);
+    if (code == LARKX_ERR_CAPACITY && needed > buffer.size()) {
+      buffer.assign(needed, '\0');
+      code = larkx_run_journal_heads(runtime_, buffer.data(), buffer.size(), &needed, &error);
+    }
+    if (code != LARKX_OK) {
+      return status_from(code, error);
+    }
+    out = buffer.c_str();
+    return {};
+  }
+  if (method == "eventPage") {
+    const int64_t after_sequence = int_field(args, "afterSequence", -1, numbers);
+    const int64_t limit = int_field(args, "limit", -1, numbers);
+    if (!numbers.ok()) {
+      return numbers;
+    }
+    if (limit < 1 || limit > 500) {
+      return invalid("Event page limit must be from 1 to 500.");
+    }
+    std::string buffer(8192, '\0');
+    size_t needed = 0;
+    auto read = [&](char* data, size_t capacity) {
+      return larkx_run_event_page(runtime_, run_id.c_str(), after_sequence, static_cast<int32_t>(limit), data, capacity,
+                                  &needed, &error);
+    };
+    larkx_code code = read(buffer.data(), buffer.size());
+    if (code == LARKX_ERR_CAPACITY && needed > buffer.size()) {
+      buffer.assign(needed, '\0');
+      code = read(buffer.data(), buffer.size());
+    }
+    if (code != LARKX_OK) {
+      return status_from(code, error);
+    }
+    out = buffer.c_str();
+    return {};
+  }
   if (method == "stepCount" || method == "eventCount") {
     int32_t count = 0;
     const larkx_code code = method == "stepCount" ? larkx_run_step_count(runtime_, run_id.c_str(), &count, &error)

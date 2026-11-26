@@ -4,6 +4,6 @@ The C++ runtime owns SQLite. Schema version is 1, created by `Store::migrate` in
 
 `sqlite(path)` in `@larkxai/react-native` passes that file to the core. The private Node host uses the same call in tests. There is no second storage engine and no in-memory adapter.
 
-Opening a file creates it when it is missing. A schema newer than 1 is rejected. The runtime does not delete an existing database. A file written by the removed TypeScript engine is not migrated. Use a new path.
+Opening a file creates it when it is missing. A schema newer than the runtime's storage schema is rejected. The current schema is 3. The runtime does not delete an existing database. A file written by the removed TypeScript engine is not migrated. Use a new path. Telemetry cursors are not stored in this schema.
 
 Foreign keys are on. The connection sets a busy timeout and `synchronous=NORMAL`, and requests WAL.

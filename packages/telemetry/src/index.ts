@@ -1,15 +1,20 @@
 export { createCloudTelemetry } from "./exporter.js";
-export type { JournalDocument } from "./journal.js";
+export type { JournalDocument, JournalEvent, JournalStep } from "./journal.js";
+export { createTelemetryId } from "./exporter.js";
 export type {
   CloudTelemetry,
   CloudTelemetryOptions,
   FlushResult,
+  JournalHead,
+  JournalSlice,
   JournalSource,
   TelemetryError,
   TelemetryFetch,
   TelemetryPhase,
   TelemetryStatus,
 } from "./exporter.js";
+
+export { normalizeTelemetryEndpoint, readTelemetryResponse } from "./endpoint.js";
 
 export {
   MAX_BATCH_BYTES,
@@ -18,7 +23,7 @@ export {
   allowEventPayload,
 } from "./project.js";
 
-export { createMemoryTelemetryStore, createSqliteTelemetryStore } from "./state.js";
+export { createMemoryTelemetryStore, createSqliteTelemetryStore, parseDocument } from "./state.js";
 export type { TelemetryDocument, TelemetrySql, TelemetryStateStore } from "./state.js";
 
 export {

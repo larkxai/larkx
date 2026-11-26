@@ -12,6 +12,14 @@ import {
   type RemoteAgent,
 } from "./remote.js";
 
+import {
+  disabledTelemetryStatus,
+  TelemetrySession,
+  type TelemetryConfig,
+  type TelemetryCursorStore,
+  type TelemetryDeliveryStatus,
+} from "./telemetry.js";
+
 /**
  * Host loop for the shared C++ runtime.
  * `larkx_run_drive` decides the next action. This module invokes the model or
@@ -174,6 +182,10 @@ export interface HistoryStep {
 export interface HistoryEvent {
   readonly index: number;
   readonly payload: JsonValue;
+  readonly eventId?: string;
+  readonly sequence?: number;
+  readonly type?: string;
+  readonly createdAt?: number;
 }
 
 export interface RunHistory {
@@ -208,6 +220,15 @@ export interface CreateRuntimeOptions {
    * The default assumes the network is available.
    */
   readonly isOnline?: () => boolean | Promise<boolean>;
+  /**
+   * Optional metadata export. Omit it and the runtime does not transmit telemetry.
+   * `larkxCloud(...)` posts to LarkX Cloud. `{ exporter }` uses another sink.
+   * Delivery failure does not fail an agent run.
+   */
+  readonly telemetry?: TelemetryConfig;
+  /** Durable export cursor. The Node and React Native SDKs supply one beside the agent database. */
+  readonly telemetryState?: TelemetryCursorStore;
+  readonly runtimeName?: "node" | "react-native";
 }
 
 export interface AgentOptions {
@@ -439,6 +460,7 @@ export class Runtime {
   private lastToolMs: number | null = null;
   private lastTimeToFirstTokenMs: number | null = null;
   private recoveryMs: number | null = null;
+  private readonly telemetrySession: TelemetrySession | null;
   private versionsReady: RuntimeVersions = {
     backend: "native-cpp",
     abi: 0,
@@ -459,6 +481,19 @@ export class Runtime {
       ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
     this.isOnline = options.isOnline ?? (() => true);
     this.versions = this.versionsReady;
+    this.telemetrySession =
+      options.telemetry === undefined
+        ? null
+        : new TelemetrySession({
+            config: options.telemetry,
+            ...(options.telemetryState !== undefined ? { state: options.telemetryState } : {}),
+            runtimeName: options.runtimeName ?? "node",
+            journal: {
+              call: (method, args) => this.call(method, args),
+              now: () => this.now(),
+              online: () => this.isOnline(),
+            },
+          });
   }
 
   get generationId(): number {
@@ -484,6 +519,11 @@ export class Runtime {
     });
     this.initializationMs = Date.now() - started;
     this.opened = true;
+    try {
+      await this.telemetrySession?.start();
+    } catch {
+      // Telemetry setup never blocks agent execution.
+    }
   }
 
   createAgent(options: AgentOptions): Agent {
@@ -705,10 +745,22 @@ export class Runtime {
     this.lastToolMs = durationMs;
   }
 
+  telemetryStatus(): TelemetryDeliveryStatus {
+    return this.telemetrySession?.status() ?? disabledTelemetryStatus();
+  }
+
+  async flushTelemetry(): Promise<TelemetryDeliveryStatus> {
+    if (this.telemetrySession) {
+      await this.telemetrySession.flush();
+    }
+    return this.telemetryStatus();
+  }
+
   async close(): Promise<void> {
     if (!this.opened) {
       return;
     }
+    await this.telemetrySession?.stop();
     this.generation += 1;
     this.opened = false;
     for (const run of this.runs.values()) {
@@ -728,6 +780,9 @@ export class Runtime {
   }
 
   setSuspended(suspended: boolean): void {
+    if (this.suspended !== suspended) {
+      this.telemetrySession?.setForeground(!suspended);
+    }
     this.suspended = suspended;
     if (!suspended) {
       const waiting = this.foreground;
@@ -1141,10 +1196,10 @@ export class Run {
     const eventCount = readCount(await this.runtime.call("eventCount", { runId: this.runId }));
     const events: HistoryEvent[] = [];
     for (let index = 0; index < eventCount; index += 1) {
-      const payload = JSON.parse(
+      const parsed = JSON.parse(
         await this.runtime.call("eventPayload", { runId: this.runId, index }),
       ) as JsonValue;
-      events.push({ index, payload });
+      events.push(readHistoryEvent(index, parsed));
     }
     return { steps, events };
   }
@@ -1561,6 +1616,15 @@ export class Run {
               message: response.message,
               finish: response.finish,
               calls: response.calls,
+              ...(response.usage?.inputTokens === undefined
+                ? {}
+                : { inputTokens: response.usage.inputTokens }),
+              ...(response.usage?.outputTokens === undefined
+                ? {}
+                : { outputTokens: response.usage.outputTokens }),
+              ...(response.timingMs?.timeToFirstToken === undefined
+                ? {}
+                : { timeToFirstTokenMs: response.timingMs.timeToFirstToken }),
             }),
       errorCode,
       errorMessage,
@@ -1829,6 +1893,31 @@ function readStatus(text: string | unknown): RunStatus {
     ownershipEpoch: readNumber(value, "ownershipEpoch"),
     ownerId: readString(value, "ownerId"),
     blockedReason: readString(value, "blockedReason"),
+  };
+}
+
+function readHistoryEvent(index: number, value: JsonValue): HistoryEvent {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    typeof value.eventId !== "string" ||
+    value.payload === null ||
+    typeof value.payload !== "object" ||
+    Array.isArray(value.payload)
+  ) {
+    return { index, payload: value };
+  }
+  const sequence = value.sequence;
+  const createdAt = value.createdAt;
+  const type = value.type;
+  return {
+    index,
+    payload: value.payload,
+    eventId: value.eventId,
+    ...(typeof sequence === "number" ? { sequence } : {}),
+    ...(typeof type === "string" ? { type } : {}),
+    ...(typeof createdAt === "number" ? { createdAt } : {}),
   };
 }
 

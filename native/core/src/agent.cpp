@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace larkx {
@@ -796,6 +797,8 @@ struct Runtime::Impl {
   std::unordered_map<std::string, AgentRecord> agents;
   std::unordered_map<std::string, std::string> issued;
   std::unordered_map<std::string, std::string> remote_issued;
+  std::unordered_set<std::string> started_here;
+  std::unordered_set<std::string> recovery_noted;
 
   Status load(const std::string& run_id, State& state) {
     std::optional<State> loaded;
@@ -1154,7 +1157,26 @@ struct Runtime::Impl {
       decision.calls.push_back(Call{std::move(call_id), name->text, *arguments});
       index += 1;
     }
-    stored = canonical_json(decision_json(agent, decision));
+    Json stored_decision = decision_json(agent, decision);
+    for (const char* key : {"inputTokens", "outputTokens", "timeToFirstTokenMs"}) {
+      const Json* value = field(response, key);
+      if (value == nullptr || value->kind != Json::Kind::Number || value->text.empty() || value->text.size() > 12 ||
+          value->text[0] == '-') {
+        continue;
+      }
+      bool digits = true;
+      for (char character : value->text) {
+        if (character < '0' || character > '9') {
+          digits = false;
+          break;
+        }
+      }
+      if (!digits) {
+        continue;
+      }
+      stored_decision.object.push_back({key, *value});
+    }
+    stored = canonical_json(stored_decision);
     return Status::success();
   }
 
@@ -1605,10 +1627,20 @@ struct Runtime::Impl {
           if (auto queued = insert_outbox(next, box); !queued.status.ok()) {
             return queued.status;
           }
-          const std::string payload = obj({{"endpoint", jstr(remote.endpoint)},
-                                           {"operationId", jstr(operation)},
-                                           {"remoteAgent", jstr(remote.name)},
-                                           {"stepKey", jstr(key)}});
+          std::string transport;
+          if (row.transport_id.rfind("a2a:", 0) == 0) {
+            transport = "a2a";
+          } else if (row.transport_id.rfind("http:", 0) == 0) {
+            transport = "http";
+          }
+          std::vector<std::pair<std::string, Json>> queued = {{"endpoint", jstr(remote.endpoint)},
+                                                              {"operationId", jstr(operation)},
+                                                              {"remoteAgent", jstr(remote.name)},
+                                                              {"stepKey", jstr(key)}};
+          if (!transport.empty()) {
+            queued.push_back({"transport", jstr(transport)});
+          }
+          const std::string payload = obj(std::move(queued));
           return append_protocol_event(next, event_id(next, 0), "REMOTE_DISPATCH_QUEUED", payload, now_ms);
         });
         !status.ok()) {
@@ -1653,6 +1685,22 @@ struct Runtime::Impl {
 
   Status plan(State state, const AgentRecord& agent, const Fence& fence, int64_t now_ms, ExecRequest& out, bool& again) {
     again = false;
+    if (!started_here.contains(state.run.run_id) && !recovery_noted.contains(state.run.run_id)) {
+      recovery_noted.insert(state.run.run_id);
+      if (!is_terminal(state.run.status) && state.run.status != WorkflowStatus::Created) {
+        const std::string from = state.run.status == WorkflowStatus::Waiting ? "paused" : "interrupted";
+        const std::string step_key = state.steps.empty() ? "" : state.steps.back().step_key;
+        const std::string payload = obj({{"from", jstr(from)}, {"stepKey", jstr(step_key)}});
+        if (auto status = store->apply(state.run.run_id, [&](State& next) {
+              return append_protocol_event(next, event_id(next, 0), "WORKFLOW_RECOVERED", payload, now_ms);
+            });
+            !status.ok()) {
+          return status;
+        }
+        again = true;
+        return Status::success();
+      }
+    }
     if (!is_terminal(state.run.status)) {
       if (auto status = require_registered_model(state, agent); !status.ok()) {
         return status;
@@ -2226,6 +2274,7 @@ Status Runtime::start(const std::string& name, int32_t version, const std::strin
   if (auto status = impl_->load(run_id, state); !status.ok()) {
     return status;
   }
+  const bool fresh = created || state.run.status == WorkflowStatus::Created;
   if (state.run.status == WorkflowStatus::Created) {
     TransitionInput transition;
     transition.fence = fence;
@@ -2240,6 +2289,9 @@ Status Runtime::start(const std::string& name, int32_t version, const std::strin
     if (auto status = impl_->load(run_id, state); !status.ok()) {
       return status;
     }
+  }
+  if (fresh) {
+    impl_->started_here.insert(run_id);
   }
   std::string message;
   if (auto status = impl_->user_text(state.run, message); !status.ok() && !is_terminal(state.run.status)) {
@@ -3293,7 +3345,103 @@ Status Runtime::event_payload(const std::string& run_id, int32_t index, std::str
   if (index < 0 || static_cast<size_t>(index) >= state.events.size()) {
     return Status::fail(Code::NotFound, "Event index is out of range.");
   }
-  out = state.events[static_cast<size_t>(index)].payload_json;
+  const Event& event = state.events[static_cast<size_t>(index)];
+  Json payload;
+  if (auto status = parse_any(event.payload_json, payload); !status.ok()) {
+    return status;
+  }
+  out = obj({{"createdAt", jnum(event.created_at)},
+             {"eventId", jstr(event.event_id)},
+             {"payload", std::move(payload)},
+             {"sequence", jnum(event.sequence)},
+             {"type", jstr(event.type)}});
+  return Status::success();
+}
+
+Status Runtime::journal_heads_json(std::string& out) {
+  std::lock_guard<std::mutex> lock(impl_->mutex);
+  std::vector<JournalHead> heads;
+  if (auto status = impl_->store->journal_heads(heads); !status.ok()) {
+    return status;
+  }
+  Json runs;
+  runs.kind = Json::Kind::Array;
+  for (const JournalHead& head : heads) {
+    Json item;
+    item.kind = Json::Kind::Object;
+    item.object = {{"maxSequence", jnum(head.max_sequence)},
+                   {"runId", jstr(head.run_id)},
+                   {"updatedAt", jnum(head.updated_at)}};
+    runs.array.push_back(std::move(item));
+  }
+  Json body;
+  body.kind = Json::Kind::Object;
+  body.object = {{"runs", std::move(runs)}};
+  out = canonical_json(body);
+  return Status::success();
+}
+
+Status Runtime::event_page_json(const std::string& run_id, int64_t after_sequence, int32_t limit, std::string& out) {
+  std::lock_guard<std::mutex> lock(impl_->mutex);
+  EventPage page;
+  if (auto status = impl_->store->event_page(run_id, after_sequence, limit, page); !status.ok()) {
+    return status;
+  }
+  Json events;
+  events.kind = Json::Kind::Array;
+  for (const PageEvent& event : page.events) {
+    Json payload;
+    std::string error;
+    if (!parse_json(event.payload_json, payload, error)) {
+      return Status::fail(Code::Serialization, "Stored event payload is not JSON.");
+    }
+    Json item;
+    item.kind = Json::Kind::Object;
+    item.object = {{"createdAt", jnum(event.created_at)},
+                   {"eventId", jstr(event.event_id)},
+                   {"payload", std::move(payload)},
+                   {"sequence", jnum(event.sequence)},
+                   {"type", jstr(event.type)}};
+    events.array.push_back(std::move(item));
+  }
+  Json steps;
+  steps.kind = Json::Kind::Array;
+  for (const PageStep& step : page.steps) {
+    Json item;
+    item.kind = Json::Kind::Object;
+    item.object = {{"attemptCount", jnum(step.attempt_count)},
+                   {"effectType", jstr(step.effect_type)},
+                   {"executionTarget", jstr(step.execution_target)},
+                   {"operationId", jstr(step.operation_id)},
+                   {"selectedTarget", jstr(step.selected_target)},
+                   {"status", jstr(step.status)},
+                   {"stepKey", jstr(step.step_key)},
+                   {"stepOrder", jnum(step.step_order)}};
+    steps.array.push_back(std::move(item));
+  }
+  const PageRun& run = page.run;
+  Json run_json;
+  run_json.kind = Json::Kind::Object;
+  run_json.object = {{"blockedReason", run.has_blocked_reason ? jstr(run.blocked_reason) : jstr("")},
+                     {"cancelRequested", jbool(run.cancel_requested)},
+                     {"createdAt", jnum(run.created_at)},
+                     {"dataPolicy", jstr(run.data_policy)},
+                     {"hasBlockedReason", jbool(run.has_blocked_reason)},
+                     {"hasOwner", jbool(run.has_owner)},
+                     {"ownershipEpoch", jnum(run.ownership_epoch)},
+                     {"protocolVersion", jnum(run.protocol_version)},
+                     {"runId", jstr(run.run_id)},
+                     {"status", jstr(run.status)},
+                     {"updatedAt", jnum(run.updated_at)},
+                     {"workflowName", jstr(run.workflow_name)},
+                     {"workflowVersion", jnum(run.workflow_version)}};
+  Json body;
+  body.kind = Json::Kind::Object;
+  body.object = {{"events", std::move(events)},
+                 {"maxSequence", jnum(page.max_sequence)},
+                 {"run", std::move(run_json)},
+                 {"steps", std::move(steps)}};
+  out = canonical_json(body);
   return Status::success();
 }
 
