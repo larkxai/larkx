@@ -1807,7 +1807,9 @@ struct Runtime::Impl {
             waiting_input = &row;
           }
         }
-        if (waiting_input != nullptr) {
+          if (waiting_input != nullptr) {
+          const bool authentication =
+              waiting_input->remote_status.has_value() && *waiting_input->remote_status == "TASK_STATE_AUTH_REQUIRED";
           out.kind = LARKX_REQUEST_RECONCILE;
           out.request_id = waiting_input->operation_id;
           out.step_key = waiting_input->step_key;
@@ -1817,7 +1819,7 @@ struct Runtime::Impl {
           out.detail_json = obj({{"contextId", waiting_input->context_id.has_value() ? jstr(*waiting_input->context_id) : jnull()},
                                  {"operationId", jstr(waiting_input->operation_id)},
                                  {"prompt", waiting_input->remote_message.has_value() ? jstr(*waiting_input->remote_message) : jnull()},
-                                 {"reason", jstr("remote_input_required")},
+                                 {"reason", jstr(authentication ? "remote_auth_required" : "remote_input_required")},
                                  {"remoteAgent", jstr(waiting_input->remote_agent)},
                                  {"remoteStatus", waiting_input->remote_status.has_value() ? jstr(*waiting_input->remote_status) : jnull()},
                                  {"stepKey", jstr(waiting_input->step_key)},
@@ -2450,13 +2452,16 @@ Status Runtime::submit_reconcile(const std::string& run_id, const std::string& r
   if (delegation == nullptr) {
     delegation = find_delegation(state, step->step_key);
   }
+  const bool auth_retry = delegation != nullptr && resolution == "retry" && delegation->task_id.has_value() &&
+                          delegation->remote_status.has_value() &&
+                          *delegation->remote_status == "TASK_STATE_AUTH_REQUIRED";
   if (delegation != nullptr && resolution == "retry") {
     const bool safe = delegation->task_id.has_value() || delegation->capabilities.lookup || delegation->capabilities.dedupe;
-    if (!safe || delegation->state == DelegationState::InputRequired) {
+    if (!safe || (delegation->state == DelegationState::InputRequired && !auth_retry)) {
       return state_error("This remote delegation cannot be retried. Reconcile it as complete or failed.");
     }
   }
-  if (delegation != nullptr && delegation->state == DelegationState::InputRequired && resolution == "retry") {
+  if (delegation != nullptr && delegation->state == DelegationState::InputRequired && resolution == "retry" && !auth_retry) {
     return state_error("Remote input cannot start another task. Reconcile it as complete or failed.");
   }
   ReconcileInput input;
@@ -2932,7 +2937,7 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
   if (outcome == "cancelled") {
     return impl_->cancel_remote(std::move(state), fence, now_ms, saved.step_key, "The remote task was cancelled.");
   }
-  if (outcome == "input_required") {
+  if (outcome == "input_required" || outcome == "auth_required") {
     if (!task_id.has_value()) {
       return uncertain(0);
     }
@@ -2943,7 +2948,13 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
     block.attempt_id = attempt_id;
     block.task_id = task_id;
     const bool a2a = saved.transport_id.rfind("a2a:", 0) == 0;
-    block.message = a2a ? message : "The remote task needs input. The HTTP task protocol cannot send it. Reconcile the run locally.";
+    const bool authentication = outcome == "auth_required";
+    block.code = authentication ? "remote_auth_required" : "remote_input_required";
+    if (authentication || a2a) {
+      block.message = message;
+    } else {
+      block.message = "The remote task needs input. The HTTP task protocol cannot send it. Reconcile the run locally.";
+    }
     block.event_id = event_id(state, 0);
     block.accepted_event_id = event_id(state, 0);
     block.run_event_id = event_id(state, saved.task_id.has_value() ? 0 : 1);
@@ -3149,6 +3160,14 @@ Status Runtime::provide_input(const std::string& run_id, const std::string& step
   State state;
   if (auto status = impl_->load(run_id, state); !status.ok()) {
     return status;
+  }
+  const Delegation* waiting = find_delegation(state, step_key);
+  const bool authentication =
+      (waiting != nullptr && waiting->remote_status.has_value() && *waiting->remote_status == "TASK_STATE_AUTH_REQUIRED") ||
+      (state.run.blocked_reason.has_value() && state.run.blocked_reason->find("\"remote_auth_required\"") != std::string::npos);
+  if (authentication) {
+    return Status::fail(Code::InvalidArgument,
+                       "Authentication credentials cannot be stored as remote input. Refresh the host authorization headers and reconcile the run.");
   }
   AcceptRemoteContinuation input;
   input.fence = fence;

@@ -428,8 +428,8 @@ export function FieldInspection() {
         </Pressable>
       </View>
       <Text style={styles.label}>
-        Additional input for an A2A task that asked a question. This text is the continuation, not
-        the local conversation.
+        Additional input for an A2A question, such as a model number. This text is stored until it
+        is sent. Do not put a password or token here.
       </Text>
       <TextInput
         onChangeText={setRemoteInput}

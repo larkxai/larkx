@@ -1035,6 +1035,38 @@ void test_a2a_continuation_blocks_when_the_acknowledgement_is_lost() {
   std::remove(path.c_str());
 }
 
+void test_a2a_auth_required_is_not_remote_input() {
+  const auto path = temp_db();
+  auto* runtime = open_runtime(path);
+  auto remote = procurement(0, 0, 1, 1);
+  remote.transport = "a2a";
+  register_remote_agent(runtime, &remote, 1, "a2a-field");
+  start_run(runtime, "a2a-field", 1, "a2a-auth", "Inspect pump P-104");
+  const auto request = delegate_after_model(runtime, "a2a-auth");
+  submit_remote(runtime, "a2a-auth", request.request.request_id,
+                "{\"action\":\"submit\",\"contextId\":\"ctx-auth\",\"message\":\"Sign in to the supplier.\","
+                "\"outcome\":\"auth_required\",\"remoteStatus\":\"TASK_STATE_AUTH_REQUIRED\",\"taskId\":\"task-auth\"}");
+  const auto blocked = drive(runtime, "a2a-auth", 60);
+  CHECK(blocked.request.kind == LARKX_REQUEST_RECONCILE);
+  CHECK(contains(blocked.detail, "remote_auth_required"));
+  CHECK(!contains(blocked.detail, "remote_input_required"));
+  larkx_error error{};
+  CHECK(larkx_run_provide_input(runtime, "a2a-auth", blocked.request.step_key, "secret-token", 70, &error) != LARKX_OK);
+  CHECK(contains(error.message, "credentials"));
+  CHECK(!contains(listed_delegations(runtime, "a2a-auth"), "secret-token"));
+  CHECK(larkx_run_submit_reconcile(runtime, "a2a-auth", blocked.request.request_id, "retry", "null",
+                                  "Host refreshed authorization headers.", 80, &error) == LARKX_OK);
+  const auto poll = drive(runtime, "a2a-auth", 90);
+  CHECK(poll.request.kind == LARKX_REQUEST_DELEGATE);
+  CHECK(contains(poll.detail, "\"action\":\"poll\""));
+  CHECK(contains(poll.detail, "task-auth"));
+  CHECK(!contains(poll.detail, "\"action\":\"continue\""));
+  CHECK(!contains(poll.detail, "\"action\":\"submit\""));
+  CHECK(!contains(poll.detail, "secret-token"));
+  larkx_runtime_close(runtime);
+  std::remove(path.c_str());
+}
+
 void test_context_limit_does_not_invoke_the_model() {
   const auto path = temp_db();
   auto* runtime = open_runtime(path);
@@ -1073,6 +1105,7 @@ int main() {
   test_remote_invalid_responses_do_not_fail_a_possible_submission();
   test_remote_invalid_poll_does_not_fail_a_known_task();
   test_a2a_continuation_blocks_when_the_acknowledgement_is_lost();
+  test_a2a_auth_required_is_not_remote_input();
   test_run_list_returns_persisted_runs();
   if (g_failed != 0) {
     std::fprintf(stderr, "%d checks failed\n", g_failed);

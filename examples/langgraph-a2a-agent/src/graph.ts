@@ -10,6 +10,27 @@ const State = Annotation.Root({
 
 const QUESTION = "What is the pump manufacturer's model number?";
 
+let releaseHold: () => void = () => undefined;
+let holdGate: Promise<void> = Promise.resolve();
+let holdArmed = false;
+let onHolding: (() => void) | undefined;
+
+/** Test barrier. The server arms this before a crash or cancellation check. */
+export function armProcurementHold(onHold?: () => void): void {
+  holdArmed = true;
+  onHolding = onHold;
+  holdGate = new Promise<void>((resolve) => {
+    releaseHold = () => {
+      holdArmed = false;
+      resolve();
+    };
+  });
+}
+
+export function releaseProcurementHold(): void {
+  releaseHold();
+}
+
 /**
  * Real LangGraph graph. The deterministic node is the default so CI does not
  * need a model credential. `LARKX_LANGGRAPH_MODEL=openai` with `OPENAI_API_KEY`
@@ -17,22 +38,59 @@ const QUESTION = "What is the pump manufacturer's model number?";
  */
 export function procurementGraph() {
   return new StateGraph(State)
+    .addNode("hold", holdForTest)
     .addNode("interpret", interpret)
     .addNode("searchCatalog", catalogNode)
-    .addEdge(START, "interpret")
+    .addEdge(START, "hold")
+    .addEdge("hold", "interpret")
     .addConditionalEdges("interpret", (state) => (state.needsInput ? END : "searchCatalog"))
     .addEdge("searchCatalog", END)
     .compile();
 }
 
-export async function runProcurement(request: string): Promise<{
+export async function runProcurement(
+  request: string,
+  signal?: AbortSignal,
+): Promise<{
   readonly needsInput: boolean;
   readonly answer: string;
   readonly simulated: true;
 }> {
   const graph = procurementGraph();
-  const state = await graph.invoke({ request, needsInput: false, answer: "" });
+  const state = await graph.invoke(
+    { request, needsInput: false, answer: "" },
+    signal === undefined ? undefined : { signal },
+  );
   return { needsInput: state.needsInput, answer: state.answer, simulated: true };
+}
+
+async function holdForTest(
+  _state: typeof State.State,
+  config?: { signal?: AbortSignal },
+): Promise<Partial<typeof State.State>> {
+  if (!holdArmed) {
+    return {};
+  }
+  onHolding?.();
+  const signal = config?.signal;
+  await Promise.race([holdGate, whenAborted(signal)]);
+  if (signal?.aborted) {
+    throw new Error("Abort");
+  }
+  return {};
+}
+
+function whenAborted(signal: AbortSignal | undefined): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal === undefined) {
+      return;
+    }
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+    signal.addEventListener("abort", () => resolve(), { once: true });
+  });
 }
 
 async function interpret(state: typeof State.State): Promise<Partial<typeof State.State>> {

@@ -84,7 +84,7 @@ Status values are `accepted`, `working`, `input_required`, `completed`, `failed`
 
 `GET /tasks/{taskId}` polls. `GET /operations/{operationId}` reconciles a lost acceptance. `POST /tasks/{taskId}/cancel` cancels. The HTTP connection is not held open for the life of the task. The host polls at the configured interval (50 to 60000 ms, default 1000). Transport failures back off by doubling that interval, capped at 30 seconds. A later `accepted` or `working` status is a live task and clears that backoff. The host does not use `AbortSignal.timeout` or `AbortSignal.any`. Each request uses an `AbortController` and a timer, so the same driver runs on Node.js and the documented React Native host. `timeoutMs` defaults to 15000 and must be from 1 to 120000.
 
-`input_required` keeps the task and blocks the parent with `remote_input_required`. On the HTTP transport, reconcile can complete or fail that run locally. Sending the missing input is not implemented for HTTP. On A2A, `run.provideInput` sends the text on the existing task. See [a2a.md](a2a.md).
+`input_required` keeps the task and blocks the parent with `remote_input_required`. On the HTTP transport, reconcile can complete or fail that run locally. Sending the missing input is not implemented for HTTP. On A2A, `run.provideInput` sends ordinary text on the existing task. `TASK_STATE_AUTH_REQUIRED` blocks with `remote_auth_required` instead. Credentials stay in the host headers and are not accepted as that text. See [a2a.md](a2a.md).
 
 ## Delegation states
 

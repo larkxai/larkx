@@ -260,7 +260,8 @@ export interface HostEvent {
     | "remote-requested"
     | "remote-response"
     | "remote-waiting"
-    | "remote-input-required";
+    | "remote-input-required"
+    | "remote-auth-required";
   readonly runId: string;
   readonly stepKey?: string;
   readonly operationId?: string;
@@ -935,6 +936,7 @@ export class Run {
     reject(error: LarkxError): void;
   } | null = null;
   private pendingInput: string | null = null;
+  private authRequired = false;
 
   constructor(
     private readonly runtime: Runtime,
@@ -1027,11 +1029,21 @@ export class Run {
   }
 
   /**
-   * Answers one remote input request with text meant for that remote agent.
-   * The text is not the local conversation. A2A sends it on the existing task.
+   * Answers one remote question with text meant for that remote agent.
+   * The text is not the local conversation and is stored until it is sent.
+   * Do not pass a password, token, or other credential. Authentication stays
+   * in the transport headers. A2A sends an ordinary answer on the existing task.
    */
   async provideInput(text: string): Promise<void> {
     this.runtime.ensureGeneration(this.generation);
+    if (this.authRequired) {
+      throw new LarkxError({
+        code: "invalid_state_transition",
+        message:
+          "Remote authentication is not additional input. Refresh the host authorization headers and reconcile the run. Credentials are not stored.",
+        retryable: false,
+      });
+    }
     if (text.trim().length === 0) {
       throw new LarkxError({
         code: "invalid_workflow_definition",
@@ -1233,6 +1245,21 @@ export class Run {
         return;
       case RequestKind.Reconcile: {
         const detail = readRecord(JSON.parse(request.detailJson) as unknown, "Reconcile request");
+        if (detail.reason === "remote_auth_required") {
+          this.authRequired = true;
+          this.pendingInput = null;
+          try {
+            await this.runtime.emit({
+              ...this.event("remote-auth-required", request),
+              ...(typeof detail.prompt === "string" ? { prompt: detail.prompt } : {}),
+              ...(typeof detail.taskId === "string" ? { taskId: detail.taskId } : {}),
+            });
+            await this.awaitReconcile(request);
+          } finally {
+            this.authRequired = false;
+          }
+          return;
+        }
         if (detail.reason === "remote_input_required") {
           await this.runtime.emit({
             ...this.event("remote-input-required", request),

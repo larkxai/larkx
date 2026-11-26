@@ -420,6 +420,8 @@ struct BlockRemoteInput {
   std::string event_id;
   std::string run_event_id;
   std::string accepted_event_id;
+  // remote_input_required or remote_auth_required. Empty means remote input.
+  std::string code;
 };
 
 Status block_remote_input(State& state, const BlockRemoteInput& input);

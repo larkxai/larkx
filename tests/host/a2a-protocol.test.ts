@@ -35,7 +35,10 @@ describe("A2A 1.0 client", () => {
     const discovered = await perform(
       calls,
       { action: "submit" },
-      [cardResponse(endpoint), taskResponse("TASK_STATE_SUBMITTED", "task-1", "ctx-1")],
+      [
+        cardResponse(endpoint),
+        taskResponse("TASK_STATE_SUBMITTED", "task-1", "ctx-1", undefined, "op-1"),
+      ],
       true,
       true,
     );
@@ -86,7 +89,7 @@ describe("A2A 1.0 client", () => {
         status: 200,
         body: JSON.stringify({
           jsonrpc: "2.0",
-          id: "op",
+          id: "op-1",
           result: { message: { messageId: "m-1", role: "ROLE_AGENT", parts: [{ text: "done" }] } },
         }),
       },
@@ -111,7 +114,7 @@ describe("A2A 1.0 client", () => {
     ]);
     expect(rejected.outcome).toBe("failed");
     const canceled = await perform([], { action: "cancel", taskId: "task-1" }, [
-      taskResponse("TASK_STATE_CANCELED", "task-1", "ctx-1"),
+      taskResponse("TASK_STATE_CANCELED", "task-1", "ctx-1", undefined, "op-1:cancel"),
     ]);
     expect(canceled.outcome).toBe("cancelled");
     const input = await perform([], { action: "poll", taskId: "task-1" }, [
@@ -125,26 +128,35 @@ describe("A2A 1.0 client", () => {
     const auth = await perform([], { action: "poll", taskId: "task-1" }, [
       taskResponse("TASK_STATE_AUTH_REQUIRED", "task-1", "ctx-1"),
     ]);
-    expect(auth.outcome).toBe("input_required");
+    expect(auth.outcome).toBe("auth_required");
+    expect(auth).not.toMatchObject({ outcome: "input_required" });
     const unknown = await perform([], { action: "poll", taskId: "task-1" }, [
       taskResponse("TASK_STATE_UNSPECIFIED", "task-1", "ctx-1"),
     ]);
     expect(unknown.outcome).toBe("temporary");
     const missing = await perform([], { action: "poll", taskId: "task-1" }, [
-      { status: 200, body: JSON.stringify({ jsonrpc: "2.0", id: "op", result: {} }) },
+      { status: 200, body: JSON.stringify({ jsonrpc: "2.0", id: "op-1:poll", result: {} }) },
     ]);
     expect(missing.outcome).toBe("invalid");
     const version = await perform([], { action: "submit" }, [
       {
         status: 200,
-        body: JSON.stringify({ jsonrpc: "2.0", id: "op", error: { code: -32009, message: "no" } }),
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "op-1",
+          error: { code: -32009, message: "no" },
+        }),
       },
     ]);
     expect(version.outcome).toBe("permanent");
     const unsupported = await perform([], { action: "cancel", taskId: "task-1" }, [
       {
         status: 200,
-        body: JSON.stringify({ jsonrpc: "2.0", id: "op", error: { code: -32004, message: "no" } }),
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "op-1:cancel",
+          error: { code: -32004, message: "no" },
+        }),
       },
     ]);
     expect(unsupported.outcome).toBe("unsupported");
@@ -158,7 +170,7 @@ describe("A2A 1.0 client", () => {
     const continuation = await perform(
       [],
       { action: "continue", taskId: "task-1", contextId: "ctx-1", continuation: "Model P-104" },
-      [taskResponse("TASK_STATE_WORKING", "task-1", "ctx-1")],
+      [taskResponse("TASK_STATE_WORKING", "task-1", "ctx-1", undefined, "op-1:continue")],
     );
     expect(continuation.outcome).toBe("working");
     const missingTask = await perform([], { action: "continue", continuation: "Model P-104" }, []);
@@ -168,6 +180,131 @@ describe("A2A 1.0 client", () => {
       taskResponse("TASK_STATE_COMPLETED", "task-1", "ctx-1", huge),
     ]);
     expect(oversized.outcome).toBe("invalid");
+  });
+
+  it("rejects a JSON-RPC response that is not the request it answers", async () => {
+    const missing = await perform([], { action: "poll", taskId: "task-1" }, [
+      rpcBody({
+        result: {
+          task: { id: "task-1", contextId: "ctx-1", status: { state: "TASK_STATE_COMPLETED" } },
+        },
+      }),
+    ]);
+    expect(missing.outcome).toBe("invalid");
+    expect(missing.result).toBeUndefined();
+
+    const wrong = await perform([], { action: "poll", taskId: "task-1" }, [
+      rpcBody({
+        id: "other",
+        result: {
+          task: {
+            id: "task-1",
+            contextId: "ctx-1",
+            status: { state: "TASK_STATE_COMPLETED" },
+            artifacts: [{ artifactId: "a", parts: [{ text: "must not commit" }] }],
+          },
+        },
+      }),
+    ]);
+    expect(wrong.outcome).toBe("invalid");
+    expect(wrong.message).toMatch(/does not match/);
+    expect(wrong.result).toBeUndefined();
+    expect(wrong.taskId).toBeUndefined();
+
+    const numeric = await perform([], { action: "submit" }, [
+      rpcBody({
+        id: 7,
+        result: { message: { messageId: "m-1", role: "ROLE_AGENT", parts: [{ text: "done" }] } },
+      }),
+    ]);
+    expect(numeric.outcome).toBe("invalid");
+    expect(numeric.result).toBeUndefined();
+
+    const both = await perform([], { action: "poll", taskId: "task-1" }, [
+      rpcBody({
+        id: "op-1:poll",
+        result: {
+          task: { id: "task-1", contextId: "ctx-1", status: { state: "TASK_STATE_COMPLETED" } },
+        },
+        error: { code: -32603, message: "also failed" },
+      }),
+    ]);
+    expect(both.outcome).toBe("invalid");
+    expect(both.message).toMatch(/both result and error/);
+    expect(both.result).toBeUndefined();
+
+    const otherTask = await perform([], { action: "poll", taskId: "task-1", contextId: "ctx-1" }, [
+      taskResponse("TASK_STATE_COMPLETED", "task-2", "ctx-1", "must not commit"),
+    ]);
+    expect(otherTask.outcome).toBe("invalid");
+    expect(otherTask.taskId).toBeUndefined();
+    expect(otherTask.result).toBeUndefined();
+
+    const otherContext = await perform(
+      [],
+      { action: "poll", taskId: "task-1", contextId: "ctx-1" },
+      [taskResponse("TASK_STATE_COMPLETED", "task-1", "ctx-2", "must not commit")],
+    );
+    expect(otherContext.outcome).toBe("invalid");
+    expect(otherContext.result).toBeUndefined();
+
+    const disagree = await perform([], { action: "submit" }, [
+      rpcBody({
+        id: "op-1",
+        result: {
+          task: { id: "task-1", contextId: "ctx-1", status: { state: "TASK_STATE_COMPLETED" } },
+          message: {
+            messageId: "m-1",
+            taskId: "task-9",
+            contextId: "ctx-1",
+            parts: [{ text: "done" }],
+          },
+        },
+      }),
+    ]);
+    expect(disagree.outcome).toBe("invalid");
+    expect(disagree.result).toBeUndefined();
+
+    const correlated = await perform(
+      [],
+      { action: "continue", taskId: "task-1", contextId: "ctx-1", continuation: "Model P-104" },
+      [
+        rpcBody({
+          id: "op-1:continue",
+          result: {
+            message: {
+              messageId: "agent-reply",
+              taskId: "task-1",
+              contextId: "ctx-1",
+              role: "ROLE_AGENT",
+              parts: [{ text: "done" }],
+            },
+          },
+        }),
+      ],
+    );
+    expect(correlated).toMatchObject({ outcome: "completed", remoteStatus: "MESSAGE" });
+    expect(JSON.stringify(correlated.result)).toContain("done");
+
+    const uncorrelated = await perform(
+      [],
+      { action: "continue", taskId: "task-1", contextId: "ctx-1", continuation: "Model P-104" },
+      [
+        rpcBody({
+          id: "op-1:continue",
+          result: {
+            message: {
+              messageId: "agent-reply",
+              taskId: "task-9",
+              contextId: "ctx-1",
+              parts: [{ text: "done" }],
+            },
+          },
+        }),
+      ],
+    );
+    expect(uncorrelated.outcome).toBe("invalid");
+    expect(uncorrelated.result).toBeUndefined();
   });
 });
 
@@ -187,17 +324,26 @@ function cardResponse(url: string, version = "1.0", requiredExtension = false): 
   };
 }
 
+function rpcBody(body: {
+  readonly id?: unknown;
+  readonly result?: unknown;
+  readonly error?: unknown;
+}): RemoteHttpResponse {
+  return { status: 200, body: JSON.stringify({ jsonrpc: "2.0", ...body }) };
+}
+
 function taskResponse(
   state: string,
   taskId: string,
   contextId: string,
   text?: string,
+  id = "op-1:poll",
 ): RemoteHttpResponse {
   return {
     status: 200,
     body: JSON.stringify({
       jsonrpc: "2.0",
-      id: "op",
+      id,
       result: {
         task: {
           id: taskId,

@@ -65,7 +65,11 @@ export async function performA2aDelegation(input: {
     const response = input.transport.execute
       ? await input.transport.execute(call)
       : await fetchA2a(input.transport, call);
-    return interpretRpc(action, response, identity);
+    return interpretRpc(action, response, identity, {
+      id: requestId(call),
+      ...(input.command.taskId !== undefined ? { taskId: input.command.taskId } : {}),
+      ...(input.command.contextId !== undefined ? { contextId: input.command.contextId } : {}),
+    });
   } catch (error) {
     if (isAbort(error) || input.signal.aborted) {
       return { outcome: "timeout", message: "The A2A request timed out." };
@@ -311,10 +315,29 @@ async function fetchA2a(
   }
 }
 
+interface RpcExpectation {
+  readonly id: string;
+  readonly taskId?: string;
+  readonly contextId?: string;
+}
+
+function requestId(call: RemoteA2aCall): string {
+  if (call.body === undefined) {
+    return "";
+  }
+  try {
+    const parsed = JSON.parse(call.body) as { readonly id?: unknown };
+    return typeof parsed.id === "string" ? parsed.id : "";
+  } catch {
+    return "";
+  }
+}
+
 function interpretRpc(
   action: string,
   response: RemoteHttpResponse,
   identity: string | undefined,
+  expected: RpcExpectation,
 ): DelegationReport {
   const withIdentity = (report: DelegationReport): DelegationReport =>
     identity === undefined ? report : { ...report, remoteIdentity: identity };
@@ -361,10 +384,36 @@ function interpretRpc(
   if (parsed.jsonrpc !== "2.0") {
     return withIdentity({ outcome: "invalid", message: "The A2A response is not JSON-RPC 2.0." });
   }
-  if (isRecord(parsed.error)) {
+  if (!Object.hasOwn(parsed, "id") || parsed.id === null || parsed.id === undefined) {
+    return withIdentity({ outcome: "invalid", message: "The A2A response id is missing." });
+  }
+  if (typeof parsed.id !== "string" || parsed.id.length === 0 || parsed.id !== expected.id) {
+    return withIdentity({
+      outcome: "invalid",
+      message: "The A2A response id does not match the request.",
+    });
+  }
+  const hasResult = Object.hasOwn(parsed, "result") && parsed.result !== null;
+  const hasError = Object.hasOwn(parsed, "error") && parsed.error !== null;
+  if (hasResult && hasError) {
+    return withIdentity({
+      outcome: "invalid",
+      message: "The A2A response contains both result and error.",
+    });
+  }
+  if (hasError) {
+    if (!isRecord(parsed.error)) {
+      return withIdentity({ outcome: "invalid", message: "The A2A error must be an object." });
+    }
     return withIdentity(interpretError(action, parsed.error));
   }
-  return withIdentity(interpretResult(action, parsed.result));
+  if (!hasResult) {
+    return withIdentity({
+      outcome: "invalid",
+      message: "The A2A response did not include a result.",
+    });
+  }
+  return withIdentity(interpretResult(action, parsed.result, expected));
 }
 
 function interpretError(
@@ -391,7 +440,11 @@ function interpretError(
   return { outcome: "invalid", message };
 }
 
-function interpretResult(action: string, result: JsonValue | undefined): DelegationReport {
+function interpretResult(
+  action: string,
+  result: JsonValue | undefined,
+  expected: RpcExpectation,
+): DelegationReport {
   if (!isRecord(result)) {
     return { outcome: "invalid", message: "The A2A result must be an object." };
   }
@@ -401,10 +454,25 @@ function interpretResult(action: string, result: JsonValue | undefined): Delegat
     : task === undefined && looksLikeMessage(result)
       ? result
       : undefined;
+  if (message !== undefined && task !== undefined) {
+    const agreed = identitiesAgree(task, message);
+    if (agreed !== undefined) {
+      return { outcome: "invalid", message: agreed };
+    }
+  }
   if (action !== "submit" && action !== "continue" && message !== undefined && task === undefined) {
     return { outcome: "invalid", message: "A poll or cancel must return a task." };
   }
   if (message !== undefined && task === undefined) {
+    const messageTask = readIdentity(message.taskId);
+    const messageContext = readIdentity(message.contextId);
+    if (!messageTask.ok || !messageContext.ok) {
+      return { outcome: "invalid", message: "The remote task id is invalid." };
+    }
+    const mismatch = identityMismatch(messageTask.value, messageContext.value, expected);
+    if (mismatch !== undefined) {
+      return { outcome: "invalid", message: mismatch };
+    }
     const text = textFromParts(message.parts);
     const encoded = JSON.stringify({ remoteState: "MESSAGE", text });
     if (encoded.length > MAX_RESULT_BYTES) {
@@ -426,6 +494,10 @@ function interpretResult(action: string, result: JsonValue | undefined): Delegat
   const context = typeof task.contextId === "string" ? task.contextId : undefined;
   if (context !== undefined && !TASK_ID.test(context)) {
     return { outcome: "invalid", message: "The remote context id is invalid." };
+  }
+  const mismatch = identityMismatch(taskId, context, expected);
+  if (mismatch !== undefined) {
+    return { outcome: "invalid", message: mismatch };
   }
   const status = isRecord(task.status) ? task.status : undefined;
   const state = status !== undefined && typeof status.state === "string" ? status.state : "";
@@ -476,7 +548,25 @@ function interpretResult(action: string, result: JsonValue | undefined): Delegat
       message: prompt.length > 0 ? prompt.slice(0, 300) : "The remote task was cancelled.",
     };
   }
-  if (state === "TASK_STATE_INPUT_REQUIRED" || state === "TASK_STATE_AUTH_REQUIRED") {
+  if (state === "TASK_STATE_AUTH_REQUIRED") {
+    if (context === undefined) {
+      return {
+        outcome: "invalid",
+        taskId,
+        remoteStatus: state,
+        message: "The remote task did not include a context id.",
+      };
+    }
+    return {
+      ...base,
+      outcome: "auth_required",
+      message:
+        prompt.length > 0
+          ? prompt.slice(0, 300)
+          : "The remote agent requires authentication. Refresh the host authorization headers. Do not send credentials as remote input.",
+    };
+  }
+  if (state === "TASK_STATE_INPUT_REQUIRED") {
     if (context === undefined) {
       return {
         outcome: "invalid",
@@ -489,11 +579,7 @@ function interpretResult(action: string, result: JsonValue | undefined): Delegat
       ...base,
       outcome: "input_required",
       message:
-        prompt.length > 0
-          ? prompt.slice(0, 300)
-          : state === "TASK_STATE_AUTH_REQUIRED"
-            ? "The remote agent requires authentication before it can continue."
-            : "The remote agent needs more information.",
+        prompt.length > 0 ? prompt.slice(0, 300) : "The remote agent needs more information.",
     };
   }
   if (state === "TASK_STATE_SUBMITTED" || state === "TASK_STATE_WORKING") {
@@ -504,6 +590,53 @@ function interpretResult(action: string, result: JsonValue | undefined): Delegat
     outcome: "temporary",
     message: `Remote state ${state} is not a supported terminal state.`,
   };
+}
+
+function readIdentity(
+  value: JsonValue | undefined,
+): { readonly ok: true; readonly value?: string } | { readonly ok: false } {
+  if (value === undefined) {
+    return { ok: true };
+  }
+  if (typeof value !== "string" || !TASK_ID.test(value)) {
+    return { ok: false };
+  }
+  return { ok: true, value };
+}
+
+function identityMismatch(
+  taskId: string | undefined,
+  contextId: string | undefined,
+  expected: RpcExpectation,
+): string | undefined {
+  if (expected.taskId !== undefined && taskId !== undefined && taskId !== expected.taskId) {
+    return "The A2A response named a different task.";
+  }
+  if (
+    expected.contextId !== undefined &&
+    contextId !== undefined &&
+    contextId !== expected.contextId
+  ) {
+    return "The A2A response named a different context.";
+  }
+  return undefined;
+}
+
+function identitiesAgree(
+  task: { readonly [key: string]: JsonValue },
+  message: { readonly [key: string]: JsonValue },
+): string | undefined {
+  const taskId = typeof task.id === "string" ? task.id : undefined;
+  const contextId = typeof task.contextId === "string" ? task.contextId : undefined;
+  const messageTask = typeof message.taskId === "string" ? message.taskId : undefined;
+  const messageContext = typeof message.contextId === "string" ? message.contextId : undefined;
+  if (
+    (messageTask !== undefined && taskId !== undefined && messageTask !== taskId) ||
+    (messageContext !== undefined && contextId !== undefined && messageContext !== contextId)
+  ) {
+    return "The A2A message does not match the task.";
+  }
+  return undefined;
 }
 
 function looksLikeTask(value: { readonly [key: string]: JsonValue }): boolean {

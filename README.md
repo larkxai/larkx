@@ -210,7 +210,7 @@ const run = await agent.start({
 console.log(await run.result());
 ```
 
-Registering a remote agent is the authorization to send those arguments to that endpoint. The default with no remote agents remains device-only. The client operation id and the remote task id are stored separately. A known task is polled after a restart and is not submitted again. HTTP `dedupe` and `lookup` stay off unless that object declares them. A2A does not turn them on: a lost acknowledgement blocks the parent instead of creating another task. `run.provideInput` answers an A2A request for more information on the same task. Cancellation of the local run does not roll back a remote effect. The protocol is [docs/architecture/remote-delegation.md](docs/architecture/remote-delegation.md) and [docs/architecture/a2a.md](docs/architecture/a2a.md).
+Registering a remote agent is the authorization to send those arguments to that endpoint. The default with no remote agents remains device-only. The client operation id and the remote task id are stored separately. A known task is polled after a restart and is not submitted again. HTTP `dedupe` and `lookup` stay off unless that object declares them. A2A does not turn them on: a lost acknowledgement blocks the parent instead of creating another task. `run.provideInput` answers an ordinary A2A question on the same task. An authentication challenge is a separate blocked condition and is not answered with that text. Cancellation of the local run does not roll back a remote effect. The protocol is [docs/architecture/remote-delegation.md](docs/architecture/remote-delegation.md) and [docs/architecture/a2a.md](docs/architecture/a2a.md).
 
 ```typescript
 const procurementA2a = remoteAgent({

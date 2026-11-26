@@ -1025,10 +1025,12 @@ Status block_remote_input(State& state, const BlockRemoteInput& input) {
     return state_error("Workflow transition is not legal.");
   }
   state.run.status = WorkflowStatus::Blocked;
-  state.run.blocked_reason = delegation_error("remote_input_required", input.message);
+  const std::string code =
+      input.code == "remote_auth_required" ? std::string("remote_auth_required") : std::string("remote_input_required");
+  state.run.blocked_reason = delegation_error(code, input.message);
   state.run.updated_at = input.now_ms;
   const std::string blocked = object_payload({
-      {"code", jstring("remote_input_required")},
+      {"code", jstring(code)},
       {"stepKey", jstring(input.step_key)},
   });
   return append_event(state, input.run_event_id, "WORKFLOW_BLOCKED", blocked, input.now_ms);
@@ -1048,6 +1050,10 @@ Status accept_remote_continuation(State& state, const AcceptRemoteContinuation& 
   }
   if (row->state != DelegationState::InputRequired || !row->task_id.has_value()) {
     return state_error("This delegation is not waiting for remote input.");
+  }
+  if (row->remote_status.has_value() && *row->remote_status == "TASK_STATE_AUTH_REQUIRED") {
+    return state_error(
+        "Authentication credentials cannot be stored as remote input. Refresh the host authorization headers and reconcile the run.");
   }
   if (row->continuation_json.has_value()) {
     return state_error("A continuation is already waiting to be sent.");
