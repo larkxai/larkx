@@ -65,4 +65,13 @@ These steps have not been run on a phone. Node process-death tests and the LangG
 6. Mark the network unavailable before the first send. The delegation stays queued. Restore the network and confirm one send.
 7. Cancel after a task id is known. The screen may say the remote task was cancelled. It must not say a completed remote effect was rolled back.
 
+## Telemetry
+
+These steps have not been run on a phone. The Node exporter tests do not complete this list.
+
+1. Leave the telemetry fields empty. Start a scripted run in airplane mode. It finishes, and the status line says telemetry is disabled.
+2. Enter a project id and an `lkx_ing_` key for a collector that accepts storage schema 3. Apply telemetry. Confirm the status line names the phase and the pending count.
+3. Start a run while the network is unavailable. Force-quit. Relaunch and flush. The collector should show the run's events, including a `WORKFLOW_RECOVERED` event if the run was still open. Prompts and tool results must not be in the batch.
+4. Confirm the app does not keep exporting after it leaves the foreground, and that a later flush sends what was still pending.
+
 Record the device, OS, and run id after a real run. Until that note exists, do not describe this checklist as completed.

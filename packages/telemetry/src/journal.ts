@@ -10,8 +10,8 @@ import type {
 
 /**
  * Metadata projection of one committed run.
- * The C++ runtime does not produce this document yet. Callers that export telemetry
- * supply it. Inputs, outputs, prompts, and owner ids do not belong in it.
+ * The host builds this document from the native journal. Inputs, outputs, prompts,
+ * and owner ids do not belong in it.
  */
 export interface JournalDocument {
   readonly run: JournalRun;

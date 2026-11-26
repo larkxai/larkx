@@ -22,7 +22,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@larkxai/protocol": "workspace:*"
+    "@larkxai/protocol": "workspace:*",
+    "@larkxai/telemetry": "workspace:*"
   },
   "repository": {
     "type": "git",

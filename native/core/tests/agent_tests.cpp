@@ -130,6 +130,19 @@ void test_single_turn_persists_before_the_model_runs() {
   const auto first = drive(reopened, "single-1");
   CHECK(first.code == LARKX_OK);
   CHECK(first.request.kind == LARKX_REQUEST_INVOKE_MODEL);
+  bool recovered_event = false;
+  int32_t recovered_events = 0;
+  CHECK(larkx_run_event_count(reopened, "single-1", &recovered_events, &error) == LARKX_OK);
+  for (int32_t index = 0; index < recovered_events; index += 1) {
+    char payload[2048];
+    size_t payload_needed = 0;
+    CHECK(larkx_run_event_payload(reopened, "single-1", index, payload, sizeof(payload), &payload_needed, &error) ==
+          LARKX_OK);
+    if (contains(payload, "WORKFLOW_RECOVERED") && contains(payload, "interrupted")) {
+      recovered_event = true;
+    }
+  }
+  CHECK(recovered_event);
   CHECK(contains(first.detail, "Secret instructions"));
   CHECK(contains(first.detail, "Hi"));
   submit_model(reopened, "single-1", first.request.request_id, "{\"message\":\"hello\",\"finish\":\"stop\",\"calls\":[]}");

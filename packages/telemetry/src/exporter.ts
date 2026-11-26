@@ -111,6 +111,16 @@ export interface CloudTelemetryOptions {
   readonly requestTimeoutMs?: number;
   readonly maxBackoffMs?: number;
   readonly fetch?: TelemetryFetch;
+  /**
+   * Runs after a batch is stored and before the request is sent.
+   * A throw is treated as an offline attempt. The stored batch is retried.
+   */
+  readonly beforeRequest?: () => void | Promise<void>;
+  /**
+   * Runs after the destination acknowledges a batch and before the local cursor advances.
+   * A throw leaves the same batch pending.
+   */
+  readonly beforeCheckpoint?: () => void | Promise<void>;
 }
 
 const RETRYABLE = new Set([408, 429, 500, 502, 503, 504]);
@@ -134,6 +144,8 @@ class CloudExporter implements CloudTelemetry {
   private readonly requestTimeoutMs: number;
   private readonly maxBackoffMs: number;
   private readonly fetchImpl: TelemetryFetch;
+  private readonly beforeRequest: (() => void | Promise<void>) | null;
+  private readonly beforeCheckpoint: (() => void | Promise<void>) | null;
   private readonly destinationIdPromise: Promise<string>;
   private document: TelemetryDocument | null = null;
   private timer: number | undefined;
@@ -161,6 +173,8 @@ class CloudExporter implements CloudTelemetry {
     this.requestTimeoutMs = options.requestTimeoutMs ?? 10_000;
     this.maxBackoffMs = options.maxBackoffMs ?? 60_000;
     this.fetchImpl = options.fetch ?? defaultFetch;
+    this.beforeRequest = options.beforeRequest ?? null;
+    this.beforeCheckpoint = options.beforeCheckpoint ?? null;
     this.destinationIdPromise = destinationId(this.endpoint, this.apiKey, options.sha256);
   }
 
@@ -289,6 +303,9 @@ class CloudExporter implements CloudTelemetry {
         destination = { ...destination, pending, hold: null };
         await this.persist(loaded, destinationKey, destination);
       }
+      if (this.beforeRequest) {
+        await this.beforeRequest();
+      }
       const outcome = await this.post(pending);
       if (outcome.kind === "accepted") {
         const cursor = Math.max(destination.cursors[pending.runId] ?? 0, outcome.acceptedThrough);
@@ -310,6 +327,9 @@ class CloudExporter implements CloudTelemetry {
         delivered = true;
         this.phase = "pending";
         this.lastError = null;
+        if (this.beforeCheckpoint) {
+          await this.beforeCheckpoint();
+        }
         await this.persist(loaded, destinationKey, destination);
         continue;
       }

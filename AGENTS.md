@@ -66,7 +66,7 @@ Local inference integrates Cactus and, when developers ask, other existing engin
 - `@larkxai/node` — private Node host. It vendors the C++ sources and builds `packages/node/build/larkx_native.node` with `packages/node/scripts/build-native.sh`. Keep the addon, the crash tests, and the remote-delegation tests. Do not publish this package.
 - `@larkxai/react-native` — the public npm SDK. `createRuntime` comes from the package root. Cactus is `@larkxai/react-native/cactus`. Expo Go cannot load the native module. Swift and Kotlin SDKs are planned and are not in this repository yet.
 - `@larkxai/cactus` — private workspace module used by the React Native Cactus subpath. The C++ runtime does not import it. Node does not depend on it.
-- `@larkxai/telemetry` — private workspace module. Metadata batch contract and HTTP client. The C++ runtime does not feed it a journal.
+- `@larkxai/telemetry` — private workspace module. Metadata batch contract and HTTP client. The C++ runtime writes the journal and does not open a network connection. The host exports that journal only when the application passes `telemetry`.
 - `examples/node-agent` — scripted Node agent and the `SIGKILL` demo.
 - `examples/node-hybrid` — local field agent plus the HTTP fixture or an A2A peer. Not a public SDK.
 - `examples/remote-task` — development HTTP task fixture. Not a hosted product.
