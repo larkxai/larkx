@@ -113,6 +113,6 @@ A custom sink uses `{ exporter }`. The default runtime passes neither.
 
 ## Cloud
 
-Current LarkX Cloud accepts telemetry version 1 only when `storageSchemaVersion` is 1. This runtime reports schema 3, so production Cloud rejects the batch. Do not describe Cloud ingestion as complete. The test collector in `tests/host/telemetry-export.test.ts` accepts schema 3 and the existing acknowledgement shape. It is not a second backend.
+The Cloud repository accepts telemetry version 1 with storage schema 3. This runtime reports schema 3. Production `https://cloud.larkx.ai` was last deployed on 20 November 2026, before that Cloud change, and still accepts schema 1 only. Do not describe production ingestion as verified. The test collector in `tests/host/telemetry-export.test.ts` accepts schema 3 and the existing acknowledgement shape. It is not a second backend.
 
-The proposed Cloud change is [the native telemetry contract](../cloud-native-telemetry.md).
+The contract is [the native telemetry contract](../cloud-native-telemetry.md). React Native passes `createId` from `expo-crypto` `randomUUID` when Cloud telemetry is enabled. The exporter no longer builds ids from the clock and `Math.random`. Node uses Web Crypto. A missing cryptographic source throws.

@@ -19,7 +19,7 @@ The agent card is `GET http://127.0.0.1:8791/.well-known/agent-card.json`. The J
 
 If the request does not name a model, the graph asks for one and the task becomes `TASK_STATE_INPUT_REQUIRED`. A continuation on the same task that includes `Model P-104` searches the catalog.
 
-`LARKX_LANGGRAPH_HOLD=1` pauses inside the LangGraph graph until `POST /_release`. That barrier is for the recovery test. `CancelTask` aborts the signal passed to `graph.invoke`. The server does not publish `TASK_STATE_COMPLETED` after that. A graph node that ignores the signal can still finish its current step. This example does not claim that a cloud model call is preempted.
+`LARKX_LANGGRAPH_HOLD=1` pauses inside the LangGraph graph until `POST /_release`. That barrier is a demonstration control for the recovery test. The remote task exists, and the phone can be force-quit while it is outstanding. It is not an artificial delay inside the local model or a local tool. The field-inspection sequence is [docs/demo/flagship-mobile-demo.md](../../docs/demo/flagship-mobile-demo.md). `CancelTask` aborts the signal passed to `graph.invoke`. The server does not publish `TASK_STATE_COMPLETED` after that. A graph node that ignores the signal can still finish its current step. This example does not claim that a cloud model call is preempted.
 
 ## Cloud model
 
