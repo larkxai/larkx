@@ -46,6 +46,9 @@ describe("remote delegation correctness", () => {
         capabilities: { cancel: false },
       },
     });
+    if (declared.transport.type !== "http") {
+      throw new Error("Expected the HTTP transport.");
+    }
     expect(declared.transport.capabilities).toMatchObject({
       dedupe: false,
       lookup: false,
@@ -344,7 +347,7 @@ describe("remote delegation correctness", () => {
 });
 
 function transportFor(endpoint: string, timeoutMs = 1_000): RemoteHttpTransport {
-  return remoteAgent({
+  const transport = remoteAgent({
     name: "procurement-agent",
     description: "Find compatible replacement parts.",
     transport: {
@@ -354,6 +357,10 @@ function transportFor(endpoint: string, timeoutMs = 1_000): RemoteHttpTransport 
       headers: () => ({ authorization: "Bearer secret-token" }),
     },
   }).transport;
+  if (transport.type !== "http") {
+    throw new Error("Expected the HTTP transport.");
+  }
+  return transport;
 }
 
 function command(endpoint: string) {

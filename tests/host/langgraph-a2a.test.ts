@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { createRuntime, remoteAgent, scriptedModel, sqlite } from "@larkxai/node";
 import { describe, expect, it } from "vitest";
 
-import { runProcurement } from "../../examples/langgraph-a2a-agent/src/graph.ts";
+import { runProcurement } from "../../examples/langgraph-a2a-agent/src/graph.js";
 
 const serverPath = fileURLToPath(
   new URL("../../examples/langgraph-a2a-agent/dist/server.js", import.meta.url),
