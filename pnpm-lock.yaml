@@ -74,6 +74,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/node
 
+  examples/node-hybrid:
+    dependencies:
+      '@larkxai/node':
+        specifier: workspace:*
+        version: link:../../packages/node
+
   examples/react-native-agent:
     dependencies:
       '@larkxai/react-native':
@@ -110,6 +116,8 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+
+  examples/remote-task: {}
 
   packages/cactus:
     dependencies:

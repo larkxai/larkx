@@ -19,6 +19,15 @@ struct ToolRegistration {
   std::string backoff;
 };
 
+struct RemoteRegistration {
+  std::string name;
+  std::string description;
+  std::string schema_json;
+  std::string endpoint;
+  DelegationCapabilities capabilities;
+  int64_t poll_interval_ms = 1000;
+};
+
 struct AgentRegistration {
   std::string name;
   int32_t version = 1;
@@ -26,7 +35,9 @@ struct AgentRegistration {
   std::string model_id;
   std::string model_name;
   bool tool_calling = true;
+  bool allow_remote = false;
   std::vector<ToolRegistration> tools;
+  std::vector<RemoteRegistration> remote_agents;
   int32_t max_iterations = 0;
   int32_t max_tool_calls = 0;
   int32_t max_invalid_tool_requests = 0;
@@ -70,6 +81,9 @@ class Runtime {
                      const std::string& error_code, const std::string& error_message, bool retryable, int64_t now_ms);
   Status submit_reconcile(const std::string& run_id, const std::string& request_id, const std::string& resolution,
                           const std::string& output_json, const std::string& message, int64_t now_ms);
+  Status submit_delegation(const std::string& run_id, const std::string& request_id, const std::string& body_json,
+                           int64_t now_ms);
+  Status delegations_json(const std::string& run_id, std::string& out);
   Status pause(const std::string& run_id, int64_t now_ms);
   Status resume_run(const std::string& run_id, int64_t now_ms);
   Status cancel(const std::string& run_id, int64_t now_ms);

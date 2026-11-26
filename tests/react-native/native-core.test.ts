@@ -55,9 +55,9 @@ describe("native React Native host", () => {
     const { runtime } = await openHost();
     expect(runtime.versions).toMatchObject({
       backend: "native-cpp",
-      abi: 2,
+      abi: 3,
       protocol: 1,
-      schema: 1,
+      schema: 2,
     });
     await runtime.close();
     await expect(runtime.resume("missing")).rejects.toMatchObject({

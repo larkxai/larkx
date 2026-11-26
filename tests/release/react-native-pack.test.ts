@@ -1,7 +1,7 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 
 import { describe, expect, it } from "vitest";
 
@@ -15,14 +15,15 @@ describe("packed React Native SDK", () => {
       encoding: "utf8",
     });
     expect(build.status, build.stderr).toBe(0);
-    const pack = spawnSync(
-      "pnpm",
-      ["--filter", "@larkxai/react-native", "pack", "--pack-destination", packed],
-      { cwd: root, encoding: "utf8" },
-    );
+    const packageDir = join(root, "packages/react-native");
+    const pack = spawnSync("pnpm", ["--dir", packageDir, "pack", "--pack-destination", packed], {
+      cwd: root,
+      encoding: "utf8",
+    });
     try {
-      expect(pack.status, pack.stderr).toBe(0);
-      const listing = spawnSync("tar", ["-tzf", join(packed, "larkxai-react-native-0.1.2.tgz")], {
+      expect(pack.status, `${pack.stdout}\n${pack.stderr}`).toBe(0);
+      const tarball = packedTarball(pack, packed, packageDir);
+      const listing = spawnSync("tar", ["-tzf", tarball], {
         encoding: "utf8",
       });
       expect(listing.status, listing.stderr).toBe(0);
@@ -42,11 +43,9 @@ describe("packed React Native SDK", () => {
       ]) {
         expect(files, required).toContain(required);
       }
-      const manifest = spawnSync(
-        "tar",
-        ["-xOzf", join(packed, "larkxai-react-native-0.1.2.tgz"), "package/package.json"],
-        { encoding: "utf8" },
-      );
+      const manifest = spawnSync("tar", ["-xOzf", tarball, "package/package.json"], {
+        encoding: "utf8",
+      });
       expect(manifest.status, manifest.stderr).toBe(0);
       const pkg = JSON.parse(manifest.stdout) as {
         dependencies?: Record<string, string>;
@@ -57,26 +56,65 @@ describe("packed React Native SDK", () => {
       expect(pkg.devDependencies).toBeUndefined();
       expect(pkg.exports).toHaveProperty(".");
       expect(pkg.exports).toHaveProperty("./cactus");
-      const index = spawnSync(
-        "tar",
-        ["-xOzf", join(packed, "larkxai-react-native-0.1.2.tgz"), "package/dist/index.js"],
-        { encoding: "utf8" },
-      );
+      const index = spawnSync("tar", ["-xOzf", tarball, "package/dist/index.js"], {
+        encoding: "utf8",
+      });
       expect(index.stdout).not.toContain("cactus-react-native");
       expect(index.stdout).not.toContain("@larkxai/host");
-      const declarations = spawnSync(
-        "tar",
-        ["-xOzf", join(packed, "larkxai-react-native-0.1.2.tgz"), "package/dist/index.d.ts"],
-        { encoding: "utf8" },
-      );
+      const declarations = spawnSync("tar", ["-xOzf", tarball, "package/dist/index.d.ts"], {
+        encoding: "utf8",
+      });
       expect(declarations.stdout).not.toContain("@larkxai/");
       expect(readFileSync(join(root, "packages/react-native/package.json"), "utf8")).toContain(
         '"@larkxai/host": "workspace:*"',
       );
     } finally {
+      removePackedTarballs(packageDir);
       spawnSync("node", ["packages/react-native/scripts/prepare-publish.mjs", "restore"], {
         cwd: root,
       });
     }
   }, 120_000);
 });
+
+function packedTarball(
+  pack: SpawnSyncReturns<string>,
+  destination: string,
+  packageDir: string,
+): string {
+  const roots = [destination, packageDir, root, process.cwd()];
+  const printed = withoutAnsi(pack.stdout)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.endsWith(".tgz"))
+    .flatMap((line) => (line.startsWith("/") ? [line] : roots.map((dir) => join(dir, line))));
+  const discovered = roots.flatMap((dir) =>
+    readdirSync(dir)
+      .filter((name) => name.endsWith(".tgz"))
+      .map((name) => join(dir, name)),
+  );
+  const found = [...printed, ...discovered].find((path) => existsSync(path));
+  expect(found, `${pack.stdout}\n${pack.stderr}\n${discovered.join("\n")}`).toBeTruthy();
+  return found ?? "";
+}
+
+function withoutAnsi(text: string): string {
+  let visible = "";
+  for (let index = 0; index < text.length; index += 1) {
+    if (text.charCodeAt(index) !== 0x1b) {
+      visible += text[index];
+      continue;
+    }
+    const end = text.indexOf("m", index);
+    index = end === -1 ? text.length : end;
+  }
+  return visible;
+}
+
+function removePackedTarballs(packageDir: string): void {
+  for (const dir of [packageDir, root]) {
+    for (const name of readdirSync(dir)) {
+      if (name.endsWith(".tgz")) unlinkSync(join(dir, name));
+    }
+  }
+}

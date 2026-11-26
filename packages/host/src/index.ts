@@ -1,9 +1,22 @@
+export { bindNativeAppState, createRuntime, defineTool, scriptedModel, sqlite } from "./runtime.js";
+
 export {
-  bindNativeAppState,
-  createRuntime,
-  defineTool,
-  scriptedModel,
-  sqlite,
+  remoteAgent,
+  HTTP_REMOTE_CAPABILITIES,
+  linkAbortSignal,
+  normalizeEndpoint,
+  performHttpDelegation,
+  resolvedCapabilities,
+  transportId,
+  type DelegationView,
+  type RemoteAgent,
+  type RemoteCapabilities,
+  type RemoteHttpCall,
+  type RemoteHttpResponse,
+  type RemoteHttpTransport,
+} from "./remote.js";
+
+export {
   ToolFailure,
   type Agent,
   type AgentOptions,

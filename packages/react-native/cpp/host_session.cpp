@@ -346,6 +346,51 @@ Status Session::invoke(const std::string& method, const std::string& args_json, 
         stored.push_back(std::move(item));
       }
     }
+    struct StoredRemote {
+      std::string name;
+      std::string description;
+      std::string schema;
+      std::string endpoint;
+      int64_t poll_interval_ms = 0;
+      bool dedupe = false;
+      bool lookup = false;
+      bool durable_task = false;
+      bool poll = false;
+      bool cancel = false;
+      bool persistent = false;
+    };
+    std::vector<StoredRemote> stored_remotes;
+    const Json* remotes = field(*agent, "remoteAgents");
+    if (remotes != nullptr && remotes->kind == Json::Kind::Array) {
+      for (const Json& remote : remotes->array) {
+        if (remote.kind != Json::Kind::Object) {
+          return invalid("Remote agent registration must be an object.");
+        }
+        StoredRemote item;
+        item.name = string_field(remote, "name");
+        item.description = string_field(remote, "description");
+        item.endpoint = string_field(remote, "endpoint");
+        item.poll_interval_ms = int_field(remote, "pollIntervalMs", 0, numbers);
+        item.dedupe = bool_field(remote, "dedupe", false);
+        item.lookup = bool_field(remote, "lookup", false);
+        item.durable_task = bool_field(remote, "durableTask", false);
+        item.poll = bool_field(remote, "poll", false);
+        item.cancel = bool_field(remote, "cancel", false);
+        item.persistent = bool_field(remote, "persistent", false);
+        if (!numbers.ok()) {
+          return numbers;
+        }
+        const Json* schema = field(remote, "schema");
+        if (schema == nullptr) {
+          item.schema = "{\"additionalProperties\":true,\"type\":\"object\"}";
+        } else if (schema->kind == Json::Kind::String) {
+          item.schema = schema->text;
+        } else {
+          item.schema = canonical_json(*schema);
+        }
+        stored_remotes.push_back(std::move(item));
+      }
+    }
     std::vector<larkx_tool_spec> specs(stored.size());
     for (size_t index = 0; index < stored.size(); index += 1) {
       specs[index].name = stored[index].name.c_str();
@@ -374,6 +419,23 @@ Status Session::invoke(const std::string& method, const std::string& args_json, 
     spec.model_initial_interval_ms = int_field(*agent, "modelInitialIntervalMs", -1, numbers);
     spec.model_max_interval_ms = int_field(*agent, "modelMaxIntervalMs", -1, numbers);
     spec.model_backoff = model_backoff.c_str();
+    std::vector<larkx_remote_spec> remote_specs(stored_remotes.size());
+    for (size_t index = 0; index < stored_remotes.size(); index += 1) {
+      remote_specs[index].name = stored_remotes[index].name.c_str();
+      remote_specs[index].description = stored_remotes[index].description.c_str();
+      remote_specs[index].input_schema_json = stored_remotes[index].schema.c_str();
+      remote_specs[index].endpoint = stored_remotes[index].endpoint.c_str();
+      remote_specs[index].dedupe = stored_remotes[index].dedupe ? 1 : 0;
+      remote_specs[index].lookup = stored_remotes[index].lookup ? 1 : 0;
+      remote_specs[index].durable_task = stored_remotes[index].durable_task ? 1 : 0;
+      remote_specs[index].poll = stored_remotes[index].poll ? 1 : 0;
+      remote_specs[index].cancel = stored_remotes[index].cancel ? 1 : 0;
+      remote_specs[index].persistent = stored_remotes[index].persistent ? 1 : 0;
+      remote_specs[index].poll_interval_ms = stored_remotes[index].poll_interval_ms;
+    }
+    spec.remote_agents = remote_specs.empty() ? nullptr : remote_specs.data();
+    spec.remote_count = static_cast<int32_t>(remote_specs.size());
+    spec.allow_remote = bool_field(*agent, "allowRemote", !stored_remotes.empty()) ? 1 : 0;
     if (!numbers.ok()) {
       return numbers;
     }
@@ -431,6 +493,29 @@ Status Session::invoke(const std::string& method, const std::string& args_json, 
                                    retryable, now, &error);
     out = "{}";
     return call_code(code, error);
+  }
+  if (method == "submitDelegation") {
+    const larkx_code code = larkx_run_submit_delegation(runtime_, run_id.c_str(), string_field(args, "requestId").c_str(),
+                                                       string_field(args, "bodyJson").c_str(), now, &error);
+    out = "{}";
+    return call_code(code, error);
+  }
+  if (method == "delegations") {
+    std::string buffer(65536, '\0');
+    size_t needed = 0;
+    auto read = [&](char* data, size_t capacity) {
+      return larkx_run_delegations(runtime_, run_id.c_str(), data, capacity, &needed, &error);
+    };
+    larkx_code code = read(buffer.data(), buffer.size());
+    if (code == LARKX_ERR_CAPACITY && needed > buffer.size()) {
+      buffer.assign(needed, '\0');
+      code = read(buffer.data(), buffer.size());
+    }
+    if (code != LARKX_OK) {
+      return status_from(code, error);
+    }
+    out = buffer.c_str();
+    return {};
   }
   if (method == "submitReconcile") {
     const larkx_code code = larkx_run_submit_reconcile(runtime_, run_id.c_str(), string_field(args, "requestId").c_str(),

@@ -70,6 +70,19 @@ describe("field inspection demo", () => {
       { role: "tool", name: "read_inspection_notes", content: "notes" },
     ]);
     expect(afterNotes.calls[0]?.name).toBe("get_equipment_details");
+    const delegated = scriptedInspectionResponse(
+      [
+        { role: "tool", name: "read_inspection_notes", content: "notes" },
+        { role: "tool", name: "get_equipment_details", content: "spec" },
+      ],
+      { delegate: true },
+    );
+    expect(delegated.calls[0]?.name).toBe("procurement-agent");
+    expect(delegated.calls[0]?.arguments).toEqual({
+      objective: "Find a compatible mechanical seal for pump 12",
+      equipment: "Industrial water pump",
+      component: "Mechanical seal",
+    });
     const afterSave = scriptedInspectionResponse([
       { role: "tool", name: "read_inspection_notes", content: "notes" },
       { role: "tool", name: "get_equipment_details", content: "spec" },

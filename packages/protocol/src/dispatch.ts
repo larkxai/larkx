@@ -11,8 +11,9 @@ import type { DataPolicy } from "./effects.js";
 import { isDataPolicy } from "./effects.js";
 
 /**
- * Remote dispatch contract. The local runtime persists an equivalent intent
- * before a future transport sends it. M1 does not send these requests.
+ * Earlier remote-dispatch shapes. The HTTP task protocol used by remote
+ * delegation is documented in docs/architecture/remote-delegation.md and is
+ * not this type. These fields are not the request the host sends.
  */
 export interface RemoteDispatchRequest {
   readonly protocolVersion: number;

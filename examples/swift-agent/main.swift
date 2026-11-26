@@ -1,6 +1,6 @@
 import Foundation
 
-/// Host for the ABI 2 agent runtime.
+/// Host for the ABI 3 agent runtime.
 ///
 /// The process drives `larkx_run_drive` and submits results. It does not link a
 /// model SDK. Closing the runtime leaves the SQLite file in place. Reopening

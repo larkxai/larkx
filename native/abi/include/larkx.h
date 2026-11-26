@@ -2,7 +2,7 @@
 #define LARKX_H
 
 /**
- * LarkX native core, C ABI version 2.
+ * LarkX native core, C ABI version 3.
  *
  * This header is the stable boundary for Swift, Kotlin, React Native, and
  * Node bindings. It does not expose C++ types. The caller owns every pointer
@@ -11,13 +11,10 @@
  *
  * Version 1 of this header is the execution foundation: protocol transitions,
  * ownership fences, step journaling, reconciliation, an outbox row, and egress
- * decisions. Version 2 adds the agent runtime. The runtime returns an execution
- * request and the host submits the result. The core does not call the host,
- * a model SDK, or a device API.
- *
- * The TypeScript engine remains the shipped runtime until this core passes
- * equivalent recovery tests. Remote-agent submission and telemetry export are
- * not part of ABI 2.
+ * decisions. Version 2 adds the agent runtime. Version 3 adds durable remote
+ * delegation. The runtime returns an execution request and the host submits
+ * the result. The core does not call the host, a model SDK, HTTP, or a device
+ * API. Telemetry export is not part of this ABI.
  *
  * A store handle is safe to call from multiple threads. Calls are serialized.
  * Do not re-enter the same store from inside a future host callback.
@@ -30,9 +27,9 @@
 extern "C" {
 #endif
 
-#define LARKX_ABI_VERSION 2u
+#define LARKX_ABI_VERSION 3u
 #define LARKX_PROTOCOL_VERSION 1u
-#define LARKX_STORAGE_SCHEMA_VERSION 1u
+#define LARKX_STORAGE_SCHEMA_VERSION 2u
 
 /** Another owner cannot take a run merely because its lease expired. */
 #define LARKX_STORE_EXCLUSIVE_OWNERSHIP 1u
@@ -372,7 +369,11 @@ larkx_code larkx_egress_allowed(
  * Closing the runtime does not release ownership. Reopen with the same owner
  * id to recover. A RUNNING step that this process did not issue is an
  * interrupt: pure and idempotent steps retry with the same operation id, and
- * non-idempotent steps become UNKNOWN_OUTCOME.
+ * non-idempotent steps become UNKNOWN_OUTCOME. A remote delegation is not that
+ * rule: recovery follows the capabilities stored with the operation. A known
+ * remote task id is polled. Without a task id, lookup or a declared dedupe
+ * capability is required before another submission. Otherwise the delegation
+ * is UNKNOWN_OUTCOME and the parent run blocks.
  *
  * A model or idempotent tool can run again when the process dies after the
  * attempt is begun and before the result is committed. That window cannot be
@@ -392,7 +393,8 @@ typedef enum larkx_request_kind {
   LARKX_REQUEST_BLOCKED = 6,
   LARKX_REQUEST_FAILED = 7,
   LARKX_REQUEST_CANCELLED = 8,
-  LARKX_REQUEST_PAUSED = 9
+  LARKX_REQUEST_PAUSED = 9,
+  LARKX_REQUEST_DELEGATE = 10
 } larkx_request_kind;
 
 typedef struct larkx_runtime larkx_runtime;
@@ -407,6 +409,20 @@ typedef struct larkx_tool_spec {
   int64_t max_interval_ms;
   const char* backoff;
 } larkx_tool_spec;
+
+typedef struct larkx_remote_spec {
+  const char* name;
+  const char* description;
+  const char* input_schema_json;
+  const char* endpoint;
+  int dedupe;
+  int lookup;
+  int durable_task;
+  int poll;
+  int cancel;
+  int persistent;
+  int64_t poll_interval_ms;
+} larkx_remote_spec;
 
 typedef struct larkx_agent_spec {
   const char* name;
@@ -425,6 +441,9 @@ typedef struct larkx_agent_spec {
   int64_t model_initial_interval_ms;
   int64_t model_max_interval_ms;
   const char* model_backoff;
+  const larkx_remote_spec* remote_agents;
+  int32_t remote_count;
+  int allow_remote;
 } larkx_agent_spec;
 
 typedef struct larkx_exec_request {
@@ -495,6 +514,28 @@ larkx_code larkx_run_submit_tool(
     const char* error_message,
     int retryable,
     int64_t now_ms,
+    larkx_error* err);
+
+/**
+ * Commits one host result for a LARKX_REQUEST_DELEGATE request.
+ * body_json is an object with action, outcome, and optional taskId, result,
+ * and message. The core validates it and chooses the next delegation state.
+ * A stale owner or a closed request is rejected.
+ */
+larkx_code larkx_run_submit_delegation(
+    larkx_runtime* runtime,
+    const char* run_id,
+    const char* request_id,
+    const char* body_json,
+    int64_t now_ms,
+    larkx_error* err);
+
+larkx_code larkx_run_delegations(
+    larkx_runtime* runtime,
+    const char* run_id,
+    char* buffer,
+    size_t capacity,
+    size_t* needed,
     larkx_error* err);
 
 larkx_code larkx_run_submit_reconcile(

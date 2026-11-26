@@ -11,5 +11,10 @@
     "version": false,
     "tag": false
   },
-  "ignore": ["@larkxai/example-node-agent", "@larkxai/example-react-native-agent"]
+  "ignore": [
+    "@larkxai/example-node-agent",
+    "@larkxai/example-node-hybrid",
+    "@larkxai/example-react-native-agent",
+    "@larkxai/example-remote-task"
+  ]
 }

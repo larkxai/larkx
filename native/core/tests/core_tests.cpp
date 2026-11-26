@@ -480,13 +480,43 @@ void test_database_identity() {
   std::remove(foreign.c_str());
 }
 
+void test_owned_schema_one_upgrades_to_two() {
+  const auto path = temp_db();
+  auto* created = open_store(path);
+  larkx_store_close(created);
+  sqlite3* db = nullptr;
+  CHECK(sqlite3_open(path.c_str(), &db) == SQLITE_OK);
+  CHECK(sqlite3_exec(db, "DROP TABLE delegations; UPDATE schema_migrations SET version = 1;", nullptr, nullptr, nullptr) ==
+        SQLITE_OK);
+  sqlite3_close(db);
+  auto* upgraded = open_store(path);
+  larkx_store_close(upgraded);
+  CHECK(sqlite3_open(path.c_str(), &db) == SQLITE_OK);
+  sqlite3_stmt* version = nullptr;
+  CHECK(sqlite3_prepare_v2(db, "SELECT MAX(version) FROM schema_migrations", -1, &version, nullptr) == SQLITE_OK);
+  CHECK(sqlite3_step(version) == SQLITE_ROW);
+  CHECK(sqlite3_column_int(version, 0) == 2);
+  sqlite3_finalize(version);
+  sqlite3_stmt* table = nullptr;
+  CHECK(sqlite3_prepare_v2(db, "SELECT name FROM sqlite_master WHERE name = 'delegations'", -1, &table, nullptr) == SQLITE_OK);
+  CHECK(sqlite3_step(table) == SQLITE_ROW);
+  sqlite3_finalize(table);
+  sqlite3_stmt* identity = nullptr;
+  CHECK(sqlite3_prepare_v2(db, "PRAGMA application_id", -1, &identity, nullptr) == SQLITE_OK);
+  CHECK(sqlite3_step(identity) == SQLITE_ROW);
+  CHECK(sqlite3_column_int(identity, 0) == 0x4C585254);
+  sqlite3_finalize(identity);
+  sqlite3_close(db);
+  std::remove(path.c_str());
+}
+
 void test_newer_schema_is_rejected() {
   const auto path = temp_db();
   auto* store = open_store(path);
   larkx_store_close(store);
   sqlite3* db = nullptr;
   CHECK(sqlite3_open(path.c_str(), &db) == SQLITE_OK);
-  CHECK(sqlite3_exec(db, "UPDATE schema_migrations SET version = 2", nullptr, nullptr, nullptr) == SQLITE_OK);
+  CHECK(sqlite3_exec(db, "UPDATE schema_migrations SET version = 3", nullptr, nullptr, nullptr) == SQLITE_OK);
   sqlite3_close(db);
   larkx_store* rejected = nullptr;
   larkx_error error{};
@@ -507,6 +537,7 @@ int main() {
   test_outbox_dedupe();
   test_exclusive_ownership();
   test_database_identity();
+  test_owned_schema_one_upgrades_to_two();
   test_newer_schema_is_rejected();
   if (g_failed != 0) {
     std::fprintf(stderr, "%d checks failed\n", g_failed);

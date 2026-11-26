@@ -665,7 +665,7 @@ Status reconcile_step(State& state, const ReconcileInput& input) {
   if (step == nullptr) {
     return Status::fail(Code::NotFound, "Step \"" + input.step_key + "\" does not exist.");
   }
-  if (step->status != StepStatus::UnknownOutcome) {
+  if (step->status != StepStatus::UnknownOutcome && step->status != StepStatus::WaitingRemote) {
     return state_error("Only UNKNOWN_OUTCOME steps can be reconciled. \"" + input.step_key + "\" is " +
                        to_string(step->status) + ".");
   }
@@ -779,6 +779,315 @@ OutboxOutcome insert_outbox(State& state, const OutboxInput& input) {
   outcome.deduplicated = false;
   outcome.status = Status::success();
   return outcome;
+}
+
+Status append_protocol_event(State& state, std::string event_id, std::string type, std::string payload, int64_t now_ms) {
+  return append_event(state, std::move(event_id), std::move(type), std::move(payload), now_ms);
+}
+
+namespace {
+
+Delegation* find_delegation(State& state, std::string_view step_key) {
+  for (auto& row : state.delegations) {
+    if (row.step_key == step_key) {
+      return &row;
+    }
+  }
+  return nullptr;
+}
+
+void set_outbox_status(State& state, std::string_view operation_id, OutboxStatus status, int64_t now_ms) {
+  for (auto& message : state.outbox) {
+    if (message.operation_id == operation_id) {
+      message.status = status;
+      message.updated_at = now_ms;
+    }
+  }
+}
+
+std::string delegation_error(const std::string& code, const std::string& message) {
+  return object_payload({
+      {"code", jstring(code)},
+      {"message", jstring(message)},
+      {"retryable", [&] {
+         Json value;
+         value.kind = Json::Kind::Bool;
+         value.boolean = false;
+         return value;
+       }()},
+  });
+}
+
+}  // namespace
+
+Status park_delegation(State& state, const ParkDelegationInput& input) {
+  if (auto status = require_fence(state.run, input.fence); !status.ok()) {
+    return status;
+  }
+  if (auto status = require_mutable(state.run.status); !status.ok()) {
+    return status;
+  }
+  Step* step = find_step(state, input.step_key);
+  if (step == nullptr) {
+    return Status::fail(Code::NotFound, "Step \"" + input.step_key + "\" does not exist.");
+  }
+  if (step->status != StepStatus::Running) {
+    return state_error("Remote step \"" + input.step_key + "\" is not running.");
+  }
+  if (!can_transition(step->status, StepStatus::WaitingRemote)) {
+    return state_error("Step transition is not legal.");
+  }
+  const Attempt* attempt = find_attempt(state, input.attempt_id);
+  if (attempt == nullptr || attempt->step_key != step->step_key || attempt->status != AttemptStatus::Started) {
+    return state_error("Attempt is not the open attempt for step \"" + input.step_key + "\".");
+  }
+  Delegation* row = find_delegation(state, input.step_key);
+  if (row == nullptr) {
+    return state_error("Remote delegation is missing.");
+  }
+  const bool first_task = input.task_id.has_value() && !row->task_id.has_value();
+  step->status = StepStatus::WaitingRemote;
+  step->next_attempt_at = input.next_attempt_at;
+  step->updated_at = input.now_ms;
+  close_attempt(state, input.attempt_id, AttemptStatus::Completed, input.now_ms, std::nullopt);
+  row->state = input.delegation_state;
+  if (input.task_id.has_value()) {
+    row->task_id = input.task_id;
+  }
+  row->poll_inflight = false;
+  row->inflight_action.clear();
+  row->updated_at = input.now_ms;
+  if (row->task_id.has_value()) {
+    set_outbox_status(state, row->operation_id, OutboxStatus::Accepted, input.now_ms);
+  }
+  state.run.updated_at = input.now_ms;
+  if (first_task) {
+    const std::string payload = object_payload({
+        {"operationId", jstring(row->operation_id)},
+        {"remoteAgent", jstring(row->remote_agent)},
+        {"stepKey", jstring(row->step_key)},
+        {"taskId", jstring(*row->task_id)},
+    });
+    return append_event(state, input.event_id, "REMOTE_DISPATCH_ACCEPTED", payload, input.now_ms);
+  }
+  return Status::success();
+}
+
+Status fail_delegation(State& state, const FailDelegationInput& input) {
+  if (auto status = require_fence(state.run, input.fence); !status.ok()) {
+    return status;
+  }
+  if (auto status = require_mutable(state.run.status); !status.ok()) {
+    return status;
+  }
+  Step* step = find_step(state, input.step_key);
+  if (step == nullptr) {
+    return Status::fail(Code::NotFound, "Step \"" + input.step_key + "\" does not exist.");
+  }
+  if (!can_transition(step->status, StepStatus::Failed)) {
+    return state_error("Step transition is not legal.");
+  }
+  if (const Attempt* attempt = latest_open_attempt(state, input.step_key); attempt != nullptr) {
+    close_attempt(state, attempt->attempt_id, AttemptStatus::Failed, input.now_ms, std::nullopt);
+  }
+  const std::string error_json = delegation_error(input.code, input.message);
+  step->status = StepStatus::Failed;
+  step->error_json = error_json;
+  step->next_attempt_at = std::nullopt;
+  step->updated_at = input.now_ms;
+  if (Delegation* row = find_delegation(state, input.step_key); row != nullptr) {
+    row->state = DelegationState::Failed;
+    row->poll_inflight = false;
+    row->inflight_action.clear();
+    row->updated_at = input.now_ms;
+    set_outbox_status(state, row->operation_id, OutboxStatus::Failed, input.now_ms);
+  }
+  state.run.updated_at = input.now_ms;
+  const std::string step_payload = object_payload({
+      {"code", jstring(input.code)},
+      {"stepKey", jstring(input.step_key)},
+  });
+  if (auto status = append_event(state, input.event_id, "STEP_FAILED", step_payload, input.now_ms); !status.ok()) {
+    return status;
+  }
+  if (!can_transition(state.run.status, WorkflowStatus::Failed)) {
+    return state_error("Workflow transition is not legal.");
+  }
+  state.run.status = WorkflowStatus::Failed;
+  state.run.error_json = error_json;
+  state.run.blocked_reason = std::nullopt;
+  state.run.updated_at = input.now_ms;
+  return append_event(state, input.run_event_id, "WORKFLOW_FAILED", step_payload, input.now_ms);
+}
+
+Status cancel_delegation_step(State& state, const CancelDelegationInput& input) {
+  if (auto status = require_fence(state.run, input.fence); !status.ok()) {
+    return status;
+  }
+  Step* step = find_step(state, input.step_key);
+  if (step == nullptr) {
+    return Status::fail(Code::NotFound, "Step \"" + input.step_key + "\" does not exist.");
+  }
+  if (step->status != StepStatus::Cancelled) {
+    if (!can_transition(step->status, StepStatus::Cancelled)) {
+      return state_error("Step transition is not legal.");
+    }
+    if (const Attempt* attempt = latest_open_attempt(state, input.step_key); attempt != nullptr) {
+      close_attempt(state, attempt->attempt_id, AttemptStatus::Cancelled, input.now_ms, std::nullopt);
+    }
+    step->status = StepStatus::Cancelled;
+    step->error_json = delegation_error("cancelled_execution", input.message);
+    step->next_attempt_at = std::nullopt;
+    step->updated_at = input.now_ms;
+  }
+  if (Delegation* row = find_delegation(state, input.step_key); row != nullptr) {
+    row->state = DelegationState::Cancelled;
+    row->poll_inflight = false;
+    row->inflight_action.clear();
+    row->updated_at = input.now_ms;
+    set_outbox_status(state, row->operation_id, OutboxStatus::Failed, input.now_ms);
+  }
+  state.run.updated_at = input.now_ms;
+  if (is_terminal(state.run.status)) {
+    return Status::success();
+  }
+  if (!can_transition(state.run.status, WorkflowStatus::Cancelled)) {
+    return state_error("Workflow transition is not legal.");
+  }
+  state.run.status = WorkflowStatus::Cancelled;
+  state.run.error_json = delegation_error("cancelled_execution", input.message);
+  state.run.blocked_reason = std::nullopt;
+  state.run.cancel_requested = true;
+  state.run.updated_at = input.now_ms;
+  const std::string payload = object_payload({
+      {"message", jstring(input.message)},
+      {"stepKey", jstring(input.step_key)},
+  });
+  return append_event(state, input.run_event_id, "WORKFLOW_CANCELLED", payload, input.now_ms);
+}
+
+Status block_remote_input(State& state, const BlockRemoteInput& input) {
+  if (auto status = require_fence(state.run, input.fence); !status.ok()) {
+    return status;
+  }
+  if (auto status = require_mutable(state.run.status); !status.ok()) {
+    return status;
+  }
+  Step* step = find_step(state, input.step_key);
+  if (step == nullptr) {
+    return Status::fail(Code::NotFound, "Step \"" + input.step_key + "\" does not exist.");
+  }
+  Delegation* row = find_delegation(state, input.step_key);
+  if (row == nullptr) {
+    return state_error("Remote delegation is missing.");
+  }
+  const bool first_task = input.task_id.has_value() && !row->task_id.has_value();
+  if (step->status == StepStatus::Running) {
+    if (!can_transition(step->status, StepStatus::WaitingRemote)) {
+      return state_error("Step transition is not legal.");
+    }
+    const Attempt* attempt = find_attempt(state, input.attempt_id);
+    if (attempt == nullptr || attempt->step_key != step->step_key || attempt->status != AttemptStatus::Started) {
+      return state_error("Attempt is not the open attempt for step \"" + input.step_key + "\".");
+    }
+    close_attempt(state, input.attempt_id, AttemptStatus::Completed, input.now_ms, std::nullopt);
+    step->status = StepStatus::WaitingRemote;
+  }
+  if (step->status != StepStatus::WaitingRemote) {
+    return state_error("Remote input cannot be recorded from " + std::string(to_string(step->status)) + ".");
+  }
+  step->next_attempt_at = std::nullopt;
+  step->updated_at = input.now_ms;
+  if (input.task_id.has_value()) {
+    row->task_id = input.task_id;
+  }
+  row->state = DelegationState::InputRequired;
+  row->poll_inflight = false;
+  row->inflight_action.clear();
+  row->updated_at = input.now_ms;
+  if (row->task_id.has_value()) {
+    set_outbox_status(state, row->operation_id, OutboxStatus::Accepted, input.now_ms);
+  }
+  state.run.updated_at = input.now_ms;
+  if (first_task) {
+    const std::string accepted = object_payload({
+        {"operationId", jstring(row->operation_id)},
+        {"remoteAgent", jstring(row->remote_agent)},
+        {"stepKey", jstring(row->step_key)},
+        {"taskId", jstring(*row->task_id)},
+    });
+    if (auto status = append_event(state, input.accepted_event_id, "REMOTE_DISPATCH_ACCEPTED", accepted, input.now_ms);
+        !status.ok()) {
+      return status;
+    }
+  }
+  if (!can_transition(state.run.status, WorkflowStatus::Blocked)) {
+    return state_error("Workflow transition is not legal.");
+  }
+  state.run.status = WorkflowStatus::Blocked;
+  state.run.blocked_reason = delegation_error("remote_input_required", input.message);
+  state.run.updated_at = input.now_ms;
+  const std::string blocked = object_payload({
+      {"code", jstring("remote_input_required")},
+      {"stepKey", jstring(input.step_key)},
+  });
+  return append_event(state, input.run_event_id, "WORKFLOW_BLOCKED", blocked, input.now_ms);
+}
+
+Status complete_delegation(State& state, const CompleteDelegationInput& input) {
+  if (auto status = require_fence(state.run, input.fence); !status.ok()) {
+    return status;
+  }
+  if (auto status = require_mutable(state.run.status); !status.ok()) {
+    return status;
+  }
+  Step* step = find_step(state, input.step_key);
+  if (step == nullptr) {
+    return Status::fail(Code::NotFound, "Step \"" + input.step_key + "\" does not exist.");
+  }
+  Delegation* row = find_delegation(state, input.step_key);
+  if (row == nullptr) {
+    return state_error("Remote delegation is missing.");
+  }
+  if (!can_transition(step->status, StepStatus::Completed)) {
+    return state_error("Step transition is not legal.");
+  }
+  if (step->status == StepStatus::Running) {
+    const Attempt* attempt = find_attempt(state, input.attempt_id);
+    if (attempt == nullptr || attempt->step_key != step->step_key || attempt->status != AttemptStatus::Started) {
+      return state_error("Attempt is not the open attempt for step \"" + input.step_key + "\".");
+    }
+    close_attempt(state, input.attempt_id, AttemptStatus::Completed, input.now_ms, std::nullopt);
+  }
+  step->status = StepStatus::Completed;
+  step->output_json = input.output_json;
+  step->error_json = std::nullopt;
+  step->next_attempt_at = std::nullopt;
+  step->updated_at = input.now_ms;
+  row->state = DelegationState::Completed;
+  row->result_json = input.result_json;
+  row->poll_inflight = false;
+  row->inflight_action.clear();
+  row->updated_at = input.now_ms;
+  set_outbox_status(state, row->operation_id, OutboxStatus::Delivered, input.now_ms);
+  state.run.updated_at = input.now_ms;
+  const std::string completed = object_payload({
+      {"effects", jstring(to_string(step->effect_type))},
+      {"execution", jstring(to_string(step->execution_target))},
+      {"stepKey", jstring(step->step_key)},
+  });
+  if (auto status = append_event(state, input.event_id, "STEP_COMPLETED", completed, input.now_ms); !status.ok()) {
+    return status;
+  }
+  std::vector<std::pair<std::string, Json>> fields = {
+      {"operationId", jstring(row->operation_id)},
+      {"remoteAgent", jstring(row->remote_agent)},
+      {"stepKey", jstring(row->step_key)},
+  };
+  if (row->task_id.has_value()) {
+    fields.push_back({"taskId", jstring(*row->task_id)});
+  }
+  return append_event(state, input.result_event_id, "REMOTE_RESULT_RECEIVED", object_payload(fields), input.now_ms);
 }
 
 }  // namespace larkx

@@ -62,6 +62,27 @@ enum class DataPolicy { DeviceOnly, CloudAllowed };
 
 enum class OutboxStatus { Pending, Accepted, Delivered, Failed };
 
+enum class DelegationState {
+  Queued,
+  Submitting,
+  Accepted,
+  Working,
+  InputRequired,
+  Completed,
+  Failed,
+  Cancelled,
+  UnknownOutcome
+};
+
+struct DelegationCapabilities {
+  bool dedupe = false;
+  bool lookup = false;
+  bool durable_task = false;
+  bool poll = false;
+  bool cancel = false;
+  bool persistent = false;
+};
+
 const char* to_string(WorkflowStatus status);
 const char* to_string(StepStatus status);
 const char* to_string(AttemptStatus status);
@@ -70,6 +91,7 @@ const char* to_string(ExecutionTarget target);
 const char* to_string(SelectedTarget target);
 const char* to_string(DataPolicy policy);
 const char* to_string(OutboxStatus status);
+const char* to_string(DelegationState state);
 
 bool parse_workflow_status(std::string_view text, WorkflowStatus& out);
 bool parse_step_status(std::string_view text, StepStatus& out);
@@ -79,6 +101,7 @@ bool parse_execution_target(std::string_view text, ExecutionTarget& out);
 bool parse_selected_target(std::string_view text, SelectedTarget& out);
 bool parse_data_policy(std::string_view text, DataPolicy& out);
 bool parse_outbox_status(std::string_view text, OutboxStatus& out);
+bool parse_delegation_state(std::string_view text, DelegationState& out);
 bool parse_event_type(std::string_view text);
 
 bool is_terminal(WorkflowStatus status);
@@ -166,12 +189,35 @@ struct OutboxMessage {
   int64_t updated_at = 0;
 };
 
+struct Delegation {
+  std::string run_id;
+  std::string step_key;
+  std::string operation_id;
+  std::string remote_agent;
+  std::string endpoint;
+  std::string transport_id;
+  std::string input_json;
+  DelegationCapabilities capabilities;
+  DelegationState state = DelegationState::Queued;
+  std::optional<std::string> task_id;
+  std::optional<std::string> result_json;
+  int64_t poll_interval_ms = 1000;
+  int32_t poll_epoch = 0;
+  bool poll_inflight = false;
+  int32_t poll_failures = 0;
+  bool cancel_intent = false;
+  std::string inflight_action;
+  int64_t created_at = 0;
+  int64_t updated_at = 0;
+};
+
 struct State {
   Run run;
   std::vector<Step> steps;
   std::vector<Attempt> attempts;
   std::vector<Event> events;
   std::vector<OutboxMessage> outbox;
+  std::vector<Delegation> delegations;
 };
 
 struct Fence {
@@ -320,6 +366,71 @@ struct OutboxOutcome {
 };
 
 OutboxOutcome insert_outbox(State& state, const OutboxInput& input);
+
+Status append_protocol_event(State& state, std::string event_id, std::string type, std::string payload, int64_t now_ms);
+
+struct ParkDelegationInput {
+  Fence fence;
+  int64_t now_ms = 0;
+  std::string step_key;
+  std::string attempt_id;
+  std::string event_id;
+  DelegationState delegation_state = DelegationState::Accepted;
+  std::optional<std::string> task_id;
+  int64_t next_attempt_at = 0;
+};
+
+Status park_delegation(State& state, const ParkDelegationInput& input);
+
+struct FailDelegationInput {
+  Fence fence;
+  int64_t now_ms = 0;
+  std::string step_key;
+  std::string code;
+  std::string message;
+  std::string event_id;
+  std::string run_event_id;
+};
+
+Status fail_delegation(State& state, const FailDelegationInput& input);
+
+struct CancelDelegationInput {
+  Fence fence;
+  int64_t now_ms = 0;
+  std::string step_key;
+  std::string message;
+  std::string event_id;
+  std::string run_event_id;
+};
+
+Status cancel_delegation_step(State& state, const CancelDelegationInput& input);
+
+struct BlockRemoteInput {
+  Fence fence;
+  int64_t now_ms = 0;
+  std::string step_key;
+  std::string attempt_id;
+  std::optional<std::string> task_id;
+  std::string message;
+  std::string event_id;
+  std::string run_event_id;
+  std::string accepted_event_id;
+};
+
+Status block_remote_input(State& state, const BlockRemoteInput& input);
+
+struct CompleteDelegationInput {
+  Fence fence;
+  int64_t now_ms = 0;
+  std::string step_key;
+  std::string attempt_id;
+  std::string output_json;
+  std::string result_json;
+  std::string event_id;
+  std::string result_event_id;
+};
+
+Status complete_delegation(State& state, const CompleteDelegationInput& input);
 
 Status validate_identity(std::string_view value, std::string_view label, size_t max_length);
 Status validate_run_id(std::string_view value);
