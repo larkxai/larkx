@@ -2,7 +2,7 @@
 #define LARKX_H
 
 /**
- * LarkX native core, C ABI version 3.
+ * LarkX native core, C ABI version 4.
  *
  * This header is the stable boundary for Swift, Kotlin, React Native, and
  * Node bindings. It does not expose C++ types. The caller owns every pointer
@@ -12,9 +12,11 @@
  * Version 1 of this header is the execution foundation: protocol transitions,
  * ownership fences, step journaling, reconciliation, an outbox row, and egress
  * decisions. Version 2 adds the agent runtime. Version 3 adds durable remote
- * delegation. The runtime returns an execution request and the host submits
- * the result. The core does not call the host, a model SDK, HTTP, or a device
- * API. Telemetry export is not part of this ABI.
+ * delegation. Version 4 adds the remote transport kind, A2A task and context
+ * identity, and a continuation for remote input. The runtime returns an
+ * execution request and the host submits the result. The core does not call
+ * the host, a model SDK, HTTP, or a device API. Telemetry export is not part
+ * of this ABI.
  *
  * A store handle is safe to call from multiple threads. Calls are serialized.
  * Do not re-enter the same store from inside a future host callback.
@@ -27,9 +29,9 @@
 extern "C" {
 #endif
 
-#define LARKX_ABI_VERSION 3u
+#define LARKX_ABI_VERSION 4u
 #define LARKX_PROTOCOL_VERSION 1u
-#define LARKX_STORAGE_SCHEMA_VERSION 2u
+#define LARKX_STORAGE_SCHEMA_VERSION 3u
 
 /** Another owner cannot take a run merely because its lease expired. */
 #define LARKX_STORE_EXCLUSIVE_OWNERSHIP 1u
@@ -422,6 +424,12 @@ typedef struct larkx_remote_spec {
   int cancel;
   int persistent;
   int64_t poll_interval_ms;
+  /**
+   * "http" or "a2a". NULL means "http" so a zeroed version-3 spec stays valid
+   * for callers rebuilt against this header. The stored transport id is this
+   * kind plus the normalized endpoint.
+   */
+  const char* transport;
 } larkx_remote_spec;
 
 typedef struct larkx_agent_spec {
@@ -536,6 +544,19 @@ larkx_code larkx_run_delegations(
     char* buffer,
     size_t capacity,
     size_t* needed,
+    larkx_error* err);
+
+/**
+ * Supplies one text answer to a blocked A2A delegation that asked for input.
+ * The text is stored as the next continuation and the parent run resumes.
+ * It is not written to the event journal. HTTP delegations cannot use this.
+ */
+larkx_code larkx_run_provide_input(
+    larkx_runtime* runtime,
+    const char* run_id,
+    const char* step_key,
+    const char* text,
+    int64_t now_ms,
     larkx_error* err);
 
 larkx_code larkx_run_submit_reconcile(

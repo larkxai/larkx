@@ -209,6 +209,11 @@ struct Delegation {
   std::string inflight_action;
   int64_t created_at = 0;
   int64_t updated_at = 0;
+  std::optional<std::string> context_id;
+  std::optional<std::string> remote_status;
+  std::optional<std::string> continuation_json;
+  std::optional<std::string> remote_identity;
+  std::optional<std::string> remote_message;
 };
 
 struct State {
@@ -415,9 +420,21 @@ struct BlockRemoteInput {
   std::string event_id;
   std::string run_event_id;
   std::string accepted_event_id;
+  // remote_input_required or remote_auth_required. Empty means remote input.
+  std::string code;
 };
 
 Status block_remote_input(State& state, const BlockRemoteInput& input);
+
+struct AcceptRemoteContinuation {
+  Fence fence;
+  int64_t now_ms = 0;
+  std::string step_key;
+  std::string continuation_json;
+  std::string event_id;
+};
+
+Status accept_remote_continuation(State& state, const AcceptRemoteContinuation& input);
 
 struct CompleteDelegationInput {
   Fence fence;

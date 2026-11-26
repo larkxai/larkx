@@ -46,6 +46,9 @@ describe("remote delegation correctness", () => {
         capabilities: { cancel: false },
       },
     });
+    if (declared.transport.type !== "http") {
+      throw new Error("Expected the HTTP transport.");
+    }
     expect(declared.transport.capabilities).toMatchObject({
       dedupe: false,
       lookup: false,
@@ -56,9 +59,9 @@ describe("remote delegation correctness", () => {
   it("parses endpoints the same way the runtime stores them", () => {
     expect(normalizeEndpoint(" http://127.0.0.1:8787/ ")).toBe("http://127.0.0.1:8787");
     expect(normalizeEndpoint("http://127.0.0.1:8787\n")).toBe("http://127.0.0.1:8787");
-    expect(transportId(normalizeEndpoint(" http://127.0.0.1:8787/ "))).toBe(
-      "http:http://127.0.0.1:8787",
-    );
+    expect(
+      transportId({ type: "http", endpoint: normalizeEndpoint(" http://127.0.0.1:8787/ ") }),
+    ).toBe("http:http://127.0.0.1:8787");
     expect(normalizeEndpoint("http://127.0.0.1:8787/tasks/")).toBe("http://127.0.0.1:8787/tasks/");
     expect(() => normalizeEndpoint("http://user:pass@127.0.0.1:8787")).toThrow(/credentials/);
     expect(() => normalizeEndpoint("http://127.0.0.1:8787?x=1")).toThrow(/query/);
@@ -344,7 +347,7 @@ describe("remote delegation correctness", () => {
 });
 
 function transportFor(endpoint: string, timeoutMs = 1_000): RemoteHttpTransport {
-  return remoteAgent({
+  const transport = remoteAgent({
     name: "procurement-agent",
     description: "Find compatible replacement parts.",
     transport: {
@@ -354,6 +357,10 @@ function transportFor(endpoint: string, timeoutMs = 1_000): RemoteHttpTransport 
       headers: () => ({ authorization: "Bearer secret-token" }),
     },
   }).transport;
+  if (transport.type !== "http") {
+    throw new Error("Expected the HTTP transport.");
+  }
+  return transport;
 }
 
 function command(endpoint: string) {
@@ -364,7 +371,8 @@ function command(endpoint: string) {
     operationId: "op-redirect",
     pollIntervalMs: 50,
     remoteAgent: "procurement-agent",
-    transportId: transportId(endpoint),
+    transport: "http" as const,
+    transportId: transportId({ type: "http", endpoint }),
   };
 }
 

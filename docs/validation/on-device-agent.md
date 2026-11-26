@@ -53,4 +53,16 @@ These steps have not been run on a phone.
 5. After the timeline shows an accepted task id, force-quit the app. Confirm the fixture still has that task. Relaunch, recover the run, and confirm the local agent continues without a second task.
 6. Cancel a run after acceptance. If the fixture supports cancel, its task becomes cancelled. The screen must not claim that a remote effect was rolled back.
 
+## A2A and LangGraph
+
+These steps have not been run on a phone. Node process-death tests and the LangGraph integration test do not complete this list.
+
+1. Start `examples/langgraph-a2a-agent` on a computer. Set `PUBLIC_URL` to `http://<lan-address>:<port>` before listening so the agent card names that address. Confirm `GET http://<lan-address>:<port>/.well-known/agent-card.json` from another machine.
+2. On the phone, open Field inspection, choose A2A, and set the endpoint to that LAN URL. Leave discovery off unless the card URL is exactly that endpoint. Do not enter `localhost`.
+3. Start a scripted run. The timeline should show the local run id, the client operation id, a remote task id, a context id, and the delegation state. The remote graph keeps running if the phone is force-quit after the task id is shown.
+4. If the timeline shows an additional-input prompt, enter the model number and send remote input. The same task id must remain.
+5. Reopen the app and recover the run. The fixture or LangGraph inspection log must not show a second task.
+6. Mark the network unavailable before the first send. The delegation stays queued. Restore the network and confirm one send.
+7. Cancel after a task id is known. The screen may say the remote task was cancelled. It must not say a completed remote effect was rolled back.
+
 Record the device, OS, and run id after a real run. Until that note exists, do not describe this checklist as completed.

@@ -1,6 +1,6 @@
 # Node hybrid field inspection
 
-Internal Node host for a local agent that reads inspection notes, looks up a local specification, delegates supplier research, and saves the report. It is not the public SDK and it is not the validated phone demonstration. The remote task lives in `examples/remote-task`. No LarkX Cloud account is required.
+Internal Node host for a local agent that reads inspection notes, looks up a local specification, delegates supplier research, and saves the report. It is not the public SDK and it is not the validated phone demonstration. The HTTP fixture is `examples/remote-task`. `--transport a2a` talks to `examples/a2a-fixture` or `examples/langgraph-a2a-agent`. `--answer` supplies one continuation when the peer asks for more information. No LarkX Cloud account is required.
 
 ```bash
 pnpm install

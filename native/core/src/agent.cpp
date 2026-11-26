@@ -41,6 +41,7 @@ struct RemoteDef {
   std::string description;
   Json schema;
   std::string endpoint;
+  std::string transport = "http";
   DelegationCapabilities capabilities;
   int64_t poll_interval_ms = 1000;
 };
@@ -418,7 +419,35 @@ Status normalize_endpoint(std::string& endpoint) {
   return Status::success();
 }
 
-std::string transport_id_for(const std::string& endpoint) { return "http:" + endpoint; }
+std::string transport_id_for(const std::string& transport, const std::string& endpoint) {
+  return transport + ":" + endpoint;
+}
+
+bool remote_status_ok(const std::string& status) {
+  if (status.empty() || status.size() > 64) {
+    return false;
+  }
+  for (const unsigned char character : status) {
+    const bool digit = character >= '0' && character <= '9';
+    const bool upper = character >= 'A' && character <= 'Z';
+    if (!digit && !upper && character != '_') {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool remote_identity_ok(const std::string& identity) {
+  if (identity.empty() || identity.size() > 80) {
+    return false;
+  }
+  for (const unsigned char character : identity) {
+    if (character < 0x20 || character == 0x7f) {
+      return false;
+    }
+  }
+  return true;
+}
 
 bool delegation_terminal(DelegationState state) {
   return state == DelegationState::Completed || state == DelegationState::Failed || state == DelegationState::Cancelled ||
@@ -660,6 +689,25 @@ struct RemoteAction {
 
 RemoteAction remote_recovery_action(const Delegation& row) {
   RemoteAction action;
+  if (row.continuation_json.has_value()) {
+    if (row.cancel_intent) {
+      if (row.state == DelegationState::Queued) {
+        action.name = "local-cancel";
+        action.reason = "The queued continuation was cancelled before it was sent. The remote task may still be active.";
+        return action;
+      }
+      action.name = "unknown";
+      action.reason = "Cancellation cannot prove whether the continuation was accepted.";
+      return action;
+    }
+    if (row.state == DelegationState::Queued) {
+      action.name = "continue";
+      return action;
+    }
+    action.name = "unknown";
+    action.reason = "The continuation acknowledgement was lost and this peer cannot reconcile it.";
+    return action;
+  }
   if (row.task_id.has_value()) {
     if (row.cancel_intent && row.capabilities.cancel) {
       action.name = "cancel";
@@ -1116,7 +1164,8 @@ struct Runtime::Impl {
       return Status::fail(Code::InvalidArgument, "Remote delegation is not authorized for this run.");
     }
     const RemoteDef* remote = find_remote(agent, row.remote_agent);
-    if (remote == nullptr || remote->endpoint != row.endpoint || transport_id_for(remote->endpoint) != row.transport_id) {
+    if (remote == nullptr || remote->endpoint != row.endpoint ||
+        transport_id_for(remote->transport, remote->endpoint) != row.transport_id) {
       return Status::fail(Code::InvalidArgument, "Remote destination is not registered.");
     }
     return Status::success();
@@ -1145,14 +1194,31 @@ struct Runtime::Impl {
     out.effect_type = "non-idempotent";
     out.cancel_requested = state.run.cancel_requested;
     out.has_wait_until = false;
+    std::string continuation;
+    if (row.continuation_json.has_value()) {
+      Json stored;
+      if (auto status = parse_any(*row.continuation_json, stored); !status.ok()) {
+        return status;
+      }
+      const Json* text = field(stored, "text");
+      if (text == nullptr || text->kind != Json::Kind::String) {
+        return state_error("Stored remote continuation is invalid.");
+      }
+      continuation = text->text;
+    }
+    const auto kind_end = row.transport_id.find(':');
+    const std::string transport = kind_end == std::string::npos ? "http" : row.transport_id.substr(0, kind_end);
     out.detail_json = obj({{"action", jstr(row.inflight_action)},
                            {"capabilities", std::move(capabilities)},
+                           {"contextId", row.context_id.has_value() ? jstr(*row.context_id) : jnull()},
+                           {"continuation", continuation.empty() ? jnull() : jstr(continuation)},
                            {"endpoint", jstr(row.endpoint)},
                            {"input", std::move(input)},
                            {"operationId", jstr(row.operation_id)},
                            {"pollIntervalMs", jnum(row.poll_interval_ms)},
                            {"remoteAgent", jstr(row.remote_agent)},
                            {"taskId", row.task_id.has_value() ? jstr(*row.task_id) : jnull()},
+                           {"transport", jstr(transport)},
                            {"transportId", jstr(row.transport_id)}});
     if (request_id.find(':') == std::string::npos) {
       issued[state.run.run_id] = request_id;
@@ -1200,6 +1266,7 @@ struct Runtime::Impl {
           row.state = DelegationState::UnknownOutcome;
           row.poll_inflight = false;
           row.inflight_action.clear();
+          row.continuation_json.reset();
           row.updated_at = now_ms;
         }
       }
@@ -1278,7 +1345,7 @@ struct Runtime::Impl {
           for (auto& row : next.delegations) {
             if (row.step_key == step_key) {
               row.inflight_action = action;
-              if (action == "submit") {
+              if (action == "submit" || action == "continue") {
                 row.state = DelegationState::Submitting;
               }
               row.updated_at = now_ms;
@@ -1502,7 +1569,7 @@ struct Runtime::Impl {
     row.operation_id = operation;
     row.remote_agent = remote.name;
     row.endpoint = remote.endpoint;
-    row.transport_id = transport_id_for(remote.endpoint);
+    row.transport_id = transport_id_for(remote.transport, remote.endpoint);
     row.input_json = input_json;
     row.capabilities = remote.capabilities;
     row.state = DelegationState::Submitting;
@@ -1740,16 +1807,21 @@ struct Runtime::Impl {
             waiting_input = &row;
           }
         }
-        if (waiting_input != nullptr) {
+          if (waiting_input != nullptr) {
+          const bool authentication =
+              waiting_input->remote_status.has_value() && *waiting_input->remote_status == "TASK_STATE_AUTH_REQUIRED";
           out.kind = LARKX_REQUEST_RECONCILE;
           out.request_id = waiting_input->operation_id;
           out.step_key = waiting_input->step_key;
           out.operation_id = waiting_input->operation_id;
           out.tool_name = waiting_input->remote_agent;
           out.effect_type = "non-idempotent";
-          out.detail_json = obj({{"operationId", jstr(waiting_input->operation_id)},
-                                 {"reason", jstr("remote_input_required")},
+          out.detail_json = obj({{"contextId", waiting_input->context_id.has_value() ? jstr(*waiting_input->context_id) : jnull()},
+                                 {"operationId", jstr(waiting_input->operation_id)},
+                                 {"prompt", waiting_input->remote_message.has_value() ? jstr(*waiting_input->remote_message) : jnull()},
+                                 {"reason", jstr(authentication ? "remote_auth_required" : "remote_input_required")},
                                  {"remoteAgent", jstr(waiting_input->remote_agent)},
+                                 {"remoteStatus", waiting_input->remote_status.has_value() ? jstr(*waiting_input->remote_status) : jnull()},
                                  {"stepKey", jstr(waiting_input->step_key)},
                                  {"taskId", waiting_input->task_id.has_value() ? jstr(*waiting_input->task_id) : jnull()}});
           return Status::success();
@@ -2091,7 +2163,15 @@ Status Runtime::register_agent(const AgentRegistration& spec) {
     if (auto status = normalize_endpoint(defined.endpoint); !status.ok()) {
       return status;
     }
+    defined.transport = remote.transport.empty() ? "http" : remote.transport;
+    if (defined.transport != "http" && defined.transport != "a2a") {
+      return Status::fail(Code::InvalidArgument, "Remote transport must be http or a2a.");
+    }
     defined.capabilities = remote.capabilities;
+    if (defined.transport == "a2a" && (defined.capabilities.dedupe || defined.capabilities.lookup)) {
+      return Status::fail(Code::InvalidArgument,
+                          "A2A does not provide a documented safe dedupe or operation lookup.");
+    }
     if (remote.poll_interval_ms == 0) {
       defined.poll_interval_ms = 1000;
     } else if (remote.poll_interval_ms < 50 || remote.poll_interval_ms > 60000) {
@@ -2372,13 +2452,16 @@ Status Runtime::submit_reconcile(const std::string& run_id, const std::string& r
   if (delegation == nullptr) {
     delegation = find_delegation(state, step->step_key);
   }
+  const bool auth_retry = delegation != nullptr && resolution == "retry" && delegation->task_id.has_value() &&
+                          delegation->remote_status.has_value() &&
+                          *delegation->remote_status == "TASK_STATE_AUTH_REQUIRED";
   if (delegation != nullptr && resolution == "retry") {
     const bool safe = delegation->task_id.has_value() || delegation->capabilities.lookup || delegation->capabilities.dedupe;
-    if (!safe || delegation->state == DelegationState::InputRequired) {
+    if (!safe || (delegation->state == DelegationState::InputRequired && !auth_retry)) {
       return state_error("This remote delegation cannot be retried. Reconcile it as complete or failed.");
     }
   }
-  if (delegation != nullptr && delegation->state == DelegationState::InputRequired && resolution == "retry") {
+  if (delegation != nullptr && delegation->state == DelegationState::InputRequired && resolution == "retry" && !auth_retry) {
     return state_error("Remote input cannot start another task. Reconcile it as complete or failed.");
   }
   ReconcileInput input;
@@ -2604,6 +2687,52 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
     }
     task_id = task->text;
   }
+  std::optional<std::string> context_id = saved.context_id;
+  if (const Json* context = field(body, "contextId"); context != nullptr && context->kind != Json::Kind::Null) {
+    if (context->kind != Json::Kind::String || !task_id_ok(context->text)) {
+      return impl_->fail_remote(std::move(state), fence, now_ms, saved.step_key, "permanent_execution_failure",
+                               "The remote context id is invalid.");
+    }
+    if (saved.context_id.has_value() && *saved.context_id != context->text) {
+      return impl_->fail_remote(std::move(state), fence, now_ms, saved.step_key, "permanent_execution_failure",
+                               "The remote context id changed for this operation.");
+    }
+    context_id = context->text;
+  }
+  std::optional<std::string> remote_status = saved.remote_status;
+  if (const Json* status = field(body, "remoteStatus"); status != nullptr && status->kind != Json::Kind::Null) {
+    if (status->kind != Json::Kind::String || !remote_status_ok(status->text)) {
+      return impl_->fail_remote(std::move(state), fence, now_ms, saved.step_key, "permanent_execution_failure",
+                               "The remote status is invalid.");
+    }
+    remote_status = status->text;
+  }
+  std::optional<std::string> remote_identity = saved.remote_identity;
+  if (const Json* identity = field(body, "remoteIdentity"); identity != nullptr && identity->kind != Json::Kind::Null) {
+    if (identity->kind != Json::Kind::String || !remote_identity_ok(identity->text)) {
+      return impl_->fail_remote(std::move(state), fence, now_ms, saved.step_key, "permanent_execution_failure",
+                               "The remote agent identity is invalid.");
+    }
+    if (saved.remote_identity.has_value() && *saved.remote_identity != identity->text) {
+      return impl_->fail_remote(std::move(state), fence, now_ms, saved.step_key, "permanent_execution_failure",
+                               "The remote agent identity changed for this operation.");
+    }
+    remote_identity = identity->text;
+  }
+  auto remember = [&](Delegation& row) {
+    if (context_id.has_value()) {
+      row.context_id = context_id;
+    }
+    if (remote_status.has_value()) {
+      row.remote_status = remote_status;
+    }
+    if (remote_identity.has_value()) {
+      row.remote_identity = remote_identity;
+    }
+    if (task_id.has_value()) {
+      row.task_id = task_id;
+    }
+  };
   std::string message = "The remote task failed.";
   if (const Json* text = field(body, "message"); text != nullptr && text->kind == Json::Kind::String && !text->text.empty()) {
     message = text->text.substr(0, 300);
@@ -2637,6 +2766,7 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
           row.inflight_action.clear();
           row.poll_inflight = false;
           row.poll_failures = failures;
+          remember(row);
           row.updated_at = now_ms;
         }
       }
@@ -2644,8 +2774,11 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
     });
   };
   // Offline means this attempt sent nothing. It does not erase an earlier attempt that may have been sent.
-  const bool never_transmitted = saved.inflight_action == "submit" && !saved.task_id.has_value() && saved.poll_failures == 0 &&
-                                 (saved.state == DelegationState::Queued || saved.state == DelegationState::Submitting);
+  const bool fresh_attempt = saved.poll_failures == 0 &&
+                             (saved.state == DelegationState::Queued || saved.state == DelegationState::Submitting);
+  const bool never_transmitted =
+      fresh_attempt && ((saved.inflight_action == "submit" && !saved.task_id.has_value()) ||
+                        (saved.inflight_action == "continue" && saved.continuation_json.has_value()));
   auto queue_offline = [&]() -> Status {
     if (!open_attempt) {
       return impl_->schedule_remote_wait(fence, now_ms, run_id, saved.step_key, saved.state, saved.poll_failures, false);
@@ -2672,6 +2805,7 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
           row.state = never_transmitted ? DelegationState::Queued : saved.state;
           row.inflight_action.clear();
           row.poll_inflight = false;
+          remember(row);
           row.updated_at = now_ms;
         }
       }
@@ -2680,15 +2814,25 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
   };
 
   if (outcome == "not_sent") {
-    return impl_->cancel_remote(std::move(state), fence, now_ms, saved.step_key,
-                               "The remote request was cancelled before it was sent.");
+    const char* text = saved.inflight_action == "continue"
+                           ? "The continuation was cancelled before it was sent. The remote task may still be active."
+                           : "The remote request was cancelled before it was sent.";
+    return impl_->cancel_remote(std::move(state), fence, now_ms, saved.step_key, text);
   }
   if (outcome == "offline") {
+    if (saved.inflight_action == "continue" && never_transmitted) {
+      return queue_offline();
+    }
     if (saved.task_id.has_value()) {
       outcome = "network";
     } else {
       return queue_offline();
     }
+  }
+  if (saved.inflight_action == "continue" &&
+      (outcome == "network" || outcome == "timeout" || outcome == "temporary" || outcome == "invalid")) {
+    return impl_->unknown_remote(std::move(state), fence, now_ms, saved.step_key,
+                                "The continuation acknowledgement was lost and this peer cannot reconcile it.");
   }
   if (outcome == "invalid") {
     if (!saved.task_id.has_value()) {
@@ -2720,6 +2864,7 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
         for (auto& row : next.delegations) {
           if (row.step_key == saved.step_key) {
             row.poll_failures = saved.poll_failures + 1;
+            remember(row);
           }
         }
         return Status::success();
@@ -2792,7 +2937,7 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
   if (outcome == "cancelled") {
     return impl_->cancel_remote(std::move(state), fence, now_ms, saved.step_key, "The remote task was cancelled.");
   }
-  if (outcome == "input_required") {
+  if (outcome == "input_required" || outcome == "auth_required") {
     if (!task_id.has_value()) {
       return uncertain(0);
     }
@@ -2802,13 +2947,32 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
     block.step_key = saved.step_key;
     block.attempt_id = attempt_id;
     block.task_id = task_id;
-    block.message = "The remote task needs input. Multi-turn remote input is not available until the A2A milestone.";
+    const bool a2a = saved.transport_id.rfind("a2a:", 0) == 0;
+    const bool authentication = outcome == "auth_required";
+    block.code = authentication ? "remote_auth_required" : "remote_input_required";
+    if (authentication || a2a) {
+      block.message = message;
+    } else {
+      block.message = "The remote task needs input. The HTTP task protocol cannot send it. Reconcile the run locally.";
+    }
     block.event_id = event_id(state, 0);
     block.accepted_event_id = event_id(state, 0);
     block.run_event_id = event_id(state, saved.task_id.has_value() ? 0 : 1);
     impl_->issued.erase(run_id);
     impl_->remote_issued.erase(run_id);
-    return impl_->store->apply(run_id, [&](State& next) { return block_remote_input(next, block); });
+    return impl_->store->apply(run_id, [&](State& next) {
+      if (auto status = block_remote_input(next, block); !status.ok()) {
+        return status;
+      }
+      for (auto& row : next.delegations) {
+        if (row.step_key == saved.step_key) {
+          remember(row);
+          row.remote_message = message.substr(0, 300);
+          row.continuation_json.reset();
+        }
+      }
+      return Status::success();
+    });
   }
   if (outcome == "accepted" || outcome == "working") {
     if (!task_id.has_value()) {
@@ -2827,7 +2991,19 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
         park.delegation_state = next_state;
         park.task_id = task_id;
         park.next_attempt_at = now_ms;
-        if (auto status = impl_->store->apply(run_id, [&](State& next) { return park_delegation(next, park); }); !status.ok()) {
+        if (auto status = impl_->store->apply(run_id, [&](State& next) {
+              if (auto parked = park_delegation(next, park); !parked.ok()) {
+                return parked;
+              }
+              for (auto& row : next.delegations) {
+                if (row.step_key == saved.step_key) {
+                  remember(row);
+                  row.continuation_json.reset();
+                }
+              }
+              return Status::success();
+            });
+            !status.ok()) {
           return status;
         }
         if (auto status = impl_->load(run_id, state); !status.ok()) {
@@ -2838,6 +3014,8 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
                      if (row.step_key == saved.step_key) {
                        row.task_id = task_id;
                        row.state = next_state;
+                       remember(row);
+                       row.continuation_json.reset();
                        row.updated_at = now_ms;
                      }
                    }
@@ -2871,6 +3049,9 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
         for (auto& row : next.delegations) {
           if (row.step_key == saved.step_key) {
             row.poll_failures = 0;
+            remember(row);
+            row.continuation_json.reset();
+            row.remote_message = message.substr(0, 300);
             if (cancel_after) {
               row.cancel_intent = true;
             }
@@ -2885,13 +3066,15 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
     if (auto status = impl_->schedule_remote_wait(fence, now_ms, run_id, saved.step_key, next_state, 0, false); !status.ok()) {
       return status;
     }
-    if (!cancel_after) {
-      return Status::success();
-    }
     return impl_->store->apply(run_id, [&](State& next) {
       for (auto& row : next.delegations) {
         if (row.step_key == saved.step_key) {
-          row.cancel_intent = true;
+          remember(row);
+          row.continuation_json.reset();
+          row.remote_message = message.substr(0, 300);
+          if (cancel_after) {
+            row.cancel_intent = true;
+          }
           row.task_id = task_id;
           row.updated_at = now_ms;
         }
@@ -2934,8 +3117,10 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
     impl_->remote_issued.erase(run_id);
     return impl_->store->apply(run_id, [&](State& next) {
       for (auto& row : next.delegations) {
-        if (row.step_key == saved.step_key && task_id.has_value()) {
-          row.task_id = task_id;
+        if (row.step_key == saved.step_key) {
+          remember(row);
+          row.continuation_json.reset();
+          row.remote_message = message.substr(0, 300);
         }
       }
       if (auto status = complete_delegation(next, done); !status.ok()) {
@@ -2958,6 +3143,41 @@ Status Runtime::submit_delegation(const std::string& run_id, const std::string& 
   return state_error("Remote outcome \"" + outcome.substr(0, 40) + "\" is not recognized.");
 }
 
+Status Runtime::provide_input(const std::string& run_id, const std::string& step_key, const std::string& text, int64_t now_ms) {
+  std::lock_guard<std::mutex> lock(impl_->mutex);
+  if (text.empty() || text.size() > 4000) {
+    return Status::fail(Code::InvalidArgument, "Remote input must be from 1 to 4000 characters.");
+  }
+  for (const unsigned char character : text) {
+    if (character == 0) {
+      return Status::fail(Code::InvalidArgument, "Remote input must be text.");
+    }
+  }
+  Fence fence;
+  if (auto status = impl_->own(run_id, now_ms, fence); !status.ok()) {
+    return status;
+  }
+  State state;
+  if (auto status = impl_->load(run_id, state); !status.ok()) {
+    return status;
+  }
+  const Delegation* waiting = find_delegation(state, step_key);
+  const bool authentication =
+      (waiting != nullptr && waiting->remote_status.has_value() && *waiting->remote_status == "TASK_STATE_AUTH_REQUIRED") ||
+      (state.run.blocked_reason.has_value() && state.run.blocked_reason->find("\"remote_auth_required\"") != std::string::npos);
+  if (authentication) {
+    return Status::fail(Code::InvalidArgument,
+                       "Authentication credentials cannot be stored as remote input. Refresh the host authorization headers and reconcile the run.");
+  }
+  AcceptRemoteContinuation input;
+  input.fence = fence;
+  input.now_ms = now_ms;
+  input.step_key = step_key;
+  input.continuation_json = obj({{"text", jstr(text)}});
+  input.event_id = event_id(state, 0);
+  return impl_->store->apply(run_id, [&](State& next) { return accept_remote_continuation(next, input); });
+}
+
 Status Runtime::delegations_json(const std::string& run_id, std::string& out) {
   std::lock_guard<std::mutex> lock(impl_->mutex);
   State state;
@@ -2969,13 +3189,20 @@ Status Runtime::delegations_json(const std::string& run_id, std::string& out) {
   for (const auto& row : state.delegations) {
     Json item;
     item.kind = Json::Kind::Object;
+    const auto kind_end = row.transport_id.find(':');
+    const std::string transport = kind_end == std::string::npos ? "" : row.transport_id.substr(0, kind_end);
     item.object = {{"cancelIntent", jbool(row.cancel_intent)},
+                   {"contextId", row.context_id.has_value() ? jstr(*row.context_id) : jnull()},
                    {"endpoint", jstr(row.endpoint)},
                    {"operationId", jstr(row.operation_id)},
+                   {"prompt", row.remote_message.has_value() ? jstr(*row.remote_message) : jnull()},
                    {"remoteAgent", jstr(row.remote_agent)},
+                   {"remoteIdentity", row.remote_identity.has_value() ? jstr(*row.remote_identity) : jnull()},
+                   {"remoteStatus", row.remote_status.has_value() ? jstr(*row.remote_status) : jnull()},
                    {"state", jstr(to_string(row.state))},
                    {"stepKey", jstr(row.step_key)},
-                   {"taskId", row.task_id.has_value() ? jstr(*row.task_id) : jnull()}};
+                   {"taskId", row.task_id.has_value() ? jstr(*row.task_id) : jnull()},
+                   {"transport", jstr(transport)}};
     rows.array.push_back(std::move(item));
   }
   out = canonical_json(rows);

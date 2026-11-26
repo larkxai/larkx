@@ -7,6 +7,7 @@ import {
   sqlite,
   type ModelResponse,
   type RemoteCapabilities,
+  type Run,
 } from "@larkxai/node";
 
 const NOTES = "Pump P-104 seal weeps. Do not send this sentence to the remote agent.";
@@ -21,6 +22,8 @@ interface Args {
   readonly reconcile?: "complete" | "fail";
   readonly capabilities: RemoteCapabilities;
   readonly token?: string;
+  readonly transport: "http" | "a2a";
+  readonly answer?: string;
 }
 
 async function main(): Promise<void> {
@@ -85,13 +88,23 @@ async function main(): Promise<void> {
       required: ["objective", "equipment", "component"],
       additionalProperties: false,
     },
-    transport: {
-      type: "http",
-      endpoint: args.endpoint,
-      capabilities: args.capabilities,
-      pollIntervalMs: 50,
-      headers: () => (args.token === undefined ? {} : { authorization: `Bearer ${args.token}` }),
-    },
+    transport:
+      args.transport === "a2a"
+        ? {
+            type: "a2a",
+            endpoint: args.endpoint,
+            pollIntervalMs: 50,
+            headers: () =>
+              args.token === undefined ? {} : { authorization: `Bearer ${args.token}` },
+          }
+        : {
+            type: "http",
+            endpoint: args.endpoint,
+            capabilities: args.capabilities,
+            pollIntervalMs: 50,
+            headers: () =>
+              args.token === undefined ? {} : { authorization: `Bearer ${args.token}` },
+          },
   });
   const agent = runtime.createAgent({
     name: "field-assistant",
@@ -123,6 +136,9 @@ async function main(): Promise<void> {
       if (args.crashDuring === "before-commit" && event.outcome === "completed") {
         stop();
       }
+      if (args.crashDuring === "after-continue" && event.action === "continue") {
+        stop();
+      }
     }
     if (event.type === "remote-waiting") {
       record(args.log, `remote-waiting ${event.waitingFor ?? ""}`);
@@ -132,9 +148,13 @@ async function main(): Promise<void> {
   const blocked = new Promise<string>((resolve) => {
     markBlocked = resolve;
   });
+  let active: Run | null = null;
   runtime.observe((event) => {
     if (event.type === "reconcile-required") {
       markBlocked(event.runId);
+    }
+    if (event.type === "remote-input-required" && args.answer !== undefined && active !== null) {
+      void active.provideInput(args.answer);
     }
   });
   try {
@@ -144,6 +164,10 @@ async function main(): Promise<void> {
           message: "Inspect pump P-104 and recommend replacement parts.",
           runId: "field-run",
         });
+    active = run;
+    if (args.answer !== undefined) {
+      await run.provideInput(args.answer);
+    }
     const settled = run.result().then(
       (result) => ({ kind: "done" as const, result }),
       (error: unknown) => ({ kind: "error" as const, error }),
@@ -323,6 +347,8 @@ function parseArgs(argv: readonly string[]): Args {
   let reconcile: "complete" | "fail" | undefined;
   let token: string | undefined;
   let capabilities = fullCapabilities();
+  let transport: "http" | "a2a" = "http";
+  let answer: string | undefined;
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
     const next = argv[index + 1];
@@ -351,6 +377,12 @@ function parseArgs(argv: readonly string[]): Args {
     } else if (flag === "--capabilities" && next !== undefined) {
       capabilities = capabilitiesFor(next);
       index += 1;
+    } else if (flag === "--transport" && (next === "http" || next === "a2a")) {
+      transport = next;
+      index += 1;
+    } else if (flag === "--answer" && next !== undefined) {
+      answer = next;
+      index += 1;
     }
   }
   if (database.length === 0 || log.length === 0 || endpoint.length === 0) {
@@ -363,6 +395,8 @@ function parseArgs(argv: readonly string[]): Args {
     resume,
     offline,
     capabilities,
+    transport,
+    ...(answer !== undefined ? { answer } : {}),
     ...(crashDuring !== undefined ? { crashDuring } : {}),
     ...(reconcile !== undefined ? { reconcile } : {}),
     ...(token !== undefined ? { token } : {}),

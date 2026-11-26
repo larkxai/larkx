@@ -56,11 +56,11 @@ Before a significant feature, answer:
 | Model training                         | Out of scope    |
 | General-purpose server workflow engine | Out of scope    |
 
-Local inference integrates Cactus and, when developers ask, other existing engines. Remote agents are independently deployed agents built with LangGraph, Google ADK, the OpenAI Agents SDK, or another framework that exposes a compatible interface. A2A is the planned standard for that link. The HTTP task transport stays as a generic mechanism and as the test foundation. It is not a proprietary ecosystem. MCP is a possible later integration for external tools, not current work. Cloud models enter through the model adapter. This repository does not host models or remote agents.
+Local inference integrates Cactus and, when developers ask, other existing engines. Remote agents are independently deployed agents built with LangGraph, Google ADK, the OpenAI Agents SDK, or another framework that exposes a compatible interface. A2A protocol 1.0 JSON-RPC is the supported standard for that link. The HTTP task transport stays as a generic mechanism and as a test foundation. It is not a proprietary ecosystem. MCP is a possible later integration for external tools, not current work. Cloud models enter through the model adapter. This repository does not host models or remote agents.
 
 ## What is implemented
 
-- `native/` — the C++ runtime. ABI version 3. SQLite schema version 2. The agent loop asks the host to invoke a model, a tool, or a remote delegation and then commits the submitted result.
+- `native/` — the C++ runtime. ABI version 4. SQLite schema version 3. The agent loop asks the host to invoke a model, a tool, or a remote delegation and then commits the submitted result.
 - `@larkxai/protocol` — private workspace module. Version 1 states, errors, effect classes, and canonical JSON. Bundled into `@larkxai/react-native`. Not published on its own.
 - `@larkxai/host` — private workspace module. The TypeScript driver. It does not plan steps. It must not import React Native, Node, Expo, or Cactus.
 - `@larkxai/node` — private Node host. It vendors the C++ sources and builds `packages/node/build/larkx_native.node` with `packages/node/scripts/build-native.sh`. Keep the addon, the crash tests, and the remote-delegation tests. Do not publish this package.
@@ -68,8 +68,10 @@ Local inference integrates Cactus and, when developers ask, other existing engin
 - `@larkxai/cactus` — private workspace module used by the React Native Cactus subpath. The C++ runtime does not import it. Node does not depend on it.
 - `@larkxai/telemetry` — private workspace module. Metadata batch contract and HTTP client. The C++ runtime does not feed it a journal.
 - `examples/node-agent` — scripted Node agent and the `SIGKILL` demo.
-- `examples/node-hybrid` — local field agent plus the reference remote task fixture.
+- `examples/node-hybrid` — local field agent plus the HTTP fixture or an A2A peer. Not a public SDK.
 - `examples/remote-task` — development HTTP task fixture. Not a hosted product.
+- `examples/a2a-fixture` — A2A 1.0 failure-injection peer. It does not deduplicate submissions.
+- `examples/langgraph-a2a-agent` — LangGraph graph and official A2A server. The catalog is simulated.
 - `examples/react-native-agent` — scripted agent, Cactus agent, and field inspection, including an optional remote endpoint. Node tests do not prove it ran on a device.
 - `examples/swift-agent` — minimal Swift host for the C ABI. It is not a production Swift SDK.
 
