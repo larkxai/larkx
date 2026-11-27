@@ -1,0 +1,18 @@
+---
+title: Hybrid agent
+description: On-device run, one remote specialist. The runnable server is the LangGraph A2A example.
+---
+
+The device can inspect local data and still ask a specialist that already lives somewhere else. Replacing that specialist, or moving the whole live run off the device, is a different product. LarkX keeps the parent run locally and records the delegation.
+
+## Capabilities
+
+On-device execution, remote specialization, A2A, and a LangGraph service that already speaks A2A. HTTP is the same registration with a different transport.
+
+## What you can run
+
+`examples/langgraph-a2a-agent` is the remote process. It is not imported by the React Native app. The device registers `procurement-agent` and continues locally after the task completes. Automated tests on a computer delegate, answer `provideInput`, and resume a client that was killed while the server was still in the graph. A phone has not run that sequence.
+
+The catalog is fictional. Every recommendation is marked simulated.
+
+Follow [Your first hybrid agent](/getting-started/hybrid-agent) for the copyable client and the server command. The protocol details stay in [A2A](/integrations/a2a) and [LangGraph](/integrations/langgraph).

@@ -5,14 +5,14 @@ description: Cloud errors stay in the exporter. They do not fail the agent.
 
 `runtime.telemetryStatus()` and the value returned by `flushTelemetry()` use `lastError`.
 
-| `lastError`    | What to do                                                                                                                                                                                                                        |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unauthorized` | The key was rejected or does not start with `lkx_ing_`. Fix the key, then call `flushTelemetry()`.                                                                                                                                |
-| `rate_limited` | The organization is over the temporary request or event limit. Wait for the backoff. HTTP 429 is also what Cloud returns today for the permanent per-run event cap, so a 429 is not treated as a dead run.                        |
-| `rejected`     | One run was refused. Other runs can still export. On npm 0.4.0 the destination may hold until a manual flush. On the current default branch, `flushTelemetry()` retries `quota_exceeded` only. A history conflict stays rejected. |
-| `offline`      | The batch is still local. Execution is unaffected.                                                                                                                                                                                |
-| `redirected`   | The collector returned a 3xx. The exporter does not follow it.                                                                                                                                                                    |
-| `unsupported`  | The response was not one this client will treat as success or as a named run rejection. The batch is not marked delivered.                                                                                                        |
+| `lastError`    | What to do                                                                                                                                                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `unauthorized` | The key was rejected or does not start with `lkx_ing_`. Fix the key, then call `flushTelemetry()`.                                                                                                                                         |
+| `rate_limited` | The organization is over the temporary request or event limit. Wait for the backoff. HTTP 429 is also what Cloud returns today for the permanent per-run event cap, so a 429 is not treated as a dead run.                                 |
+| `rejected`     | One run was refused. Other runs can still export. On npm {{sdkVersion}} the destination may hold until a manual flush. On the current default branch, `flushTelemetry()` retries `quota_exceeded` only. A history conflict stays rejected. |
+| `offline`      | The batch is still local. Execution is unaffected.                                                                                                                                                                                         |
+| `redirected`   | The collector returned a 3xx. The exporter does not follow it.                                                                                                                                                                             |
+| `unsupported`  | The response was not one this client will treat as success or as a named run rejection. The batch is not marked delivered.                                                                                                                 |
 
 `rejectedRuns` on the status is the count of runs the exporter is skipping, not a list of Cloud dashboard ids.
 

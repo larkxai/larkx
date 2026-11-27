@@ -1,0 +1,45 @@
+---
+title: Mobile assistant
+description: An illustrative on-device assistant. The runnable piece is the scripted personal-assistant demo.
+---
+
+A personal assistant that reads notes on the phone, calls a couple of tools, and should still be the same run after the app is killed. That is an on-device execution problem, not a one-shot completion.
+
+Ordinary inference returns text and forgets which tool already changed local data. LarkX stores the model decision and the tool result, then resumes from that record.
+
+## Capabilities
+
+Local application data, native tools, more than one step, and offline execution. Cloud is not required.
+
+## What you can run
+
+`examples/react-native-agent` includes `NativeAgentDemo`. It is a scripted agent named `personal-assistant`. The tool `read_notes` is `pure`. The screen starts a run, closes the runtime, opens a new runtime on the same database, and resumes. The committed tool does not run again in that second process. The scripted replies are not inference.
+
+There is no separate published assistant app, and this page does not describe a customer deployment.
+
+Use the same shape in your app:
+
+```typescript
+import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native";
+
+const runtime = await createRuntime({ storage: sqlite() });
+const agent = runtime.createAgent({
+  name: "personal-assistant",
+  version: 1,
+  instructions: "Help the user manage daily tasks.",
+  model: scriptedModel([{ message: "Summary: Example note", finish: "stop", calls: [] }]),
+  tools: [
+    defineTool({
+      name: "read_notes",
+      description: "Read locally stored notes",
+      effects: "pure",
+      schema: { type: "object", properties: {} },
+      handler: () => ({ notes: ["Example note"] }),
+    }),
+  ],
+});
+const run = await agent.start({ message: "Summarize my notes" });
+console.log((await run.result()).message);
+```
+
+Replace `scriptedModel` with [Cactus](/getting-started/on-device-agent) when the summary should come from a local model. Follow [Hello World](/getting-started/hello-world) first if the development build is not running yet.

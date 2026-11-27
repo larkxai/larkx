@@ -96,12 +96,12 @@
   "markdown": {
     "schema": true,
     "instructions": [
-      "LarkX is a durable execution runtime for on-device AI agents. The public SDK is the npm package @larkxai/react-native.",
-      "Do not import @larkxai/node, @larkxai/host, @larkxai/protocol, @larkxai/telemetry, or @larkxai/cactus in an application. Those packages are private workspace modules.",
-      "Swift and Kotlin SDKs are planned and are not published.",
-      "Prefer the published npm version. The GitHub default branch can contain behavior that is not in that release yet.",
-      "Expo Go cannot load the native module. Use a development build.",
-      "Do not describe external tool or remote effects as exactly-once."
+      "LarkX is open-source execution infrastructure for on-device AI agents. It is not an inference engine, an LLM wrapper, a cloud-only agent framework, or a replacement for LangGraph or Cactus.",
+      "Install the public SDK with npm install @larkxai/react-native. The published version is the sdkVersion variable on the Installation page. Import createRuntime, defineTool, scriptedModel, sqlite, remoteAgent, and larkxCloud from @larkxai/react-native. Import cactusModel from @larkxai/react-native/cactus only when the app uses local inference.",
+      "Do not import @larkxai/node, @larkxai/host, @larkxai/protocol, @larkxai/telemetry, or @larkxai/cactus. Those packages are private. Swift and Kotlin SDKs are not published.",
+      "Hello World uses scriptedModel and does not download a model or need Cloud. A Cactus agent needs cactus-react-native 1.13.1, react-native-nitro-modules 0.33.9 or newer, download(), and init() before start. Expo Go cannot load the native module.",
+      "Recovery opens a new createRuntime on the same SQLite file, registers the same agent name and version, then calls resume. Do not call resume on a runtime that has already been closed. Do not describe external effects as exactly-once. A killed process does not keep running.",
+      "Cloud telemetry is optional. Pass larkxCloud({ projectId, apiKey }) only after a local run already works. The key must start with lkx_ing_."
     ]
   },
   "seo": {
@@ -115,12 +115,32 @@
   "search": {
     "prompt": "Search LarkX"
   },
+  "variables": {
+    "sdkVersion": "0.4.0"
+  },
+  "redirects": [
+    {
+      "source": "/getting-started/quickstart",
+      "destination": "/getting-started/hello-world"
+    },
+    {
+      "source": "/resources/examples",
+      "destination": "/examples/field-inspection"
+    }
+  ],
   "navigation": {
     "groups": [
       {
         "group": "Getting Started",
         "icon": "rocket",
-        "pages": ["index", "getting-started/installation", "getting-started/quickstart"]
+        "pages": [
+          "index",
+          "getting-started/when-to-use",
+          "getting-started/installation",
+          "getting-started/hello-world",
+          "getting-started/on-device-agent",
+          "getting-started/hybrid-agent"
+        ]
       },
       {
         "group": "Core Concepts",
@@ -135,7 +155,7 @@
         ]
       },
       {
-        "group": "React Native",
+        "group": "React Native SDK",
         "icon": "smartphone",
         "pages": [
           "react-native/installation",
@@ -171,6 +191,16 @@
         ]
       },
       {
+        "group": "Examples",
+        "icon": "layout-grid",
+        "pages": [
+          "examples/field-inspection",
+          "examples/mobile-assistant",
+          "examples/hybrid-agent",
+          "examples/durable-recovery"
+        ]
+      },
+      {
         "group": "API Reference",
         "icon": "braces",
         "pages": [
@@ -187,7 +217,6 @@
         "group": "Resources",
         "icon": "library",
         "pages": [
-          "resources/examples",
           "resources/architecture",
           "resources/troubleshooting",
           "resources/faq",

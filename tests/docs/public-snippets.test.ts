@@ -1,6 +1,7 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   A2A_PROTOCOL_VERSION,
@@ -145,4 +146,110 @@ describe("public documentation snippets", () => {
     expect(telemetry.endpoint).toBeUndefined();
     expect(new ToolFailure("The note store is locked.", { retryable: true }).retryable).toBe(true);
   });
+
+  it("does not repeat a committed tool when a new runtime opens the same database", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "larkx-docs-recovery-"));
+    const database = sqlite(join(directory, "larkx.db"));
+    try {
+      const first = await createRuntime({ storage: database, ownerId: "notes" });
+      let firstCalls = 0;
+      const agent = first.createAgent({
+        name: "notes",
+        version: 1,
+        instructions: "Read the note and answer in one line.",
+        model: scriptedModel([
+          {
+            message: null,
+            finish: "tool_calls",
+            calls: [{ id: "call-1", name: "read_notes", arguments: {} }],
+          },
+          { message: "Seal needs service.", finish: "stop", calls: [] },
+        ]),
+        tools: [
+          defineTool({
+            name: "read_notes",
+            description: "Read the local inspection notes.",
+            effects: "pure",
+            schema: { type: "object", properties: {} },
+            handler: () => {
+              firstCalls += 1;
+              return { notes: ["Seal weeps above 80 psi."] };
+            },
+          }),
+        ],
+      });
+      const run = await agent.start({ message: "Inspect pump 12", runId: "notes-1" });
+      expect((await run.result()).message).toBe("Seal needs service.");
+      await first.close();
+
+      const restarted = await createRuntime({ storage: database, ownerId: "notes" });
+      let repeated = 0;
+      restarted.createAgent({
+        name: "notes",
+        version: 1,
+        instructions: "Read the note and answer in one line.",
+        model: scriptedModel([]),
+        tools: [
+          defineTool({
+            name: "read_notes",
+            description: "Read the local inspection notes.",
+            effects: "pure",
+            schema: { type: "object", properties: {} },
+            handler: () => {
+              repeated += 1;
+              return { notes: ["this call means a committed step ran again"] };
+            },
+          }),
+        ],
+      });
+      const saved = await restarted.listRuns();
+      const existing = saved.find((item) => item.runId === "notes-1");
+      expect(existing?.status).toBe("COMPLETED");
+      expect(firstCalls).toBe(1);
+      expect(repeated).toBe(0);
+      await restarted.close();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps the published version and the public imports in one place", () => {
+    const packageJson = JSON.parse(
+      readFileSync(new URL("../../packages/react-native/package.json", import.meta.url), "utf8"),
+    ) as { version: string };
+    const docs = JSON.parse(
+      readFileSync(new URL("../../docs/docs.json", import.meta.url), "utf8"),
+    ) as { variables: { sdkVersion: string } };
+    expect(docs.variables.sdkVersion).toBe(packageJson.version);
+
+    const docsRoot = fileURLToPath(new URL("../../docs/", import.meta.url));
+    const pages = mdxFiles(docsRoot);
+    const forbidden = [
+      "@larkxai/node",
+      "@larkxai/host",
+      "@larkxai/protocol",
+      "@larkxai/telemetry",
+      "@larkxai/cactus",
+    ];
+    for (const page of pages) {
+      const source = readFileSync(page, "utf8");
+      expect(source, page).not.toContain(packageJson.version);
+      for (const name of forbidden) {
+        expect(source.includes(`"${name}"`) || source.includes(`'${name}'`), page).toBe(false);
+      }
+    }
+  });
 });
+
+function mdxFiles(directory: string): string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry);
+    if (statSync(path).isDirectory()) {
+      files.push(...mdxFiles(path));
+    } else if (entry.endsWith(".mdx")) {
+      files.push(path);
+    }
+  }
+  return files;
+}

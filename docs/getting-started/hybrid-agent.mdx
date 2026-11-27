@@ -1,0 +1,114 @@
+---
+title: Your first hybrid agent
+description: Keep the agent on the device and delegate one task to an A2A service you already run.
+---
+
+A hybrid agent still executes on the device. LarkX stores the local run and one delegation. The remote process is a separate agent. LarkX does not move the live run to Cloud, and it does not run LangGraph inside the app.
+
+| Piece                             | Where it runs                                        |
+| --------------------------------- | ---------------------------------------------------- |
+| Local model calls and local tools | On the device, in this runtime                       |
+| Remote delegation record          | On the device, in the same SQLite file               |
+| Remote agent                      | In the other process, at the endpoint you registered |
+| Recovery of the local run         | On the device, after your app starts again           |
+
+The remote service in this repository is `examples/langgraph-a2a-agent`. LangGraph stays in that process. The device speaks A2A 1.0 to it. The catalog in that example is fictional and marks every recommendation as simulated.
+
+## Start the remote agent
+
+From a checkout of this repository, on the computer that will receive the delegation:
+
+```bash
+pnpm --filter @larkxai/example-langgraph-a2a build
+PORT=8791 node examples/langgraph-a2a-agent/dist/server.js
+```
+
+The card is `GET http://127.0.0.1:8791/.well-known/agent-card.json`. Use `127.0.0.1` when the runtime and the server are on the same computer. A phone must use the computer's LAN address, such as `http://192.168.1.20:8791`. `localhost` on the phone is the phone.
+
+No model credential is required for the deterministic server. Setting `LARKX_LANGGRAPH_MODEL` is optional and is not part of this quickstart.
+
+## Register it from the device
+
+The scripted model below is only so this page has a complete, deterministic client. It is not the remote agent's model. Replace `scriptedModel` with [Cactus](/getting-started/on-device-agent) when the device should choose the delegation itself. The model asks for the remote agent by name, then writes the local conclusion after the delegation completes.
+
+```typescript
+import { createRuntime, remoteAgent, scriptedModel, sqlite } from "@larkxai/react-native";
+
+const supplier = remoteAgent({
+  name: "procurement-agent",
+  description: "Find a replacement part and a supplier.",
+  transport: {
+    type: "a2a",
+    endpoint: "http://192.168.1.20:8791",
+    discover: true,
+  },
+});
+
+const runtime = await createRuntime({
+  storage: sqlite(),
+  ownerId: "field",
+});
+
+const agent = runtime.createAgent({
+  name: "field-assistant",
+  version: 1,
+  instructions: "Inspect the equipment, then ask procurement for a supplier.",
+  model: scriptedModel([
+    {
+      message: null,
+      finish: "tool_calls",
+      calls: [
+        {
+          id: "remote-1",
+          name: "procurement-agent",
+          arguments: { component: "mechanical seal", equipment: "pump P-104" },
+        },
+      ],
+    },
+    { message: "Saved the supplier recommendation.", finish: "stop", calls: [] },
+  ]),
+  remoteAgents: [supplier],
+});
+
+const run = await agent.start({ message: "Find a seal supplier for pump P-104." });
+const result = await run.result();
+console.log(result.message);
+const delegations = await run.getDelegations();
+console.log(delegations[0]?.state, delegations[0]?.transport);
+```
+
+## Expected result
+
+`result.message` is `"Saved the supplier recommendation."` when the scripted model runs both responses and the remote task completes. `delegations[0].transport` is `"a2a"`. `delegations[0].state` is `"COMPLETED"` after the server finishes the task.
+
+If the server asks for a model number, the local run waits. `run.provideInput("Model P-104")` answers that question on the existing task. Do not put a password or token there. Authentication stays in the transport `headers` function.
+
+The deterministic server's catalog text includes a simulated supplier. That text belongs to the LangGraph process. The local result above is the scripted final message.
+
+## Recovery
+
+A known remote task id is polled after restart. It is not submitted again. A send whose acknowledgement was lost stays blocked for A2A, because A2A does not enable dedupe or lookup.
+
+```typescript
+const restarted = await createRuntime({
+  storage: sqlite(),
+  ownerId: "field",
+});
+restarted.createAgent({
+  name: "field-assistant",
+  version: 1,
+  instructions: "Inspect the equipment, then ask procurement for a supplier.",
+  model: scriptedModel([]),
+  remoteAgents: [supplier],
+});
+const saved = await restarted.listRuns();
+const existing = saved.find((item) => item.status !== "COMPLETED");
+if (existing !== undefined) {
+  const resumed = await restarted.resume(existing.runId);
+  console.log((await resumed.result()).message);
+}
+```
+
+Open a new runtime. Register the same agent name, version, and remote agent, then `resume`. The server process has to still be running if the task was stored only in its memory. This example does not survive a restart of the LangGraph process. Automated tests cover a kill of the Node client during the remote task. That sequence has not been run on a phone.
+
+HTTP delegation uses the same `remoteAgents` list with `transport.type: "http"`. See [HTTP](/integrations/http).

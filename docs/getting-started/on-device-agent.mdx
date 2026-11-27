@@ -1,0 +1,98 @@
+---
+title: Your first on-device agent
+description: Run the supported Cactus model against a local note and resume the same run after restart.
+---
+
+This is the primary LarkX path: a model on the device, a tool that reads local data, and a run that can be opened again from the same SQLite file.
+
+It uses Cactus through `@larkxai/react-native/cactus`. LarkX does not embed the model. The supported demo checkpoint is `qwen3-0.6b`. The download and `init()` happen before `agent.start`, so they are not replayed as agent steps.
+
+This repository has not executed that download or a completion on a phone. Host tests cover the adapter with a stand-in. Treat the snippet as the supported API, and confirm it on your development build.
+
+## Prepare the model
+
+Install the optional peers from the [Local inference](/getting-started/installation) tab and rebuild the development client. Then download once. The download needs a network. After `init()` resolves, local steps in this agent do not.
+
+```typescript
+import { cactusModel } from "@larkxai/react-native/cactus";
+
+const model = cactusModel({ model: "qwen3-0.6b" });
+await model.download();
+await model.init();
+```
+
+The phone needs enough free storage for the checkpoint and enough memory for Cactus to initialize it. This repository does not publish a measured size. Leave the screen that owns the model only after you are finished with it. The field-inspection demo calls `destroy()` when that screen closes.
+
+## Run the agent
+
+```typescript
+import { createRuntime, defineTool, sqlite } from "@larkxai/react-native";
+
+const runtime = await createRuntime({
+  storage: sqlite(),
+  ownerId: "notes",
+});
+
+const agent = runtime.createAgent({
+  name: "notes",
+  version: 1,
+  instructions: "Read the local note and answer in one sentence.",
+  model,
+  tools: [
+    defineTool({
+      name: "read_notes",
+      description: "Read the local inspection notes.",
+      effects: "pure",
+      schema: { type: "object", properties: {} },
+      handler: () => ({ notes: ["Seal weeps above 80 psi."] }),
+    }),
+  ],
+});
+
+const run = await agent.start({
+  message: "What should I do about pump 12?",
+  runId: "notes-local-1",
+});
+const result = await run.result();
+console.log(result.message);
+```
+
+The message is the model's completion, not a scripted string. `result.finish` is `"stop"` when the model stops without another tool call. Turn on airplane mode after `init()` if you want to see that this run does not need the network. Airplane mode does not by itself tell the runtime that a remote agent is offline. This agent has no remote agent.
+
+## Recover the same run
+
+Force-quit is something you do on the device. The code below is the restart path. It opens a new runtime on the same database. Do not call `resume` on the runtime you already closed.
+
+```typescript
+const restarted = await createRuntime({
+  storage: sqlite(),
+  ownerId: "notes",
+});
+
+restarted.createAgent({
+  name: "notes",
+  version: 1,
+  instructions: "Read the local note and answer in one sentence.",
+  model,
+  tools: [
+    defineTool({
+      name: "read_notes",
+      description: "Read the local inspection notes.",
+      effects: "pure",
+      schema: { type: "object", properties: {} },
+      handler: () => ({ notes: ["Seal weeps above 80 psi."] }),
+    }),
+  ],
+});
+
+const saved = await restarted.listRuns();
+const existing = saved.find((item) => item.runId === "notes-local-1");
+if (existing !== undefined && existing.status !== "COMPLETED") {
+  const resumed = await restarted.resume(existing.runId);
+  console.log((await resumed.result()).message);
+}
+```
+
+Register the agent before `resume`. The name and version must match the stored run. A committed tool call is not executed again. If the process died during a `pure` tool, that tool may run again. If it died during a `non-idempotent` tool, the run is `BLOCKED` until the application reconciles it. See [Crash recovery](/concepts/crash-recovery).
+
+`model` must already be initialized in the new process. `download()` and `init()` are not restored by `resume`.

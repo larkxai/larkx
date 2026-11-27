@@ -14,3 +14,12 @@ if (!pattern.test(source)) {
 
 const next = source.replace(pattern, `export const SDK_VERSION = "${pkg.version}";`);
 if (next !== source) writeFileSync(file, next);
+
+const docsFile = "docs/docs.json";
+const docs = readFileSync(docsFile, "utf8");
+const docsPattern = /("sdkVersion": ")[^"]+(")/;
+if (!docsPattern.test(docs)) {
+  throw new Error(`Could not find variables.sdkVersion in ${docsFile}`);
+}
+const docsNext = docs.replace(docsPattern, `$1${pkg.version}$2`);
+if (docsNext !== docs) writeFileSync(docsFile, docsNext);

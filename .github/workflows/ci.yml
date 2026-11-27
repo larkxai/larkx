@@ -30,6 +30,20 @@ jobs:
         run: sh packages/react-native/scripts/build-host-tests.sh
       - run: pnpm exec vitest run
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate the Mintlify site
+        working-directory: docs
+        run: npx --yes mint@4.3.96 validate
+      - name: Check public documentation links
+        working-directory: docs
+        run: npx --yes mint@4.3.96 broken-links --files "**/*.mdx" --check-anchors
+
   native:
     runs-on: ubuntu-latest
     steps:

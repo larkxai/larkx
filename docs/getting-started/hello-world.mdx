@@ -1,0 +1,74 @@
+---
+title: Hello World
+description: Prove the SDK is installed. A scripted model runs one tool and returns a stored result.
+---
+
+This path checks that the development build can open the runtime. It does not download a model, create a Cloud account, or start a remote server.
+
+`scriptedModel` replays responses you write in the source. It demonstrates the runtime. It is not AI inference. The same `createRuntime`, `defineTool`, and `agent.start` calls are what a Cactus agent uses later.
+
+<Steps>
+  <Step title="Open a runtime">
+    `sqlite()` with no path stores `larkx.db` in the application documents directory.
+
+    ```typescript
+    import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native";
+
+    const runtime = await createRuntime({
+      storage: sqlite(),
+      ownerId: "notes",
+    });
+    ```
+
+  </Step>
+  <Step title="Define one local tool and a scripted agent">
+    The tool is `pure`, so an interrupted attempt may run again. The model asks for `read_notes`, then returns one sentence.
+
+    ```typescript
+    const agent = runtime.createAgent({
+      name: "notes",
+      version: 1,
+      instructions: "Read the note and answer in one line.",
+      model: scriptedModel([
+        {
+          message: null,
+          finish: "tool_calls",
+          calls: [{ id: "call-1", name: "read_notes", arguments: {} }],
+        },
+        { message: "Seal needs service.", finish: "stop", calls: [] },
+      ]),
+      tools: [
+        defineTool({
+          name: "read_notes",
+          description: "Read the local inspection notes.",
+          effects: "pure",
+          schema: { type: "object", properties: {} },
+          handler: () => ({ notes: ["Seal weeps above 80 psi."] }),
+        }),
+      ],
+    });
+    ```
+
+  </Step>
+  <Step title="Start the run and read the result">
+    ```typescript
+    const run = await agent.start({ message: "Inspect pump 12", runId: "notes-1" });
+    const result = await run.result();
+    console.log(result.message);
+    await runtime.close();
+    ```
+
+  </Step>
+</Steps>
+
+## Expected output
+
+`result.message` is `"Seal needs service."` and `result.finish` is `"stop"`.
+
+`agent.start` stores the run and starts its driver. `run.result()` waits for that driver. It does not start a second one. `close()` waits for in-flight steps and releases ownership. Do not call `close()` from an engine hook, and do not use that same runtime object after it resolves.
+
+## What this does not show
+
+The sentence came from the script, not from a model download. A killed process does not keep running. To reopen the same database and see that the committed tool call is not repeated, follow [Crash recovery](/concepts/crash-recovery). That page creates a new runtime. It does not reuse the runtime you just closed.
+
+Next, run a real local model in [Your first on-device agent](/getting-started/on-device-agent).

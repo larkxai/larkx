@@ -1,5 +1,5 @@
 ---
-title: HTTP remote agents
+title: HTTP
 description: Delegate one task to an independent HTTP agent. The parent run stays on the device.
 ---
 
@@ -51,7 +51,7 @@ The client operation id and the remote task id are stored separately. A known ta
 
 SDK requests are not meant to follow redirects, including a same-origin `Location`. The credential and body are not sent to the next URL. Rejecting a redirect does not prove the original request had no effect.
 
-The current default branch rejects those redirects in the React Native HTTP module. npm 0.4.0 was published before that module. Check the release notes of the version you install before relying on the native behavior.
+The current default branch rejects those redirects in the React Native HTTP module. npm {{sdkVersion}} was published before that module. Check the release notes of the version you install before relying on the native behavior.
 
 Cancelling the local run does not prove the remote agent stopped, and it does not roll back an effect the peer already applied.
 
