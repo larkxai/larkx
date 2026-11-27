@@ -1,6 +1,6 @@
 {
   "name": "@larkxai/react-native",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "React Native SDK for the shared LarkX C++ runtime.",
   "license": "Apache-2.0",
   "type": "module",
