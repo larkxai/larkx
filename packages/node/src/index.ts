@@ -10,6 +10,7 @@ import { createRequire } from "node:module";
 import { createSqliteTelemetryStore, type TelemetrySql } from "@larkxai/telemetry";
 
 import { createNodeTransport } from "./node-client.js";
+import { createNodeSecureHttp } from "./secure-http.js";
 
 export {
   bindNativeAppState,
@@ -58,6 +59,7 @@ export {
 
 export { larkxCloud } from "@larkxai/host";
 export { createNodeTransport } from "./node-client.js";
+export { createNodeSecureHttp } from "./secure-http.js";
 
 const telemetryDatabases = new Map<string, SqliteDatabase>();
 
@@ -78,6 +80,7 @@ export async function createRuntime(
     ...options,
     runtimeName: options.runtimeName ?? "node",
     ...(telemetryState !== undefined ? { telemetryState } : {}),
+    ...(options.http === undefined ? { http: createNodeSecureHttp() } : {}),
     transport: options.transport ?? createNodeTransport(),
   });
 }

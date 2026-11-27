@@ -10,12 +10,13 @@ import {
   type RemoteA2aTransport,
   type RemoteHttpResponse,
 } from "./remote.js";
+import { secureFailure, type SecureHttp } from "./secure-http.js";
 
 const TASK_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 const MAX_RESULT_BYTES = 65_536;
 
 /**
- * Speaks A2A 1.0 JSON-RPC with `fetch`. `@a2a-js/sdk` also implements 1.0, but
+ * Speaks A2A 1.0 JSON-RPC. `@a2a-js/sdk` also implements 1.0, but
  * its server, gRPC, and database transports depend on Node.js, so the public
  * React Native SDK does not import it.
  */
@@ -24,6 +25,7 @@ export async function performA2aDelegation(input: {
   readonly transport: RemoteA2aTransport;
   readonly signal: AbortSignal;
   readonly online: () => boolean | Promise<boolean>;
+  readonly http?: SecureHttp;
 }): Promise<DelegationReport> {
   const action = input.command.action;
   if (action !== "submit" && action !== "continue" && action !== "poll" && action !== "cancel") {
@@ -64,7 +66,7 @@ export async function performA2aDelegation(input: {
   try {
     const response = input.transport.execute
       ? await input.transport.execute(call)
-      : await fetchA2a(input.transport, call);
+      : await fetchA2a(input.transport, call, input.http);
     return interpretRpc(action, response, identity, {
       id: requestId(call),
       ...(input.command.taskId !== undefined ? { taskId: input.command.taskId } : {}),
@@ -82,6 +84,7 @@ async function discover(input: {
   readonly command: DelegationCommand;
   readonly transport: RemoteA2aTransport;
   readonly signal: AbortSignal;
+  readonly http?: SecureHttp;
 }): Promise<{ readonly identity?: string; readonly report?: DelegationReport }> {
   let last: DelegationReport = {
     outcome: "offline",
@@ -100,7 +103,7 @@ async function discover(input: {
     try {
       response = input.transport.execute
         ? await input.transport.execute(call)
-        : await fetchA2a(input.transport, call);
+        : await fetchA2a(input.transport, call, input.http);
     } catch (error) {
       if (isAbort(error) || input.signal.aborted) {
         return {
@@ -282,6 +285,7 @@ function rpcCall(
 async function fetchA2a(
   transport: RemoteA2aTransport,
   call: RemoteA2aCall,
+  http: SecureHttp | undefined,
 ): Promise<RemoteHttpResponse> {
   const extra = (await transport.headers?.(call.endpoint)) ?? {};
   const headers: Record<string, string> = {
@@ -296,6 +300,27 @@ async function fetchA2a(
   }
   const linked = linkAbortSignal(call.signal, transport.timeoutMs ?? DEFAULT_REMOTE_TIMEOUT_MS);
   try {
+    if (http) {
+      const result = await http.request({
+        url: call.url,
+        method: call.method,
+        headers,
+        ...(call.body !== undefined ? { body: call.body } : {}),
+        timeoutMs: transport.timeoutMs ?? DEFAULT_REMOTE_TIMEOUT_MS,
+        signal: linked.signal,
+        maxResponseBytes: 65_536,
+      });
+      if (!result.ok) {
+        if (result.error === "redirect") {
+          return { status: result.status ?? 302, body: "" };
+        }
+        throw secureFailure(result.error);
+      }
+      if (result.status >= 300 && result.status < 400) {
+        return { status: result.status, body: "" };
+      }
+      return { status: result.status, body: result.body };
+    }
     const response = await fetch(call.url, {
       method: call.method,
       headers,

@@ -2,6 +2,7 @@ import type { EffectType, JsonObject, JsonValue } from "@larkxai/protocol";
 import { isErrorCode, LarkxError, type ErrorCode } from "@larkxai/protocol";
 
 import { performA2aDelegation } from "./a2a.js";
+import type { SecureHttp } from "./secure-http.js";
 import {
   A2A_REMOTE_CAPABILITIES,
   performHttpDelegation,
@@ -229,6 +230,12 @@ export interface CreateRuntimeOptions {
   /** Durable export cursor. The Node and React Native SDKs supply one beside the agent database. */
   readonly telemetryState?: TelemetryCursorStore;
   readonly runtimeName?: "node" | "react-native";
+  /**
+   * SDK HTTP transport. React Native passes the native module. Node passes a
+   * client that does not follow redirects. Omitted calls use `fetch` with
+   * `redirect: "manual"`, which is not sufficient on React Native.
+   */
+  readonly http?: SecureHttp;
 }
 
 export interface AgentOptions {
@@ -432,6 +439,12 @@ export function bindNativeAppState(runtime: Runtime, appState: AppStateSource): 
   };
 }
 
+const runtimeHttpTransports = new WeakMap<Runtime, SecureHttp>();
+
+function runtimeHttp(runtime: Runtime): SecureHttp | undefined {
+  return runtimeHttpTransports.get(runtime);
+}
+
 export class Runtime {
   readonly ownerId: string;
   readonly versions: RuntimeVersions;
@@ -443,6 +456,7 @@ export class Runtime {
   private readonly clock: () => number;
   private readonly sleeper: (milliseconds: number) => Promise<void>;
   private readonly isOnline: () => boolean | Promise<boolean>;
+  private readonly http: SecureHttp | undefined;
   private readonly agents = new Map<string, RegisteredAgent>();
   private readonly runs = new Map<string, Run>();
   private readonly drivers = new Map<string, Run>();
@@ -482,6 +496,10 @@ export class Runtime {
       options.sleep ??
       ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
     this.isOnline = options.isOnline ?? (() => true);
+    this.http = options.http;
+    if (options.http !== undefined) {
+      runtimeHttpTransports.set(this, options.http);
+    }
     this.versions = this.versionsReady;
     this.telemetrySession =
       options.telemetry === undefined
@@ -495,6 +513,7 @@ export class Runtime {
               now: () => this.now(),
               online: () => this.isOnline(),
             },
+            ...(options.http === undefined ? {} : { http: options.http }),
           });
   }
 
@@ -1436,6 +1455,7 @@ export class Run {
         action: command.action,
         ...(command.taskId !== undefined ? { taskId: command.taskId } : {}),
       });
+      const http = runtimeHttp(this.runtime);
       const report =
         remote.transport.type === "a2a"
           ? await performA2aDelegation({
@@ -1443,12 +1463,14 @@ export class Run {
               transport: remote.transport,
               signal: controller.signal,
               online: () => this.runtime.online(),
+              ...(http === undefined ? {} : { http }),
             })
           : await performHttpDelegation({
               command,
               transport: remote.transport,
               signal: controller.signal,
               online: () => this.runtime.online(),
+              ...(http === undefined ? {} : { http }),
             });
       if (!this.alive()) {
         return;

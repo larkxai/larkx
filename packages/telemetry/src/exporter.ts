@@ -28,6 +28,7 @@ export type TelemetryPhase = "idle" | "pending" | "offline" | "unauthorized";
 export type TelemetryError =
   | "unauthorized"
   | "offline"
+  | "rate_limited"
   | "invalid_batch"
   | "history_conflict"
   | "sequence_gap"
@@ -37,6 +38,7 @@ export type TelemetryError =
   | "stopped"
   | "unsupported"
   | "redirected"
+  | "rejected"
   | null;
 
 export interface TelemetryStatus {
@@ -45,6 +47,8 @@ export interface TelemetryStatus {
   readonly pendingEvents: number;
   readonly lastError: TelemetryError;
   readonly lastSyncedAt: number | null;
+  /** Runs whose telemetry was permanently rejected and is not counted as delivered. */
+  readonly rejectedRuns: number;
 }
 
 export interface FlushResult {
@@ -87,7 +91,11 @@ export interface TelemetryFetch {
       readonly body: string;
       readonly signal: AbortSignal;
     },
-  ): Promise<{ readonly status: number; text(): Promise<string> }>;
+  ): Promise<{
+    readonly status: number;
+    text(): Promise<string>;
+    readonly headers?: { get(name: string): string | null };
+  }>;
 }
 
 export interface CloudTelemetry {
@@ -101,8 +109,9 @@ export interface CloudTelemetry {
   setActive(active: boolean): void;
   /**
    * Send pending batches.
-   * A manual flush retries an authorization failure or a held batch once.
-   * The foreground timer calls this with `manual: false` so those failures do not spin.
+   * A manual flush retries an authorization failure, a held batch, or a
+   * `quota_exceeded` run once. Historical conflicts stay rejected. The
+   * foreground timer retries none of those.
    */
   flush(options?: { readonly manual?: boolean }): Promise<FlushResult>;
   stop(): Promise<void>;
@@ -187,6 +196,7 @@ class CloudExporter implements CloudTelemetry {
   private phase: TelemetryPhase = "idle";
   private lastError: TelemetryError = null;
   private pendingEvents = 0;
+  private rejectedCount = 0;
   private syncedAt: number | null = null;
 
   constructor(options: CloudTelemetryOptions) {
@@ -222,6 +232,9 @@ class CloudExporter implements CloudTelemetry {
   async prepare(): Promise<void> {
     const loaded = await this.ensureDocument();
     await this.ensureAnchor(loaded);
+    const destinationKey = await this.destinationIdPromise;
+    const destination = this.document?.destinations[destinationKey];
+    this.rejectedCount = destination ? Object.keys(destination.rejectedRuns).length : 0;
   }
 
   setActive(active: boolean): void {
@@ -257,6 +270,7 @@ class CloudExporter implements CloudTelemetry {
       pendingEvents: this.pendingEvents,
       lastError: this.lastError,
       lastSyncedAt: this.syncedAt,
+      rejectedRuns: this.rejectedCount,
     };
   }
 
@@ -284,6 +298,7 @@ class CloudExporter implements CloudTelemetry {
         ...destination,
         authBlocked: false,
         hold: null,
+        rejectedRuns: withoutQuotaRejections(destination.rejectedRuns),
         backoffAttempt: 0,
         nextAttemptAt: 0,
       };
@@ -296,7 +311,7 @@ class CloudExporter implements CloudTelemetry {
       return this.result(false);
     }
     let delivered = false;
-    for (let turn = 0; turn < 8; turn += 1) {
+    for (let turn = 0, guard = 0; turn < 8 && guard < 10_000; turn += 1, guard += 1) {
       if (this.stopped) {
         this.lastError = "stopped";
         break;
@@ -324,14 +339,15 @@ class CloudExporter implements CloudTelemetry {
       if (!pending) {
         const built = await this.selectBatch(loaded.installationId, destination);
         if (built === "idle") {
+          const rejected = Object.keys(destination.rejectedRuns).length > 0;
           destination = {
             ...destination,
             backoffAttempt: 0,
             nextAttemptAt: 0,
-            lastError: null,
+            lastError: rejected ? "rejected" : null,
           };
-          this.phase = "idle";
-          this.lastError = null;
+          this.phase = rejected ? "pending" : "idle";
+          this.lastError = rejected ? "rejected" : null;
           break;
         }
         if (typeof built === "string") {
@@ -432,6 +448,22 @@ class CloudExporter implements CloudTelemetry {
         destination = await this.persist(destinationKey, destination);
         continue;
       }
+      if (outcome.kind === "reject-run") {
+        destination = {
+          ...destination,
+          rejectedRuns: rememberRejection(destination, pending.runId, outcome.error),
+          pending: null,
+          hold: null,
+          lastError: "rejected",
+          backoffAttempt: 0,
+          nextAttemptAt: 0,
+        };
+        this.phase = "pending";
+        this.lastError = "rejected";
+        destination = await this.persist(destinationKey, destination);
+        turn -= 1;
+        continue;
+      }
       if (outcome.kind === "unauthorized") {
         destination = {
           ...destination,
@@ -458,12 +490,22 @@ class CloudExporter implements CloudTelemetry {
         destination = await this.persist(destinationKey, destination);
         break;
       }
-      const retryError = outcome.kind === "malformed" ? "malformed_ack" : "offline";
+      const retryError =
+        outcome.kind === "malformed"
+          ? "malformed_ack"
+          : outcome.error === "rate_limited"
+            ? "rate_limited"
+            : "offline";
       const attempt = destination.backoffAttempt + 1;
+      const delay = retryDelay(
+        attempt,
+        this.maxBackoffMs,
+        outcome.kind === "retry" ? outcome.retryAfterMs : undefined,
+      );
       destination = {
         ...destination,
         backoffAttempt: attempt,
-        nextAttemptAt: this.clock.now() + backoffMs(attempt, this.maxBackoffMs),
+        nextAttemptAt: this.clock.now() + delay,
         lastError: retryError,
         hold: null,
       };
@@ -473,6 +515,7 @@ class CloudExporter implements CloudTelemetry {
       break;
     }
     this.syncedAt = destination.lastSyncedAt;
+    this.rejectedCount = Object.keys(destination.rejectedRuns).length;
     this.pendingEvents = await this.countPending(destination);
     if (this.pendingEvents === 0 && this.phase !== "unauthorized" && this.lastError === null) {
       this.phase = "idle";
@@ -494,7 +537,7 @@ class CloudExporter implements CloudTelemetry {
     let blocked: "gap" | "unsupported" | null = null;
     const source: TelemetrySource = { ...this.sourceBase, installationId, ...metadata };
     for (const listed of runs) {
-      if (sealed.has(listed.runId)) {
+      if (sealed.has(listed.runId) || destination.rejectedRuns[listed.runId] !== undefined) {
         continue;
       }
       const cursor = destination.cursors[listed.runId] ?? 0;
@@ -586,7 +629,12 @@ class CloudExporter implements CloudTelemetry {
         signal: controller.signal,
       });
       const text = await response.text();
-      return interpretResponse(response.status, text, pending);
+      const outcome = interpretResponse(response.status, text, pending);
+      if (outcome.kind === "retry" && outcome.error === "rate_limited") {
+        const retryAfterMs = retryAfterMilliseconds(response.headers);
+        return retryAfterMs === null ? outcome : { ...outcome, retryAfterMs };
+      }
+      return outcome;
     } catch {
       return { kind: "retry" };
     } finally {
@@ -601,7 +649,7 @@ class CloudExporter implements CloudTelemetry {
     const sealed = new Set(destination.sealedRuns);
     let count = 0;
     for (const head of await this.journal.listHeads()) {
-      if (sealed.has(head.runId)) {
+      if (sealed.has(head.runId) || destination.rejectedRuns[head.runId] !== undefined) {
         continue;
       }
       const cursor = destination.cursors[head.runId] ?? 0;
@@ -765,6 +813,7 @@ function mergeDestination(local: DestinationState, stored: DestinationState): De
     observedAt,
     sealedRuns: [...sealed].sort(),
     pending: pickPending(local.pending, stored.pending, cursors),
+    rejectedRuns: { ...stored.rejectedRuns, ...local.rejectedRuns },
     backoffAttempt: Math.max(local.backoffAttempt, stored.backoffAttempt),
     nextAttemptAt: Math.max(local.nextAttemptAt, stored.nextAttemptAt),
     authBlocked: local.authBlocked || stored.authBlocked,
@@ -809,8 +858,9 @@ type PostOutcome =
   | { kind: "rewind"; haveThroughSequence: number }
   | { kind: "unauthorized" }
   | { kind: "hold"; error: Exclude<TelemetryError, null> }
+  | { kind: "reject-run"; error: string }
   | { kind: "malformed" }
-  | { kind: "retry" };
+  | { kind: "retry"; error?: "offline" | "rate_limited"; retryAfterMs?: number };
 
 function interpretResponse(status: number, text: string, pending: PendingBatch): PostOutcome {
   if (status >= 300 && status < 400) {
@@ -819,8 +869,11 @@ function interpretResponse(status: number, text: string, pending: PendingBatch):
   if (status === 401) {
     return { kind: "unauthorized" };
   }
+  if (status === 429) {
+    return { kind: "retry", error: "rate_limited" };
+  }
   if (RETRYABLE.has(status) || status === 0) {
-    return { kind: "retry" };
+    return { kind: "retry", error: "offline" };
   }
   let body: unknown;
   try {
@@ -832,6 +885,9 @@ function interpretResponse(status: number, text: string, pending: PendingBatch):
     return status >= 200 && status < 300 ? { kind: "malformed" } : holdFor(status);
   }
   if (status === 409 && body["error"] === "sequence_gap") {
+    if (!sameRun(body, pending)) {
+      return { kind: "hold", error: "unsupported" };
+    }
     const have = body["haveThroughSequence"];
     if (
       typeof have === "number" &&
@@ -841,19 +897,44 @@ function interpretResponse(status: number, text: string, pending: PendingBatch):
     ) {
       return { kind: "rewind", haveThroughSequence: have };
     }
-    return { kind: "hold", error: "sequence_gap" };
+    return { kind: "reject-run", error: "sequence_gap" };
   }
   if (status === 409 && body["error"] === "history_conflict") {
-    return { kind: "hold", error: "history_conflict" };
+    if (!sameRun(body, pending)) {
+      return { kind: "hold", error: "unsupported" };
+    }
+    return { kind: "reject-run", error: "history_conflict" };
+  }
+  if (status === 409 && body["error"] === "run_rejected") {
+    if (!sameRun(body, pending)) {
+      return { kind: "hold", error: "unsupported" };
+    }
+    return { kind: "reject-run", error: "rejected" };
+  }
+  if (status === 409) {
+    return { kind: "hold", error: "unsupported" };
+  }
+  if (status === 400 && body["error"] === "quota_exceeded") {
+    return { kind: "reject-run", error: "quota_exceeded" };
   }
   if (status === 400) {
     return { kind: "hold", error: "invalid_batch" };
   }
+  if (status === 413 && body["error"] === "batch_too_large") {
+    return { kind: "reject-run", error: "batch_too_large" };
+  }
   if (status === 413) {
-    return { kind: "hold", error: "batch_too_large" };
+    return { kind: "hold", error: "unsupported" };
+  }
+  if (status === 422 && body["error"] === "sensitive_payload") {
+    const named = body["runId"];
+    if (typeof named === "string" && named !== pending.runId) {
+      return { kind: "hold", error: "unsupported" };
+    }
+    return { kind: "reject-run", error: "sensitive_payload" };
   }
   if (status === 422) {
-    return { kind: "hold", error: "sensitive_payload" };
+    return { kind: "hold", error: "unsupported" };
   }
   if (status < 200 || status >= 300) {
     return { kind: "retry" };
@@ -890,7 +971,7 @@ function holdFor(status: number): PostOutcome {
     return { kind: "hold", error: "batch_too_large" };
   }
   if (status === 422) {
-    return { kind: "hold", error: "sensitive_payload" };
+    return { kind: "hold", error: "unsupported" };
   }
   return { kind: "retry" };
 }
@@ -911,10 +992,62 @@ function backoffMs(attempt: number, max: number): number {
   return Math.min(max, 1000 * 2 ** shift);
 }
 
+function retryDelay(attempt: number, max: number, retryAfterMs: number | undefined): number {
+  const backoff = backoffMs(attempt, max);
+  if (retryAfterMs === undefined) {
+    return backoff;
+  }
+  return Math.min(Math.max(backoff, retryAfterMs), Math.max(max, 60_000));
+}
+
+function retryAfterMilliseconds(
+  headers: { get(name: string): string | null } | undefined,
+): number | null {
+  const raw = headers?.get("retry-after") ?? headers?.get("Retry-After");
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  const trimmed = raw.trim();
+  if (/^\d+$/.test(trimmed)) {
+    return Math.min(Number(trimmed) * 1000, 5 * 60 * 1000);
+  }
+  const date = Date.parse(trimmed);
+  if (Number.isNaN(date)) {
+    return null;
+  }
+  return Math.min(Math.max(0, date - Date.now()), 5 * 60 * 1000);
+}
+
+function sameRun(body: Record<string, unknown>, pending: PendingBatch): boolean {
+  return body["runId"] === pending.runId;
+}
+
+/** A later manual flush may retry a quota rejection. Historical conflicts stay. */
+function withoutQuotaRejections(
+  rejectedRuns: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const next: Record<string, string> = {};
+  for (const [runId, reason] of Object.entries(rejectedRuns)) {
+    if (reason !== "quota_exceeded") {
+      next[runId] = reason;
+    }
+  }
+  return next;
+}
+
+function rememberRejection(
+  destination: DestinationState,
+  runId: string,
+  reason: string,
+): Record<string, string> {
+  return { ...destination.rejectedRuns, [runId]: reason.slice(0, 40) };
+}
+
 function asTelemetryError(value: string | null): TelemetryError {
   if (
     value === "unauthorized" ||
     value === "offline" ||
+    value === "rate_limited" ||
     value === "invalid_batch" ||
     value === "history_conflict" ||
     value === "sequence_gap" ||
@@ -923,7 +1056,8 @@ function asTelemetryError(value: string | null): TelemetryError {
     value === "malformed_ack" ||
     value === "stopped" ||
     value === "unsupported" ||
-    value === "redirected"
+    value === "redirected" ||
+    value === "rejected"
   ) {
     return value;
   }

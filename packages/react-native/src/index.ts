@@ -2,6 +2,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import { NativeModules } from "react-native";
 
 import { requireNativeUuid } from "./native-id.js";
+import { createNativeSecureHttp } from "./secure-http.js";
 
 import {
   createRuntime as openHostRuntime,
@@ -112,6 +113,7 @@ export async function createRuntime(
         return module.invoke(method, JSON.stringify(args));
       },
     },
+    http: options.http ?? createNativeSecureHttp(),
   });
 }
 

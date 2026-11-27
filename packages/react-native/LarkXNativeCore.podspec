@@ -14,6 +14,7 @@ Pod::Spec.new do |spec|
   spec.source = { :git => "https://github.com/larkxai/larkx.git", :tag => spec.version.to_s }
   spec.source_files = [
     "ios/LarkXNativeCore.mm",
+    "ios/LarkXHttp.mm",
     "cpp/host_session.cpp",
     "cpp/host_session.h",
     "cpp/utf.cpp",

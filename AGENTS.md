@@ -6,7 +6,7 @@ Instructions for people and coding agents changing LarkX.
 
 LarkX is the durable execution runtime for mobile-first, offline-first AI agents. It fills gaps in the existing agent ecosystem. It does not replace LangGraph, Google ADK, the OpenAI Agents SDK, or an inference engine.
 
-One C++ runtime owns orchestration, the SQLite execution record, and remote delegation state. `@larkxai/react-native` is the only public npm SDK. `@larkxai/node` is a private workspace package used to test that runtime without building a mobile application. Both use one host driver. The host sends HTTP. Optional Cloud observability belongs in `larkxai/cloud`, not here. This repository does not host remote agents.
+One C++ runtime owns orchestration, the SQLite execution record, and remote delegation state. `@larkxai/react-native` is the only public npm SDK. `@larkxai/node` is a private workspace package used to test that runtime without building a mobile application. Both use one host driver. The host sends HTTP through a client that does not follow redirects. React Native uses `LarkXHttp` rather than `fetch` for those calls. Optional Cloud observability belongs in `larkxai/cloud`, not here. This repository does not host remote agents.
 
 ## Product and engineering philosophy
 

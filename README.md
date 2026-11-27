@@ -272,7 +272,7 @@ Not implemented, and not claimed by a green host test:
 - Production Cloud ingestion. The device posts telemetry version 1 with storage schema 3. The Cloud repository accepts that schema. Production `https://cloud.larkx.ai` was last deployed on 20 November 2026 and still accepts schema 1 only, so those batches are rejected there. The device-side exporter and the local collector fixture are implemented. The field-inspection walkthrough is [docs/demo/flagship-mobile-demo.md](docs/demo/flagship-mobile-demo.md).
 - Production Swift and Kotlin SDKs.
 
-Opt-in telemetry reads the native journal and posts metadata. It is off by default. Prompts, model text, tool arguments, and tool results stay on the device. A failed export does not fail a run. See [docs/architecture/telemetry.md](docs/architecture/telemetry.md).
+Opt-in telemetry reads the native journal and posts metadata. It is off by default. Prompts, model text, tool arguments, and tool results stay on the device. A failed export does not fail a run. SDK HTTP calls do not follow redirects. A permanently rejected run does not block telemetry for other runs. See [docs/architecture/telemetry.md](docs/architecture/telemetry.md). The published npm package is the last GitHub Release. These networking changes ship in source until that release.
 
 ## Examples
 

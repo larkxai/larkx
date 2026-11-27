@@ -137,7 +137,7 @@ Hermes:
 
 - No physical-device run is recorded in this repository.
 - `qwen3-0.6b` is the only Cactus model wired here. Its tool calling on a phone is unvalidated.
-- Native redirect prevention is not implemented. JavaScript treats 3xx and a changed final URL as not acknowledged. React Native 0.88 can still send the body and, on Android, the `Authorization` header can be stripped only after the platform follows the redirect. The same gap applies to HTTP and A2A delegation. Node tests do not prove the phone withheld the body.
+- Native redirect handling is implemented in `LarkXHttp` and covered by Node socket tests. It has not been executed on a phone. A device check still has to confirm that a 302 does not receive the ingestion key or the request body.
 - Production Cloud ingestion is not verified.
 - The LangGraph example stores tasks in memory. Restarting that server drops them. The phone's recovery cannot retrieve a task the server forgot.
 - The runtime network switch is not the radio.
