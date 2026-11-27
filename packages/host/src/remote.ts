@@ -1,6 +1,8 @@
 import type { JsonValue } from "@larkxai/protocol";
 import { LarkxError } from "@larkxai/protocol";
 
+import { secureFailure, type SecureHttp } from "./secure-http.js";
+
 /**
  * Capabilities a remote adapter declares. The runtime stores these with the
  * delegation and uses that copy during recovery. A later registration cannot
@@ -318,6 +320,7 @@ export async function performHttpDelegation(input: {
   readonly transport: RemoteHttpTransport;
   readonly signal: AbortSignal;
   readonly online: () => boolean | Promise<boolean>;
+  readonly http?: SecureHttp;
 }): Promise<DelegationReport> {
   const action = input.command.action;
   if (action !== "submit" && action !== "lookup" && action !== "poll" && action !== "cancel") {
@@ -339,7 +342,7 @@ export async function performHttpDelegation(input: {
   try {
     const response = input.transport.execute
       ? await input.transport.execute(call)
-      : await fetchHttp(input.transport, call);
+      : await fetchHttp(input.transport, call, input.http);
     return interpretHttp(action, input.command.operationId, response);
   } catch (error) {
     if (isAbort(error) || input.signal.aborted) {
@@ -397,6 +400,7 @@ function httpCall(
 async function fetchHttp(
   transport: RemoteHttpTransport,
   call: RemoteHttpCall,
+  http: SecureHttp | undefined,
 ): Promise<RemoteHttpResponse> {
   const extra = (await transport.headers?.(call.endpoint)) ?? {};
   const headers: Record<string, string> = { accept: "application/json" };
@@ -412,6 +416,27 @@ async function fetchHttp(
   const timeoutMs = transport.timeoutMs ?? DEFAULT_REMOTE_TIMEOUT_MS;
   const linked = linkAbortSignal(call.signal, timeoutMs);
   try {
+    if (http) {
+      const result = await http.request({
+        url: call.url,
+        method: call.method,
+        headers,
+        ...(call.body !== undefined ? { body: call.body } : {}),
+        timeoutMs,
+        signal: linked.signal,
+        maxResponseBytes: 65_536,
+      });
+      if (!result.ok) {
+        if (result.error === "redirect") {
+          return { status: result.status ?? 302, body: "" };
+        }
+        throw secureFailure(result.error);
+      }
+      if (result.status >= 300 && result.status < 400) {
+        return { status: result.status, body: "" };
+      }
+      return { status: result.status, body: result.body };
+    }
     const response = await fetch(call.url, {
       method: call.method,
       headers,

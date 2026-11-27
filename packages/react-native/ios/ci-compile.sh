@@ -17,6 +17,10 @@ clang++ -std=c++20 -fobjc-arc -fPIC -c \
   -I "$ROOT/native/core/include" \
   "$PACKAGE/ios/LarkXNativeCore.mm" \
   -o "$CORE/LarkXNativeCore.o"
+clang++ -std=c++20 -fobjc-arc -fPIC -c \
+  -I "$PACKAGE/ios/ci" \
+  "$PACKAGE/ios/LarkXHttp.mm" \
+  -o "$CORE/LarkXHttp.o"
 clang++ -std=c++20 -fPIC -c \
   -I "$ROOT/native/abi/include" \
   -I "$ROOT/native/core/include" \

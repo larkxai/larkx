@@ -457,7 +457,233 @@ describe("cloud telemetry export", () => {
     expect((await resumed.flush({ manual: true })).delivered).toBe(true);
     await resumed.stop();
   });
+
+  it("exports a later run after Cloud permanently rejects one run", async () => {
+    const seen: string[] = [];
+    const journal = mutableJournal();
+    const telemetry = createCloudTelemetry({
+      endpoint: ENDPOINT,
+      apiKey: API_KEY,
+      journal: journal.source,
+      state: createMemoryTelemetryStore(),
+      appId: "example-app",
+      runtime: "node",
+      intervalMs: 0,
+      fetch: async (_url, init) => {
+        seen.push(init.body);
+        const runId = runIdOf(init.body);
+        if (runId === "run-a") {
+          return {
+            status: 400,
+            async text() {
+              return JSON.stringify({
+                error: "quota_exceeded",
+                limit: "monthly_observed_runs",
+                allowance: 1,
+              });
+            },
+          };
+        }
+        return accept(init.body);
+      },
+    });
+    await telemetry.prepare();
+    journal.documents.push(journalFor("run-a", 1), journalFor("run-b", 2));
+    const flushed = await telemetry.flush({ manual: false });
+    expect(flushed.delivered).toBe(true);
+    expect(flushed.error).toBe("rejected");
+    expect(seen.map((body) => runIdOf(body))).toEqual(["run-a", "run-b"]);
+    expect(telemetry.current().rejectedRuns).toBe(1);
+    const again = await telemetry.flush({ manual: false });
+    expect(again.delivered).toBe(false);
+    expect(seen).toHaveLength(2);
+    await telemetry.stop();
+  });
+
+  it("keeps a permanent rejection across restart and still exports another run", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "larkx-telemetry-reject-"));
+    const database = new DatabaseSync(join(directory, "cursor.sqlite"));
+    const seen: string[] = [];
+    try {
+      const journal = mutableJournal();
+      const state = createSqliteTelemetryStore(sqlStore(database));
+      let rejectRunA = true;
+      const fetch: TelemetryFetch = async (_url, init) => {
+        seen.push(init.body);
+        if (rejectRunA && runIdOf(init.body) === "run-a") {
+          return {
+            status: 409,
+            async text() {
+              return JSON.stringify({ error: "history_conflict", runId: "run-a", sequence: 1 });
+            },
+          };
+        }
+        return accept(init.body);
+      };
+      const telemetry = createCloudTelemetry({
+        endpoint: ENDPOINT,
+        apiKey: API_KEY,
+        journal: journal.source,
+        state,
+        appId: "example-app",
+        runtime: "node",
+        intervalMs: 0,
+        fetch,
+      });
+      await telemetry.prepare();
+      journal.documents.push(journalFor("run-a", 1), journalFor("run-b", 2));
+      expect((await telemetry.flush({ manual: false })).error).toBe("rejected");
+      await telemetry.stop();
+      const resumed = createCloudTelemetry({
+        endpoint: ENDPOINT,
+        apiKey: API_KEY,
+        journal: journal.source,
+        state,
+        appId: "example-app",
+        runtime: "node",
+        intervalMs: 0,
+        fetch,
+      });
+      await resumed.prepare();
+      expect((await resumed.flush({ manual: false })).delivered).toBe(false);
+      expect(seen.filter((body) => runIdOf(body) === "run-a")).toHaveLength(1);
+      expect(seen.filter((body) => runIdOf(body) === "run-b")).toHaveLength(1);
+      seen.length = 0;
+      rejectRunA = false;
+      expect((await resumed.flush({ manual: true })).delivered).toBe(true);
+      expect(seen.map((body) => runIdOf(body))).toEqual(["run-a"]);
+      await resumed.stop();
+    } finally {
+      database.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("does not treat an unknown HTTP 400 as delivered", async () => {
+    const seen: string[] = [];
+    const journal = mutableJournal();
+    const telemetry = createCloudTelemetry({
+      endpoint: ENDPOINT,
+      apiKey: API_KEY,
+      journal: journal.source,
+      state: createMemoryTelemetryStore(),
+      appId: "example-app",
+      runtime: "node",
+      intervalMs: 0,
+      fetch: async (_url, init) => {
+        seen.push(init.body);
+        return {
+          status: 400,
+          async text() {
+            return JSON.stringify({ error: "not_a_known_code" });
+          },
+        };
+      },
+    });
+    await telemetry.prepare();
+    journal.documents.push(journalFor("run-a", 1), journalFor("run-b", 2));
+    const flushed = await telemetry.flush({ manual: false });
+    expect(flushed.delivered).toBe(false);
+    expect(flushed.error).toBe("invalid_batch");
+    expect(seen).toHaveLength(1);
+    expect((await telemetry.flush({ manual: false })).delivered).toBe(false);
+    expect(seen).toHaveLength(1);
+    await telemetry.stop();
+  });
+
+  it("waits for Retry-After on HTTP 429 and then delivers", async () => {
+    let now = 1_000;
+    let calls = 0;
+    const journal = mutableJournal();
+    const telemetry = createCloudTelemetry({
+      endpoint: ENDPOINT,
+      apiKey: API_KEY,
+      journal: journal.source,
+      state: createMemoryTelemetryStore(),
+      appId: "example-app",
+      runtime: "node",
+      intervalMs: 0,
+      clock: { now: () => now },
+      fetch: async (_url, init) => {
+        calls += 1;
+        if (calls === 1) {
+          return {
+            status: 429,
+            headers: {
+              get(name: string) {
+                return name.toLowerCase() === "retry-after" ? "30" : null;
+              },
+            },
+            async text() {
+              return JSON.stringify({ error: "rate_limited" });
+            },
+          };
+        }
+        return accept(init.body);
+      },
+    });
+    await telemetry.prepare();
+    journal.documents.push(sampleJournal());
+    expect((await telemetry.flush({ manual: false })).error).toBe("rate_limited");
+    now += 29_000;
+    expect((await telemetry.flush({ manual: false })).delivered).toBe(false);
+    expect(calls).toBe(1);
+    now += 2_000;
+    expect((await telemetry.flush({ manual: false })).delivered).toBe(true);
+    expect(calls).toBe(2);
+    await telemetry.stop();
+  });
+
+  it("retries an unauthorized destination after a manual flush", async () => {
+    let status = 401;
+    const journal = mutableJournal();
+    const telemetry = createCloudTelemetry({
+      endpoint: ENDPOINT,
+      apiKey: API_KEY,
+      journal: journal.source,
+      state: createMemoryTelemetryStore(),
+      appId: "example-app",
+      runtime: "node",
+      intervalMs: 0,
+      fetch: async (_url, init) => {
+        if (status === 401) {
+          return {
+            status: 401,
+            async text() {
+              return JSON.stringify({ error: "unauthorized" });
+            },
+          };
+        }
+        return accept(init.body);
+      },
+    });
+    await telemetry.prepare();
+    journal.documents.push(sampleJournal());
+    expect((await telemetry.flush({ manual: false })).error).toBe("unauthorized");
+    expect((await telemetry.flush({ manual: false })).delivered).toBe(false);
+    status = 200;
+    expect((await telemetry.flush({ manual: true })).delivered).toBe(true);
+    await telemetry.stop();
+  });
 });
+
+function journalFor(runId: string, updatedAt: number): JournalDocument {
+  const document = sampleJournal(runId);
+  return {
+    ...document,
+    run: { ...document.run, runId, updatedAt },
+    events: document.events.map((event) => ({
+      ...event,
+      runId,
+      eventId: `${runId}-${event.eventId}`,
+    })),
+  };
+}
+
+function runIdOf(body: string): string {
+  const parsed = JSON.parse(body) as { runs: Array<{ runId: string }> };
+  return parsed.runs[0]?.runId ?? "";
+}
 
 function sampleJournal(runId = "letters-1"): JournalDocument {
   return {

@@ -13,6 +13,8 @@ import {
 
 import type { JsonValue } from "@larkxai/protocol";
 
+import { secureFailure, type SecureHttp } from "./secure-http.js";
+
 export interface HostObservation {
   readonly source: "host";
   readonly type:
@@ -36,6 +38,8 @@ export interface TelemetryDeliveryStatus {
   readonly droppedObservations: number;
   /** True when more than the documented export window is still waiting in the journal. */
   readonly exportBehind: boolean;
+  /** Runs Cloud permanently rejected. They are not counted as synchronized. */
+  readonly rejectedRuns: number;
 }
 
 export interface TelemetryExporter {
@@ -55,6 +59,7 @@ export interface TelemetryExporter {
     readonly lastError: string | null;
     readonly lastSyncedAt: number | null;
     readonly installationId?: string | null;
+    readonly rejectedRuns?: number;
   };
 }
 
@@ -128,6 +133,7 @@ interface SessionOptions {
   readonly state?: TelemetryCursorStore;
   readonly runtimeName: "node" | "react-native";
   readonly journal: JournalCall;
+  readonly http?: SecureHttp;
 }
 
 export class TelemetrySession {
@@ -191,6 +197,7 @@ export class TelemetrySession {
       observations: [...this.observations],
       droppedObservations: this.droppedObservations,
       exportBehind: current.pendingEvents > EXPORT_WINDOW,
+      rejectedRuns: current.rejectedRuns ?? 0,
     };
   }
 
@@ -266,7 +273,9 @@ function openExporter(options: SessionOptions): TelemetryExporter {
           },
         };
       }
-      return defaultFetch(url, init);
+      return options.http === undefined
+        ? defaultFetch(url, init)
+        : secureTelemetryFetch(options.http, url, init);
     },
     ...(hooks.beforeRequest ? { beforeRequest: hooks.beforeRequest } : {}),
     ...(hooks.beforeCheckpoint ? { beforeCheckpoint: hooks.beforeCheckpoint } : {}),
@@ -461,6 +470,62 @@ async function defaultFetch(
   return readTelemetryResponse(response, url);
 }
 
+async function secureTelemetryFetch(
+  http: SecureHttp,
+  url: string,
+  init: {
+    readonly method: "POST";
+    readonly headers: Readonly<Record<string, string>>;
+    readonly body: string;
+    readonly signal: AbortSignal;
+  },
+): Promise<{
+  readonly status: number;
+  readonly headers?: { get(name: string): string | null };
+  text(): Promise<string>;
+}> {
+  const result = await http.request({
+    url,
+    method: "POST",
+    headers: init.headers,
+    body: init.body,
+    timeoutMs: 60_000,
+    signal: init.signal,
+    maxResponseBytes: 65_536,
+  });
+  if (!result.ok) {
+    if (result.error === "redirect") {
+      return {
+        status: result.status ?? 302,
+        async text() {
+          return "";
+        },
+      };
+    }
+    throw secureFailure(result.error);
+  }
+  if (result.status >= 300 && result.status < 400) {
+    return {
+      status: result.status,
+      async text() {
+        return "";
+      },
+    };
+  }
+  const headers = result.headers;
+  return {
+    status: result.status,
+    headers: {
+      get(name: string) {
+        return headers[name.toLowerCase()] ?? null;
+      },
+    },
+    async text() {
+      return result.body;
+    },
+  };
+}
+
 export function disabledTelemetryStatus(): TelemetryDeliveryStatus {
   return {
     enabled: false,
@@ -472,5 +537,6 @@ export function disabledTelemetryStatus(): TelemetryDeliveryStatus {
     observations: [],
     droppedObservations: 0,
     exportBehind: false,
+    rejectedRuns: 0,
   };
 }

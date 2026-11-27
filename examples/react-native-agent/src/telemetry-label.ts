@@ -1,7 +1,14 @@
 import type { TelemetryDeliveryStatus } from "@larkxai/react-native";
 
 export type TelemetryPresentation =
-  "Disabled" | "Pending" | "Offline" | "Synchronized" | "Unauthorized" | "Configuration error";
+  | "Disabled"
+  | "Pending"
+  | "Offline"
+  | "Synchronized"
+  | "Unauthorized"
+  | "Configuration error"
+  | "Rate limited"
+  | "Partial synchronization";
 
 const CONFIGURATION_ERRORS = new Set([
   "invalid_batch",
@@ -20,6 +27,12 @@ export function telemetryPresentation(status: TelemetryDeliveryStatus): Telemetr
   }
   if (status.phase === "unauthorized" || status.lastError === "unauthorized") {
     return "Unauthorized";
+  }
+  if (status.lastError === "rate_limited") {
+    return "Rate limited";
+  }
+  if (status.lastError === "rejected" || status.rejectedRuns > 0) {
+    return "Partial synchronization";
   }
   if (
     status.lastError === "redirected" ||

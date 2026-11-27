@@ -24,6 +24,12 @@ export interface DestinationState {
    */
   readonly sealedRuns: readonly string[];
   readonly pending: PendingBatch | null;
+  /**
+   * Runs whose telemetry Cloud permanently rejected.
+   * The value is a short internal reason. The journal is unchanged and the
+   * delivery cursor is not advanced. A manual flush clears this set.
+   */
+  readonly rejectedRuns: Readonly<Record<string, string>>;
   readonly backoffAttempt: number;
   readonly nextAttemptAt: number;
   readonly authBlocked: boolean;
@@ -57,6 +63,7 @@ export function emptyDestination(): DestinationState {
     observedAt: {},
     sealedRuns: [],
     pending: null,
+    rejectedRuns: {},
     backoffAttempt: 0,
     nextAttemptAt: 0,
     authBlocked: false,
@@ -209,6 +216,7 @@ function parseDestination(value: unknown): DestinationState | null {
     observedAt: numberMap(value["observedAt"]),
     sealedRuns: stringList(value["sealedRuns"]),
     pending: parsePending(pending),
+    rejectedRuns: boundedStringMap(value["rejectedRuns"]),
     backoffAttempt: nonNegative(value["backoffAttempt"]),
     nextAttemptAt: nonNegative(value["nextAttemptAt"]),
     authBlocked: value["authBlocked"] === true,
@@ -290,6 +298,19 @@ function stringMap(value: unknown): Record<string, string> {
   for (const [key, item] of Object.entries(value)) {
     if (typeof item === "string") {
       result[key] = item;
+    }
+  }
+  return result;
+}
+
+/** At most 64 short reason codes. Older documents without the field stay empty. */
+function boundedStringMap(value: unknown): Record<string, string> {
+  const parsed = stringMap(value);
+  const result: Record<string, string> = {};
+  for (const key of Object.keys(parsed).slice(0, 64)) {
+    const reason = parsed[key];
+    if (reason !== undefined && reason.length > 0 && reason.length <= 40 && key.length <= 200) {
+      result[key] = reason;
     }
   }
   return result;

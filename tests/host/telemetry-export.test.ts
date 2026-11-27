@@ -202,7 +202,7 @@ describe("native execution telemetry", () => {
 
   it("keeps a run successful when the collector fails", async () => {
     const cases: Array<{ status: number; body: string; error: string }> = [
-      { status: 429, body: "", error: "offline" },
+      { status: 429, body: "", error: "rate_limited" },
       { status: 503, body: "", error: "offline" },
       { status: 401, body: "", error: "unauthorized" },
       { status: 400, body: JSON.stringify({ error: "invalid_batch" }), error: "invalid_batch" },

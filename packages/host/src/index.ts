@@ -32,6 +32,7 @@ export {
   type RemoteTransport,
 } from "./remote.js";
 export { performA2aDelegation } from "./a2a.js";
+export type { SecureHttp, SecureHttpRequestInput, SecureHttpResult } from "./secure-http.js";
 
 export {
   ToolFailure,

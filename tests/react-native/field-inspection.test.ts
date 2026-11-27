@@ -157,6 +157,17 @@ describe("field inspection demo", () => {
     expect(telemetryPresentation(status({ lastError: "redirected" }))).toBe("Configuration error");
     expect(telemetryPresentation(status({ phase: "pending", pendingEvents: 2 }))).toBe("Pending");
     expect(telemetryPresentation(status({ phase: "idle", lastSyncedAt: 10 }))).toBe("Synchronized");
+    expect(telemetryPresentation(status({ phase: "offline", lastError: "rate_limited" }))).toBe(
+      "Rate limited",
+    );
+    expect(
+      telemetryPresentation(status({ phase: "pending", lastError: "rejected", rejectedRuns: 1 })),
+    ).toBe("Partial synchronization");
+    expect(
+      telemetryPresentation(
+        status({ phase: "idle", lastSyncedAt: 10, lastError: "rejected", rejectedRuns: 1 }),
+      ),
+    ).toBe("Partial synchronization");
   });
 });
 
@@ -171,6 +182,7 @@ function status(overrides: Partial<TelemetryDeliveryStatus>): TelemetryDeliveryS
     observations: [],
     droppedObservations: 0,
     exportBehind: false,
+    rejectedRuns: 0,
     ...overrides,
   };
 }

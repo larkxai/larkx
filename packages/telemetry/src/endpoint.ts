@@ -68,10 +68,15 @@ export async function readTelemetryResponse(
     readonly status: number;
     readonly url?: string;
     readonly type?: string;
+    readonly headers?: { get(name: string): string | null };
     text(): Promise<string>;
   },
   requestedUrl: string,
-): Promise<{ readonly status: number; text(): Promise<string> }> {
+): Promise<{
+  readonly status: number;
+  readonly headers?: { get(name: string): string | null };
+  text(): Promise<string>;
+}> {
   if (
     telemetryResponseDisposition({
       requestedUrl,
@@ -87,7 +92,11 @@ export async function readTelemetryResponse(
       },
     };
   }
-  return { status: response.status, text: () => response.text() };
+  return {
+    status: response.status,
+    ...(response.headers === undefined ? {} : { headers: response.headers }),
+    text: () => response.text(),
+  };
 }
 
 function sameUrl(left: string, right: string): boolean {
