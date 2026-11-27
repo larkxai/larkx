@@ -46,6 +46,6 @@ Cloud is free during the public beta. That does not change the on-device license
 
 Local execution continues when Cloud is unreachable, when the key is rejected, and when a run is refused. `close()` does not wait for the collector.
 
-The device posts the telemetry schema this SDK implements. The Cloud repository accepts the current storage schema. Production `https://cloud.larkx.ai` was last recorded in this repository as a 20 November 2026 deployment that still accepted an older schema, so a phone upload to production is not verified here.
+The device posts the telemetry schema this SDK implements. npm {{sdkVersion}} remembers a permanently rejected run and keeps exporting other runs. `flushTelemetry()` retries a quota rejection only.
 
-The default branch also contains exporter behavior that is newer than npm {{sdkVersion}}: a permanently rejected run stays rejected, and other runs continue. That behavior ships in source until a release whose changelog includes it. See [Troubleshooting](/cloud/troubleshooting).
+Production `https://cloud.larkx.ai` answering `GET /v1/health` does not prove that a phone upload is accepted. Do not describe production ingestion as verified until an authorized application has sent a real run. See [Troubleshooting](/cloud/troubleshooting).

@@ -73,10 +73,23 @@ jobs:
       - name: Compile the React Native iOS bridge
         run: sh packages/react-native/ios/ci-compile.sh
 
+  published-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install and typecheck the published npm package
+        run: node scripts/inspect-published-sdk.mjs
+
   native-android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Install CMake
         run: sudo apt-get update && sudo apt-get install -y cmake unzip curl
       - name: Install the Android NDK
@@ -84,7 +97,7 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/ndk.zip" https://dl.google.com/android/repository/android-ndk-r26d-linux.zip
           unzip -q "$RUNNER_TEMP/ndk.zip" -d "$RUNNER_TEMP"
           echo "ANDROID_NDK=$RUNNER_TEMP/android-ndk-r26d" >> "$GITHUB_ENV"
-      - name: Build the React Native JNI library
+      - name: Build the React Native JNI library from this checkout
         run: |
           cmake -S packages/react-native/android -B packages/react-native/build-android \
             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
@@ -93,3 +106,5 @@ jobs:
             -DANDROID_STL=c++_shared \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build packages/react-native/build-android
+      - name: Build the same library from the published npm package
+        run: node scripts/inspect-published-sdk.mjs --android
