@@ -1,0 +1,28 @@
+---
+title: Durable execution
+description: Committed steps are replayed. Interrupted steps follow their effect class.
+---
+
+The runtime writes the decision and the result of each step into SQLite before it moves on. Replay reads that record. It does not fold an event journal back into state, and it does not run a completed step handler again.
+
+Step keys come from the caller identity of the step, not from a source line. A completed handler is skipped on purpose.
+
+## What is durable
+
+- The model decision, once committed, is replayed. The model function is not called again for that step.
+- A tool result, once committed, is replayed. The handler is not called again.
+- A remote delegation stores the operation before the host sends it. Recovery uses that record.
+
+## What is not exactly-once
+
+The process can die after a tool has performed an external effect and before that result is committed. The runtime can then retry a `pure` or `idempotent` step. It cannot prove the first attempt had no effect.
+
+Do not describe a tool, a network call, or a remote agent as exactly-once.
+
+## Versions
+
+Protocol version, storage schema version, and the agent `version` are three different numbers. A run stores the agent version it started with. It is not replayed on another version.
+
+## Telemetry is not the execution record
+
+Cloud, when you enable it, reads a copy of metadata from the journal. It does not start, retry, reconcile, or cancel a run. A failed upload does not fail the agent. See [Privacy and telemetry](/cloud/privacy).

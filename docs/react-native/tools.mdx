@@ -1,0 +1,35 @@
+---
+title: Defining tools
+description: Declare a local tool, its JSON schema, and its effect class.
+---
+
+```typescript
+import { defineTool } from "@larkxai/react-native";
+
+const readNotes = defineTool({
+  name: "read_notes",
+  description: "Read locally stored notes.",
+  effects: "idempotent",
+  schema: { type: "object", properties: {} },
+  handler: (_input, context) => ({
+    notes: ["Example note"],
+    operationId: context.operationId,
+  }),
+});
+```
+
+`name` must match `^[a-z][a-z0-9_]{0,63}$`. `description` cannot be empty. `schema.type` must be `"object"`. `inputSchema` is accepted as an alias of `schema`. `handler` is required. `run` is an alias of `handler`.
+
+`context` gives you `operationId`, `attempt`, `runId`, `stepKey`, `callId`, and `signal`. An idempotent handler should treat `operationId` as the identity of the effect.
+
+Throw `ToolFailure` when the tool itself fails:
+
+```typescript
+import { ToolFailure } from "@larkxai/react-native";
+
+throw new ToolFailure("The note store is locked.", { retryable: true });
+```
+
+`retryable: false` is the default. A retryable failure uses the tool's retry policy when you set one. `retry` accepts `maxAttempts`, `initialIntervalMs`, `maxIntervalMs`, and `backoff` of `"fixed"` or `"exponential"`.
+
+The effect class is not optional. See [Tool side effects](/concepts/tool-side-effects).

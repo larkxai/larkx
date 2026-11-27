@@ -1,0 +1,43 @@
+---
+title: Tool side effects
+description: Classify every tool as pure, idempotent, or non-idempotent. The class decides what happens after an interruption.
+---
+
+`defineTool` requires `effects`:
+
+| Class            | After an interruption                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| `pure`           | The handler may run again.                                                                      |
+| `idempotent`     | The handler may run again with the same `operationId`.                                          |
+| `non-idempotent` | The step becomes `UNKNOWN_OUTCOME`. The run becomes `BLOCKED`. The handler is not called again. |
+
+```typescript
+defineTool({
+  name: "read_notes",
+  description: "Read the local inspection notes.",
+  effects: "pure",
+  schema: { type: "object", properties: {} },
+  handler: () => ({ notes: ["Seal weeps above 80 psi."] }),
+});
+```
+
+Use `idempotent` when the handler can see `context.operationId` and skip an effect it already recorded. Use `non-idempotent` when a repeated call would do something the application cannot undo, such as sending a message or charging a payment.
+
+## Reconciliation
+
+A blocked non-idempotent step waits for the application. `run.reconcile` accepts:
+
+```typescript
+await run.reconcile({
+  resolution: "complete",
+  output: { saved: true },
+});
+```
+
+`resolution` is `"retry"`, `"complete"`, or `"fail"`. Call it only while the run is waiting. Otherwise it throws `invalid_state_transition`.
+
+`ToolFailure` fails the tool attempt. Set `retryable: true` only when the handler knows the attempt can be repeated safely.
+
+## Remote calls
+
+A remote agent is also an external effect. The local run stores the delegation, then the host sends it. Cancelling the local run does not roll back a remote effect that already happened. See [HTTP remote agents](/integrations/http).

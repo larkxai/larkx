@@ -1,0 +1,51 @@
+---
+title: Telemetry
+description: larkxCloud options and TelemetryDeliveryStatus.
+---
+
+```typescript
+import { larkxCloud } from "@larkxai/react-native";
+
+const telemetry = larkxCloud({
+  projectId: "my-project",
+  apiKey: "lkx_ing_…",
+});
+```
+
+## `larkxCloud` options
+
+| Field              | Required | Meaning                                                   |
+| ------------------ | -------- | --------------------------------------------------------- |
+| `projectId`        | Yes      | Sent as `source.appId` unless `appId` is set.             |
+| `apiKey`           | Yes      | Ingestion key. Must start with `lkx_ing_` to export.      |
+| `endpoint`         | No       | Origin. Default `https://cloud.larkx.ai`.                 |
+| `appId`            | No       | Overrides the app id sent to Cloud.                       |
+| `flushIntervalMs`  | No       | Default 15000. `0` disables the timer.                    |
+| `batchSize`        | No       | Upper bound inside the 500-event contract.                |
+| `requestTimeoutMs` | No       | Per-request deadline.                                     |
+| `metadata`         | No       | Installation fields such as `platform` and `deviceModel`. |
+| `createId`         | No       | UUID factory. React Native fills this from `expo-crypto`. |
+| `sha256`           | No       | Destination hash. Hermes can pass `expo-crypto`.          |
+
+The custom sink is `{ exporter }`. It is a different object, not extra fields on `larkxCloud`.
+
+## `TelemetryDeliveryStatus`
+
+Returned by `telemetryStatus()` and `flushTelemetry()`.
+
+| Field                 | Meaning                                                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `enabled`             | Telemetry was configured.                                                                                        |
+| `phase`               | `"disabled"`, `"idle"`, `"pending"`, `"offline"`, or `"unauthorized"`.                                           |
+| `pendingEvents`       | Events still waiting in the local export window.                                                                 |
+| `lastError`           | `null`, or a code such as `unauthorized`, `offline`, `rate_limited`, `rejected`, `redirected`, or `unsupported`. |
+| `rejectedRuns`        | How many runs the exporter is currently skipping.                                                                |
+| `exportBehind`        | More than 2000 eligible events are still unsent.                                                                 |
+| `lastSyncedAt`        | When a batch was last accepted, or `null`.                                                                       |
+| `installationId`      | The id minted for this installation, or `null` before the first export.                                          |
+| `observations`        | Host lifecycle observations still held for export.                                                               |
+| `droppedObservations` | Host observations dropped because the local observation buffer was full.                                         |
+
+`lastError: "rejected"` means synchronization is partial. It does not mean the local run failed.
+
+npm 0.4.0 and the current default branch differ on how long a rejected run stays skipped. The type above is the same. See [Troubleshooting](/cloud/troubleshooting).

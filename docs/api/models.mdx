@@ -1,0 +1,37 @@
+---
+title: Model providers
+description: The Model interface, scriptedModel, and the Cactus adapter.
+---
+
+A model is any object with `id`, `model`, and `complete(request, context)`.
+
+```typescript
+interface Model {
+  readonly id: string;
+  readonly model: string;
+  readonly capabilities?: { readonly toolCalling?: boolean };
+  complete(request: ModelRequest, context: ModelContext): Promise<ModelResponse>;
+}
+```
+
+`ModelRequest` carries `messages` and `tools`. `ModelContext` carries `signal`. Honor `signal.aborted`.
+
+`ModelResponse`:
+
+| Field      | Meaning                                                     |
+| ---------- | ----------------------------------------------------------- |
+| `message`  | Assistant text, or `null` when the turn is only tool calls. |
+| `finish`   | `"stop"`, `"tool_calls"`, `"length"`, or `"error"`.         |
+| `calls`    | `{ id, name, arguments }[]`.                                |
+| `usage`    | Optional token counts.                                      |
+| `timingMs` | Optional `total` and `timeToFirstToken`.                    |
+
+## `scriptedModel(responses, options?)`
+
+Returns a `Model` that yields `responses` in order. `options.id` defaults to `"scripted"`. `options.model` defaults to `"scripted-1"`. `invocations` counts completed calls. A missing response throws. Use this in tests and in the quickstart. It is not a production model.
+
+## Cactus
+
+`cactusModel` from `@larkxai/react-native/cactus` returns a `Model`. See [Cactus](/integrations/cactus). No other inference provider is shipped.
+
+There is no cloud-model adapter in the public SDK. A remote model belongs behind your own `Model` or behind a remote agent, and you have to accept that those calls leave the device.

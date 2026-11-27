@@ -1,0 +1,34 @@
+---
+title: Agent
+description: createAgent options and agent.start.
+---
+
+`runtime.createAgent` returns an `Agent`. It does not start a run.
+
+## Options
+
+| Field          | Required | Meaning                                                    |
+| -------------- | -------- | ---------------------------------------------------------- |
+| `name`         | Yes      | Stable workflow name.                                      |
+| `version`      | Yes      | Definition version stored on the run.                      |
+| `instructions` | Yes      | Local instructions for the model.                          |
+| `model`        | Yes      | A `Model`. `scriptedModel` and `cactusModel` both qualify. |
+| `tools`        | No       | Local tools from `defineTool`.                             |
+| `remoteAgents` | No       | Peers from `remoteAgent`. Omit them to stay on the device. |
+
+## `start(input)`
+
+```typescript
+const run = await agent.start({
+  message: "Inspect pump 12",
+  runId: "notes-1",
+});
+```
+
+| Field     | Required | Meaning                                                                               |
+| --------- | -------- | ------------------------------------------------------------------------------------- |
+| `message` | Yes      | The user message that starts the run.                                                 |
+| `runId`   | No       | Your id. Assigned when omitted.                                                       |
+| `defer`   | No       | Store the run and return without starting the driver. Call `run.schedule()` to begin. |
+
+`start` stores the run and starts the driver. It returns the `Run` immediately. Wait with `run.result()`.

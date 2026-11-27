@@ -1,0 +1,21 @@
+---
+title: Ingestion keys
+description: Cloud authorizes a scoped lkx_ing_ key. Do not embed an administrative credential.
+---
+
+An ingestion key starts with `lkx_ing_`. Create it in [LarkX Cloud](https://cloud.larkx.ai) for one project and pass it as `apiKey`.
+
+A key that does not start with `lkx_ing_` never leaves the device as an authorized destination. The exporter marks that destination unauthorized until a manual `flushTelemetry()`.
+
+```typescript
+larkxCloud({
+  projectId: "my-project",
+  apiKey: "lkx_ing_…",
+});
+```
+
+The key is a bearer token on `POST /v1/telemetry/batches`. It is not written into the SQLite execution record and it is not written into the telemetry cursor document. The cursor stores a hash of the destination.
+
+Do not put the key in `run.provideInput`, in tool arguments, or in a remote agent header that you also use for something else. Rotate a key by creating a new one in Cloud and changing `apiKey`. That change is a new destination.
+
+HTTP 401 stops the destination until `flushTelemetry()`. The local agent keeps running.

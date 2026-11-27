@@ -1,0 +1,27 @@
+---
+title: LangGraph
+description: Delegate to a LangGraph service that already exposes A2A. LarkX does not embed LangGraph.
+---
+
+LangGraph remains the remote agent's framework. LarkX stores the delegation on the device and speaks A2A 1.0 to the endpoint you registered. It does not import LangGraph, and it does not run the graph.
+
+The repository example is `examples/langgraph-a2a-agent`. It is an independently deployed graph behind the official `@a2a-js/sdk` server. `examples/node-hybrid` is the private Node path used by process-death tests. It is not a public SDK.
+
+On the device, register that endpoint like any other A2A peer:
+
+```typescript
+const supplier = remoteAgent({
+  name: "supplier-research",
+  description: "Find a replacement part and a supplier.",
+  transport: {
+    type: "a2a",
+    endpoint: "https://supplier.example.com",
+  },
+});
+```
+
+Put `supplier` on `remoteAgents` of the local agent. The local run keeps the inspection report. The LangGraph service keeps its own state.
+
+Automated tests cover this path on a computer, including a kill during the remote task and a later resume of the same task. That sequence has not been run on a phone.
+
+Google ADK and the OpenAI Agents SDK are the same kind of peer when they expose a supported transport. There is no separate LarkX package for them. ADK interoperability is not a current milestone.

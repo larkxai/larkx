@@ -1,0 +1,44 @@
+---
+title: Crash recovery
+description: Reopen the same database, register the same agent, and resume the same run id.
+---
+
+Recovery does not run in the killed process. It runs when your application starts again, opens the same SQLite file, and asks the runtime to resume.
+
+```typescript
+const runtime = await createRuntime({
+  storage: sqlite(),
+  ownerId: "notes",
+});
+
+runtime.createAgent({
+  name: "notes",
+  version: 1,
+  instructions: "Read the note and answer in one line.",
+  model,
+  tools,
+});
+
+const saved = await runtime.listRuns();
+const interrupted = saved.find((run) => run.runId === "notes-1");
+if (interrupted !== undefined && interrupted.status !== "COMPLETED") {
+  const run = await runtime.resume(interrupted.runId);
+  console.log(await run.result());
+}
+```
+
+Register the agent before `resume`. The name and version must match the stored run.
+
+## What resume does
+
+- A committed step is returned from the database. Its handler does not run.
+- A `pure` or `idempotent` step that was in flight may retry. An idempotent retry keeps the same `operationId`.
+- A `non-idempotent` step that was in flight becomes `UNKNOWN_OUTCOME`. The run is `BLOCKED` until `reconcile`.
+- A remote task that already has a stored task id is polled. It is not submitted again.
+- A remote send whose acknowledgement was lost follows the capabilities stored with that delegation. HTTP `dedupe` and `lookup` stay off unless you declared them.
+
+## What this repository has tested
+
+Node process-death tests stop an example with `SIGKILL` and reopen the database. Those tests stand in for mobile process death. They are not a phone run.
+
+A development build on a physical iPhone or Android phone, real Cactus inference, and force-quit recovery on a device are still open. The checklist is in the repository at `docs/validation/on-device-agent.md`. It is an engineering document, not a claim that the phone run is done.

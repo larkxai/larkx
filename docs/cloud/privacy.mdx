@@ -1,0 +1,23 @@
+---
+title: Privacy and telemetry
+description: Prompts, model text, tool arguments, and tool results stay on the device.
+---
+
+The default is silence. Omit `telemetry` and nothing is uploaded.
+
+When you opt in, the exporter reads the native journal and posts metadata. These payload keys are rejected by the event journal and are not part of an export: `input`, `output`, `messages`, `prompt`, `toolResult`, and `content`.
+
+The cursor file stores the installation id, per-run cursors, and a hash of the destination. It does not store the ingestion key or the endpoint URL.
+
+## What a failure means
+
+| Condition                                | Local run | Upload                                                         |
+| ---------------------------------------- | --------- | -------------------------------------------------------------- |
+| Device offline                           | Continues | Batch stays pending and retries with backoff                   |
+| HTTP 401 or a key that is not `lkx_ing_` | Continues | Destination waits for `flushTelemetry()`                       |
+| HTTP 429                                 | Continues | Temporary backoff. `Retry-After` is honored up to five minutes |
+| Permanent run rejection                  | Continues | That run is not marked delivered                               |
+
+SDK requests do not follow redirects. A redirect is not an acknowledgement. The key and the batch are not sent to the next URL.
+
+The execution journal is not trimmed to make room for telemetry. It grows with the agent because recovery still needs those rows.

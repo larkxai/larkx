@@ -1,0 +1,41 @@
+---
+title: Documentation site
+description: How this repository connects to Mintlify at docs.larkx.ai.
+---
+
+Public docs are the Mintlify site. The configuration is `docs/docs.json` in [larkxai/larkx](https://github.com/larkxai/larkx). There is no separate documentation repository and no custom docs frontend.
+
+Engineering notes under `docs/architecture/`, `docs/validation/`, `docs/native/`, and `docs/guides/` stay in git. They are not in `docs.json` navigation, and `seo.indexing` is `navigable`, so search follows the public pages only.
+
+## Connect the GitHub repository
+
+Mintlify is looking for `docs.json` on the default branch. After this file is on `main`:
+
+1. In the Mintlify dashboard, open the project for `docs.larkx.ai`.
+2. Set the Git source to `larkxai/larkx` and the branch to `main`.
+3. Open Git settings and enable **docs.json is in a subdirectory**.
+4. Set the path to `/docs` with no trailing slash.
+5. Save. Saving deploys from that directory.
+
+The domain `docs.larkx.ai` is configured in Mintlify. This repository does not add a container, a reverse proxy, or a docs server.
+
+## Local preview
+
+The Mintlify CLI reads `docs.json` from the current directory. It has no `--dir` flag. From the repository root:
+
+```bash
+cd docs
+npx mint@latest validate
+npx mint@latest broken-links
+npx mint@latest dev --no-open
+```
+
+`validate` checks `docs.json` and builds the site. `broken-links` checks links in the documentation files. `dev` serves the preview. Pages outside the navigation stay in git and are not the public site.
+
+## Agent access
+
+Mintlify serves each public page as Markdown at the same path with a `.md` suffix. The local preview does this. It also puts the agent instructions from `docs.json` at the top of that Markdown.
+
+The hosted site generates `/llms.txt` and `/llms-full.txt` from the navigation. Do not commit a hand-written `llms.txt`. A file in this directory would replace the generated index. `markdown.instructions` are included in both files. `markdown.schema` only controls whether an OpenAPI specification is inlined in API pages. This site has no OpenAPI specification.
+
+The page menu includes copy, Markdown view, Cursor, and the documentation MCP. That menu is on Mintlify preview and production deployments. It is not a file in git. Local search and the assistant need `mint login`. The preview runs without them.

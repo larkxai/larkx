@@ -1,0 +1,35 @@
+---
+title: A2A
+description: Talk to a peer that publishes an A2A 1.0 agent card. A2A is in npm 0.4.0.
+---
+
+A2A protocol 1.0 JSON-RPC is the supported standard for a peer that publishes an agent card. It is a client in `@larkxai/react-native` 0.4.0. LarkX does not host the remote agent, and an agent card cannot replace the endpoint you registered.
+
+```typescript
+import { remoteAgent } from "@larkxai/react-native";
+
+const procurement = remoteAgent({
+  name: "procurement-agent",
+  description: "Find compatible replacement parts and suppliers.",
+  transport: {
+    type: "a2a",
+    endpoint: "https://procurement.example.com",
+  },
+});
+```
+
+A2A does not turn on HTTP `dedupe` or `lookup`. A lost acknowledgement blocks the parent instead of creating another task. JSON-RPC responses must match the request id before a result is committed.
+
+## Questions from the remote agent
+
+`run.provideInput` answers one ordinary question on the existing task. The text is stored until it is sent. It is not the local conversation.
+
+```typescript
+await run.provideInput("Use the brass fitting, not the steel one.");
+```
+
+Do not put a password or token in that string. An authentication challenge is a separate blocked condition. Refresh the transport headers and reconcile the run. Credentials are not stored as input.
+
+`protocolVersion`, when you set it, must be the supported 1.0 value. Another version is rejected at registration.
+
+`examples/a2a-fixture` is a failure-injection peer. It is not a LangGraph agent. `examples/langgraph-a2a-agent` is a real LangGraph graph behind an A2A server. See [LangGraph](/integrations/langgraph).

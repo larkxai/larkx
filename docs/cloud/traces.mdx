@@ -1,0 +1,16 @@
+---
+title: Execution traces
+description: A Cloud trace is metadata about a run. It is not a copy of the model's transcript.
+---
+
+Each exported event keeps the native `eventId`, the per-run `sequence`, and the event type. Ordering is per run. There is no global order across devices.
+
+Delivery is at-least-once for events that are still behind the cursor. The same `eventId` may arrive again after a crash. Collectors dedupe on `batchId` and on `(installationId, runId, sequence)`.
+
+A trace can show that a run started, recovered, called a tool, delegated, blocked, or finished. The payload is the safe envelope from the journal. Step inputs and outputs are not read for export.
+
+`telemetryStatus()` on the device reports whether the local exporter is caught up. It is not the Cloud dashboard. `exportBehind` is true when more than 2000 eligible events are still unsent. That is a lag signal, not a count of discarded events.
+
+The Cloud product renders those accepted events. This SDK does not embed that UI. Open [cloud.larkx.ai](https://cloud.larkx.ai) for the project that owns the ingestion key.
+
+Batches are at most 500 events and 256 KiB. One batch is one run.

@@ -1,0 +1,34 @@
+---
+title: Introduction
+description: LarkX Cloud is optional metadata. The agent runs without it.
+---
+
+LarkX Cloud observes runs. It does not start them, retry them, reconcile them, or cancel them. The SQLite file on the device remains the execution record.
+
+Telemetry is off until you pass it to `createRuntime`. A runtime with no `telemetry` option does not open a socket for Cloud and does not create an export cursor.
+
+```typescript
+import { createRuntime, larkxCloud, sqlite } from "@larkxai/react-native";
+
+const runtime = await createRuntime({
+  storage: sqlite(),
+  telemetry: larkxCloud({
+    projectId: "my-project",
+    apiKey: "lkx_ing_…",
+  }),
+});
+```
+
+`larkxCloud` is in the published 0.4.0 package. The default endpoint is `https://cloud.larkx.ai`. The client posts `/v1/telemetry/batches`.
+
+Local execution continues when Cloud is unreachable, when the key is rejected, and when a run is refused. `close()` does not wait for the collector.
+
+## What you can see
+
+The exporter sends metadata from the native journal: run identity, status, step categories, and safe error codes. It does not send prompts, model text, tool arguments, or tool results. See [Privacy and telemetry](/cloud/privacy).
+
+## Production and source
+
+The device posts telemetry version 1. The Cloud repository accepts the current storage schema. Production `https://cloud.larkx.ai` was last recorded in this repository as a 20 November 2026 deployment that still accepted an older schema, so a phone upload to production is not verified here.
+
+The default branch also contains exporter behavior that is newer than npm 0.4.0: a permanently rejected run stays rejected, and other runs continue. That behavior ships in source until the next release. See [Troubleshooting](/cloud/troubleshooting).

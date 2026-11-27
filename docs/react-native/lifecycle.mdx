@@ -1,0 +1,30 @@
+---
+title: Lifecycle and recovery
+description: Suspend execution when the app is not active, and resume the same run when it opens again.
+---
+
+The operating system can suspend or kill the process. Bind React Native's app state so the runtime stops starting work while the app is not active.
+
+```typescript
+import { AppState } from "react-native";
+import { bindNativeAppState, createRuntime, sqlite } from "@larkxai/react-native";
+
+const runtime = await createRuntime({ storage: sqlite(), ownerId: "field" });
+const subscription = bindNativeAppState(runtime, AppState);
+
+// Later, when the root unmounts:
+subscription.remove();
+await runtime.close();
+```
+
+`bindNativeAppState` calls `runtime.setSuspended` when the state is not `"active"`. Suspension is not deletion. The SQLite file remains.
+
+## After the process is killed
+
+On the next launch, open the same database, register the same agent name and version, and `resume` the run id. See [Crash recovery](/concepts/crash-recovery).
+
+`close()` is for an orderly shutdown. A kill does not call it. The next open reclaims ownership when the previous owner is gone.
+
+## What stays on the device
+
+The execution record, tool results, and model transcript used for replay stay in the local database. Enabling telemetry does not move that record to Cloud, and it does not backfill runs that already had events when a destination was first authorized.
