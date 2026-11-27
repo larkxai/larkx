@@ -1,0 +1,16 @@
+---
+title: Durable recovery
+description: A multi-step run whose committed tool calls survive a new process.
+---
+
+A multi-step agent is wrong if a crash runs a completed tool again, and also wrong if a tool that might have changed the world is silently retried. LarkX records the difference.
+
+A model call that already committed is not sent again. A `pure` or `idempotent` tool that was in flight may retry. A `non-idempotent` tool that was in flight becomes an unknown outcome, and the run stays `BLOCKED` until the application reconciles it. External effects are not exactly-once.
+
+## What you can run
+
+The complete reopen snippet is [Crash recovery](/concepts/crash-recovery). It uses the public `createRuntime`, `createAgent`, `listRuns`, and `resume` calls. The second runtime is a new `createRuntime` on the same `sqlite()` file. Node tests in this repository kill a process with `SIGKILL` and reopen the database. That is not a phone force-quit.
+
+Use `effects: "non-idempotent"` for a tool that must not be guessed. The application then calls `run.reconcile` with `resolution: "retry"`, `"complete"`, or `"fail"`. The API is [Tools](/api/tools) and [Run](/api/run).
+
+There is no separate recovery product and no customer deployment behind this page.

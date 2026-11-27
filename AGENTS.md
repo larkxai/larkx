@@ -130,6 +130,16 @@ Node.js must be 22.13 or newer. The lockfile is pinned to pnpm 10.33.4.
 - Ownership commits carry an epoch fence. A stolen or expired claim must not let the old owner write.
 - New execution targets need a durable outbox, dedupe on a stable operation id, and tests for lost acknowledgements. Do not add an in-memory HTTP server as the only proof of remote recovery.
 
+## Public documentation
+
+The public site is Mintlify, configured by `docs/docs.json`. The published npm version is `variables.sdkVersion` in that file. Pages refer to it as `{{sdkVersion}}`. Do not hard-code the version in public MDX. `pnpm version-packages` runs `scripts/sync-sdk-version.mjs`, which updates `SDK_VERSION` and `variables.sdkVersion` together.
+
+A pull request that changes public SDK behavior must update the corresponding page under `docs/`. That includes new exports, changed defaults, peer dependencies, recovery behavior, and telemetry. Internal notes in `docs/architecture/`, `docs/validation/`, `docs/native/`, and `docs/guides/` stay out of `docs.json` navigation.
+
+Public examples import `@larkxai/react-native` or `@larkxai/react-native/cactus` only. Do not document `@larkxai/node` or another private package as an application install. Do not describe Swift or Kotlin as published. Do not describe a scripted model as inference.
+
+`pnpm test` includes `tests/docs/public-snippets.test.ts`. The docs CI job runs `mint validate` and `mint broken-links` from `docs/`. Those checks must not be required for the native runtime to build.
+
 ## Publishing
 
 `.github/workflows/ci.yml` is the build. `.github/workflows/release.yml` publishes `@larkxai/react-native` from `main` after that build succeeds, including GitHub Releases and GitHub Packages. The npm scope is `@larkxai`. Changesets `access` is `public`. There is no fixed version group. Private workspace packages, including `@larkxai/node`, are not versioned or tagged. Do not commit a registry token. Do not publish the root package, a private workspace package, or anything in `examples/`. The unscoped npm name `larkx` is an unrelated project. One `NPM_TOKEN` covers the whole `@larkxai` scope. Previously published `@larkxai/node` versions stay on the registry. Do not publish a new one from this repository. The Node host still requires Node.js 22.13 or newer. `pnpm version-packages` copies the `@larkxai/react-native` version into `SDK_VERSION` in `@larkxai/telemetry`.

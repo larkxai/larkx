@@ -1,45 +1,85 @@
 ---
 title: Installation
-description: Install the published React Native SDK and the peers a development build needs.
+description: Install @larkxai/react-native for Expo or bare React Native. Add Cactus or Cloud only if you use them.
 ---
 
-```bash
-npm install @larkxai/react-native
-```
-
-The package on npm is `@larkxai/react-native` **0.4.0**. Import the public API from that package:
+The published SDK is `@larkxai/react-native` {{sdkVersion}}. Import the public API from that package:
 
 ```typescript
-import { createRuntime, defineTool, sqlite, remoteAgent } from "@larkxai/react-native";
+import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native";
 ```
 
-Optional peers:
+`react` and `react-native` are required peers. `expo-file-system` is a required peer because `sqlite()` with no path stores `larkx.db` in the application documents directory. Cactus and Cloud peers are optional. Do not install them for Hello World.
 
-| Peer                                                                          | When you need it                                                                                    |
-| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `react`, `react-native`                                                       | Always. They are required peers.                                                                    |
-| `expo-file-system`                                                            | `sqlite()` with no path stores `larkx.db` in the application document directory.                    |
-| `expo-crypto`                                                                 | Only when Cloud telemetry is enabled. The runtime uses `randomUUID` for installation and batch ids. |
-| `cactus-react-native` 1.13.1 and `react-native-nitro-modules` 0.33.9 or newer | Only when you import `@larkxai/react-native/cactus`. The root import does not load them.            |
+The native compile is separate from the first run. After the development build exists, [Hello World](/getting-started/hello-world) does not download a model. A Cactus model download is a later, separate step.
 
-## Development build
+<Tabs>
+  <Tab title="Expo">
+    Install the SDK and the file-system peer with Expo so the versions match the project:
 
-`createRuntime` requires the native module `LarkXNativeCore`. Expo Go does not load it. There is no JavaScript fallback.
+    ```bash
+    npx expo install @larkxai/react-native expo-file-system
+    ```
 
-Use an Expo development build, or a React Native app that runs CocoaPods and Gradle autolinking. The published package includes the C++ sources, the Android and iOS projects, the podspec, and Expo autolinking. `prepack` copies the shared C++ sources into the package, so an npm install does not need this git repository.
+    Create a development build and run it on a simulator or a device:
+
+    ```bash
+    npx expo prebuild
+    npx expo run:ios
+    npx expo run:android
+    ```
+
+    `createRuntime` loads the native module `LarkXNativeCore`. Expo Go does not include that module, and there is no JavaScript fallback. If `createRuntime` throws `LarkXNativeCore is not installed`, the binary was built without the module. Rebuild the development client. Do not catch that error and substitute another engine.
+
+    `prebuild` and the native compile are the slow step. They are not part of the agent run.
+
+  </Tab>
+  <Tab title="Bare React Native">
+    ```bash
+    npm install @larkxai/react-native expo-file-system
+    ```
+
+    The published package includes the iOS project, `LarkXNativeCore.podspec`, the Android project, and React Native autolinking. You do not copy the C++ sources into the app.
+
+    Install the iOS pods after the package is on disk:
+
+    ```bash
+    cd ios && pod install && cd ..
+    ```
+
+    Rebuild the iOS and Android apps with the project's usual native commands. A binary built before this install will not contain `LarkXNativeCore`.
+
+    Android autolinking uses the package `react-native.config.js`. A normal Gradle build picks up the module. The Android build needs the NDK version your React Native app already uses.
+
+  </Tab>
+  <Tab title="Local inference">
+    Install these peers only in an app that imports `@larkxai/react-native/cactus`. Hello World does not.
+
+    ```bash
+    npm install cactus-react-native@1.13.1 react-native-nitro-modules@^0.33.9
+    ```
+
+    The supported demo model is `qwen3-0.6b`. Call `download()` and `init()` before `agent.start`. Both happen outside the run. The download needs a network once. Later local steps do not. The phone needs enough storage for that checkpoint and enough memory for Cactus to initialize it. This repository has not measured that download on a device.
+
+    Rebuild the development client after adding these native modules. Then follow [Your first on-device agent](/getting-started/on-device-agent).
+
+  </Tab>
+  <Tab title="Cloud">
+    Skip this until a local run succeeds. Telemetry stays off when `createRuntime` has no `telemetry` option.
+
+    ```bash
+    npx expo install expo-crypto
+    ```
+
+    `expo-crypto` is the optional peer the runtime uses for installation and batch ids. Then create a project at [cloud.larkx.ai](https://cloud.larkx.ai), create an ingestion key that starts with `lkx_ing_`, and pass it to `larkxCloud`. The steps are in [Connect your agent](/cloud/connecting).
+
+  </Tab>
+</Tabs>
 
 ## Published package and git source
 
-npm 0.4.0 matches the 0.4.0 changelog: A2A 1.0, `run.provideInput`, and `larkxCloud`. It was published before the later reliability work on the default branch.
+npm {{sdkVersion}} is the contract for an installed app. The changelog for that version includes A2A 1.0, `run.provideInput`, and `larkxCloud`. Redirect rejection inside the React Native HTTP module, and keeping one permanently rejected telemetry run from blocking other runs, are on the default branch and are not in that changelog. Treat the release notes of the version you install as the contract.
 
-That later source, which is not a separate npm version yet, rejects redirects inside the React Native HTTP module and keeps a permanently rejected telemetry run from blocking other runs. Treat the npm release notes as the contract for an installed package. Treat the default branch as newer source.
+Do not install `@larkxai/node`, `@larkxai/host`, `@larkxai/protocol`, `@larkxai/telemetry`, or `@larkxai/cactus` in an application. The React Native package bundles the JavaScript it needs. The unscoped npm name `larkx` is an unrelated project. Swift and Kotlin distributions are not published.
 
-## Packages that are not the SDK
-
-Do not install these names in an application:
-
-- `@larkxai/node`, `@larkxai/host`, `@larkxai/protocol`, `@larkxai/telemetry`, and `@larkxai/cactus` are private workspace packages. The React Native package bundles the JavaScript it needs.
-- Older published names such as `@larkxai/core` belong to the removed TypeScript engine. Open a new SQLite file for the C++ runtime. It does not migrate those databases.
-- The unscoped npm name `larkx` is an unrelated project.
-
-Swift and Kotlin distributions are planned and are not in this repository as installable SDKs.
+Open a new SQLite file. The runtime rejects a file whose `application_id` is not `LXRT` (`0x4C585254`). It does not migrate a database from the removed TypeScript engine.

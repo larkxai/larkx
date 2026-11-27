@@ -1,44 +1,73 @@
 ---
 title: Introduction
-description: LarkX is the durable execution runtime for on-device AI agents.
+description: LarkX is an open-source execution runtime for AI agents that run on devices.
 ---
 
-LarkX keeps one execution record for an on-device agent. The model and the tools stay in your application. The runtime decides the next model call, tool call, or remote delegation, and it can resume that same run after the process starts again.
+## Build durable AI agents on devices.
 
-Inference engines run models. LarkX brings durable agent execution to the device.
+LarkX is an open-source execution runtime for AI agents that run directly on devices, work offline, recover from interruptions, and collaborate with remote agents.
 
-## What you install
-
-The public SDK is [`@larkxai/react-native`](https://www.npmjs.com/package/@larkxai/react-native). The published version is **0.4.0**. It includes the C++ runtime, SQLite, local agents, native tools, optional Cactus, crash recovery, HTTP remote delegation, A2A 1.0, and optional Cloud telemetry.
-
-<Note>
-  Swift and Kotlin packages are planned. They are not published. `@larkxai/node` is the private test
-  host in this repository. Do not install it in an application.
-</Note>
-
-Expo Go cannot load the native module. Use a [development build](/getting-started/installation).
-
-## What a run survives
-
-A model call and a tool call are separate effects. The operating system can suspend or kill the process after a tool has changed local data and before that result is stored. Starting the prompt over can repeat that effect.
-
-LarkX stores the run in SQLite on the device. A committed step is not executed again. A `pure` or `idempotent` step that was still running may retry. A `non-idempotent` step that was interrupted becomes an unknown outcome and the run stays blocked until the application reconciles it.
-
-An external effect is not exactly-once. The process can die after the effect and before the commit.
-
-## Where to go next
+Running a model locally is getting easier. Keeping a multi-step agent correct after the operating system suspends the app, the network drops, or a tool has already changed local data is the harder problem. LarkX is that execution layer. It does not replace an inference engine or a remote agent framework.
 
 <CardGroup cols={2}>
-  <Card title="Install the SDK" icon="download" href="/getting-started/installation">
-    Add the React Native package and create a development build.
+  <Card title="Quickstart" icon="play" href="/getting-started/hello-world">
+    Install the SDK and finish one local run. No model download and no Cloud account.
   </Card>
-  <Card title="Quickstart" icon="play" href="/getting-started/quickstart">
-    Run a scripted agent against a local SQLite file.
-  </Card>
-  <Card title="Durable execution" icon="database" href="/concepts/durable-execution">
-    Committed steps, retries, and unknown outcomes.
-  </Card>
-  <Card title="LarkX Cloud" icon="cloud" href="/cloud/introduction">
-    Optional metadata. Local execution does not depend on it.
+  <Card title="Explore GitHub" icon="github" href="https://github.com/larkxai/larkx">
+    Apache 2.0 source, the React Native SDK, and the working examples.
   </Card>
 </CardGroup>
+
+## What you can build
+
+<CardGroup cols={2}>
+  <Card title="On-device execution" icon="smartphone" href="/getting-started/on-device-agent">
+    Run an agent inside a mobile application, with native tools and local data.
+  </Card>
+  <Card title="Offline-first" icon="wifi-off" href="/react-native/offline">
+    Keep executing a local agent when the network is unavailable.
+  </Card>
+  <Card title="Durable recovery" icon="rotate-ccw" href="/concepts/crash-recovery">
+    Resume an interrupted run without repeating a step that already committed.
+  </Card>
+  <Card title="Hybrid execution" icon="split" href="/getting-started/hybrid-agent">
+    Delegate one specialized task to an existing HTTP or A2A agent. The parent run stays on the
+    device.
+  </Card>
+  <Card title="Cloud observability" icon="cloud" href="/cloud/introduction">
+    Optionally inspect traces, tool calls, remote delegations, and recovery across devices.
+  </Card>
+  <Card title="Open source" icon="code" href="https://github.com/larkxai/larkx/blob/main/LICENSE">
+    Build with the free Apache 2.0 SDK. Managed Cloud is a separate, optional service.
+  </Card>
+</CardGroup>
+
+## Start here
+
+<Steps>
+  <Step title="Decide if this is the right layer">
+    Read [When to use LarkX](/getting-started/when-to-use). A one-shot prompt does not need a
+    durable runtime.
+  </Step>
+  <Step title="Install the SDK">
+    Add `@larkxai/react-native` {{ sdkVersion }} and create a development build.
+    [Installation](/getting-started/installation) separates Expo, bare React Native, local
+    inference, and Cloud.
+  </Step>
+  <Step title="Run Hello World">
+    [Hello World](/getting-started/hello-world) uses a scripted model. It proves the runtime, a
+    local tool, and the stored result. It is not inference.
+  </Step>
+  <Step title="Run an on-device agent">
+    [Your first on-device agent](/getting-started/on-device-agent) uses the supported Cactus model
+    after a one-time download.
+  </Step>
+  <Step title="Add a remote agent, then Cloud">
+    [Your first hybrid agent](/getting-started/hybrid-agent) delegates to a service you already run.
+    [Cloud](/cloud/introduction) is optional and comes after a local run works.
+  </Step>
+</Steps>
+
+The public package is [`@larkxai/react-native`](https://www.npmjs.com/package/@larkxai/react-native). Swift and Kotlin distributions are not published. Expo Go cannot load the native module.
+
+Committed steps are not run again. An effect that left the process before the commit is not exactly-once. Those guarantees live in [Core Concepts](/concepts/durable-execution).

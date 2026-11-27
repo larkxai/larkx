@@ -50,6 +50,7 @@ The root package and everything in `examples/` are private. Packages that are no
 ## Pull requests
 
 - Explain which guarantee the change protects or which limitation it removes.
+- If the change is visible in `@larkxai/react-native`, update the public page under `docs/` in the same pull request. Use `{{sdkVersion}}` instead of typing the version. `pnpm version-packages` refreshes `docs/docs.json`.
 - Show the commands you ran. If a crash or native test did not run, say so.
 - Do not claim device, emulator, or provider coverage that the diff does not exercise.
 - Do not add a registry token, an `.npmrc` auth line, or a second publish workflow.

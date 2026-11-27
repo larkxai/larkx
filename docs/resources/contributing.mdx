@@ -18,6 +18,10 @@ Node.js 22.13 or newer. The lockfile is pinned to pnpm 10.33.4.
 
 `pnpm test` builds `dist` and runs Vitest. Package exports point at `dist`. Crash tests spawn an example and send `SIGKILL`. Do not replace them with a thrown exception.
 
+## Public docs
+
+A change to the public SDK updates the matching page under `docs/` in the same pull request. The published version is `{{sdkVersion}}`, stored once in `docs/docs.json`. Do not type the version into a page. Connecting the GitHub repository to Mintlify is documented in [Documentation site](/resources/documentation-site).
+
 ## What not to publish
 
 `@larkxai/react-native` is the public npm SDK. Do not publish `@larkxai/node`, `@larkxai/host`, `@larkxai/protocol`, `@larkxai/telemetry`, or `@larkxai/cactus`. Do not publish anything under `examples/`.

@@ -1,33 +1,78 @@
 ---
 title: Crash recovery
-description: Reopen the same database, register the same agent, and resume the same run id.
+description: Open a new runtime on the same database, register the same agent, and resume the run.
 ---
 
-Recovery does not run in the killed process. It runs when your application starts again, opens the same SQLite file, and asks the runtime to resume.
+Recovery does not run inside the killed process. The operating system has already stopped it. Recovery runs when your application starts again, opens the same SQLite file, registers the same agent name and version, and resumes the stored run id.
+
+The first runtime in this example is closed to stand in for that process ending. The second `createRuntime` is the restart. Do not call `resume` on a runtime after `close()` has resolved.
 
 ```typescript
-const runtime = await createRuntime({
-  storage: sqlite(),
-  ownerId: "notes",
-});
+import { createRuntime, defineTool, scriptedModel, sqlite } from "@larkxai/react-native";
 
-runtime.createAgent({
+const database = sqlite();
+const definition = {
   name: "notes",
   version: 1,
   instructions: "Read the note and answer in one line.",
-  model,
-  tools,
+} as const;
+
+const readNotes = defineTool({
+  name: "read_notes",
+  description: "Read the local inspection notes.",
+  effects: "pure",
+  schema: { type: "object", properties: {} },
+  handler: () => ({ notes: ["Seal weeps above 80 psi."] }),
 });
 
-const saved = await runtime.listRuns();
-const interrupted = saved.find((run) => run.runId === "notes-1");
-if (interrupted !== undefined && interrupted.status !== "COMPLETED") {
-  const run = await runtime.resume(interrupted.runId);
-  console.log(await run.result());
+const first = await createRuntime({ storage: database, ownerId: "notes" });
+const agent = first.createAgent({
+  ...definition,
+  model: scriptedModel([
+    {
+      message: null,
+      finish: "tool_calls",
+      calls: [{ id: "call-1", name: "read_notes", arguments: {} }],
+    },
+    { message: "Seal needs service.", finish: "stop", calls: [] },
+  ]),
+  tools: [readNotes],
+});
+const run = await agent.start({ message: "Inspect pump 12", runId: "notes-1" });
+console.log((await run.result()).message);
+await first.close();
+
+const restarted = await createRuntime({ storage: database, ownerId: "notes" });
+let repeated = 0;
+restarted.createAgent({
+  ...definition,
+  model: scriptedModel([]),
+  tools: [
+    defineTool({
+      name: "read_notes",
+      description: "Read the local inspection notes.",
+      effects: "pure",
+      schema: { type: "object", properties: {} },
+      handler: () => {
+        repeated += 1;
+        return { notes: ["this call means a committed step ran again"] };
+      },
+    }),
+  ],
+});
+
+const saved = await restarted.listRuns();
+const existing = saved.find((item) => item.runId === "notes-1");
+if (existing !== undefined && existing.status !== "COMPLETED") {
+  const resumed = await restarted.resume(existing.runId);
+  console.log((await resumed.result()).message);
 }
+await restarted.close();
 ```
 
-Register the agent before `resume`. The name and version must match the stored run.
+After a completed Hello World run, `existing.status` is `"COMPLETED"`, `repeated` stays `0`, and the stored message is still `"Seal needs service."` Resume is for a run that did not finish. A completed run has nothing left to execute, so this snippet does not resume it. The second handler exists to show that opening the database does not replay a committed tool.
+
+To watch a resume, stop the process after a step has committed and before `result()` resolves. On the next launch, `status` is not `"COMPLETED"`. `resume` continues that run. The committed tool is not called again.
 
 ## What resume does
 
@@ -36,6 +81,10 @@ Register the agent before `resume`. The name and version must match the stored r
 - A `non-idempotent` step that was in flight becomes `UNKNOWN_OUTCOME`. The run is `BLOCKED` until `reconcile`.
 - A remote task that already has a stored task id is polled. It is not submitted again.
 - A remote send whose acknowledgement was lost follows the capabilities stored with that delegation. HTTP `dedupe` and `lookup` stay off unless you declared them.
+
+`reconcile` is how the application resolves an unknown outcome. Pass `resolution: "retry"`, `"complete"`, or `"fail"`. That is an application decision. The runtime cannot see whether the external effect happened.
+
+An effect that left the device before the commit is not exactly-once. The process can die after the effect and before the write.
 
 ## What this repository has tested
 

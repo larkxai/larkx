@@ -1,0 +1,41 @@
+---
+title: Field inspection
+description: The runnable Expo demo for an offline inspection agent. It is a fictional scenario, not a customer deployment.
+---
+
+An inspector needs a short report from notes that are already on the phone. The network may be gone, and leaving the app should not generate a second report for a run that already finished.
+
+Calling a model once does not store which tools already ran. LarkX stores the run in `larkx-field.db` and the application rows, including saved reports, in `larkx-field-data.db`.
+
+## What the demo uses
+
+- Offline local tools and, in local mode, Cactus `qwen3-0.6b`.
+- Durable recovery of the same agent name and version.
+- Optional A2A or HTTP delegation to the LangGraph procurement example.
+- Optional Cloud telemetry, off until a project id and an `lkx_ing_` key are saved.
+
+The app is `examples/react-native-agent`. It is a fictional industrial assistant, not a commercial inspection product and not a production deployment.
+
+```bash
+pnpm install
+pnpm build
+pnpm --filter @larkxai/example-react-native-agent start
+```
+
+Expo Go cannot load the native module. The development build is:
+
+```bash
+pnpm --filter @larkxai/example-react-native-agent exec expo prebuild
+pnpm --filter @larkxai/example-react-native-agent exec expo run:ios
+pnpm --filter @larkxai/example-react-native-agent exec expo run:android
+```
+
+This repository has not executed that build on a simulator or a phone.
+
+Scripted mode uses agent `field-assistant-scripted`. The tool sequence is fixed and is not inference. Local mode uses `field-assistant-local`. Download `qwen3-0.6b` from Settings before that run. Resume with the same mode. Switching mode without reopening is rejected.
+
+Point remote research at the computer's LAN address, such as `http://192.168.1.20:8791`. Production `https://cloud.larkx.ai` was last recorded here as a deployment that still accepted an older telemetry schema, so a phone upload to production is not verified in this repository.
+
+The walkthrough script stays in `docs/demo/flagship-mobile-demo.md` in the repository. It is not a public claim that the recording has been captured on a device.
+
+Continue in [Your first on-device agent](/getting-started/on-device-agent) for the smallest Cactus program, or [Your first hybrid agent](/getting-started/hybrid-agent) for the delegation.

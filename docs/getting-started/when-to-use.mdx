@@ -1,0 +1,32 @@
+---
+title: When to use LarkX
+description: Use LarkX when an on-device agent has several steps that must survive interruption.
+---
+
+LarkX is execution infrastructure for an agent that already has a model and tools. It decides the next model call, tool call, or remote delegation, and it stores that progress on the device.
+
+## Use LarkX when
+
+- The agent makes more than one model or tool call.
+- The application has to keep working when connectivity is unreliable.
+- The agent reads or writes data that already lives on the device.
+- Closing or killing the app must not run a completed operation again.
+- One agent on the device coordinates local tools and a remote specialist.
+- You want a trace of that behavior across devices, after the local run already works.
+
+## You can skip it when
+
+- The task is one text generation and the answer is not stored as a resumable run.
+- You only need to call a local or hosted model, with no durable tool sequence.
+- The whole workload runs on a server and never executes on a device.
+
+A server framework such as LangGraph can still be the remote specialist. Cactus, or another model you adapt, can still be the local inference engine. LarkX does not replace either one. It keeps the on-device run.
+
+<CardGroup cols={2}>
+  <Card title="Hello World" icon="play" href="/getting-started/hello-world">
+    Prove the runtime with a scripted model.
+  </Card>
+  <Card title="On-device agent" icon="cpu" href="/getting-started/on-device-agent">
+    Run the supported local model and a real tool.
+  </Card>
+</CardGroup>

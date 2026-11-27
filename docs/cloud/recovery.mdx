@@ -9,6 +9,6 @@ Recovery still requires the application to open the same database and call `runt
 
 If the process dies after the exporter stores a batch and before the cursor advances, the next flush sends the same `batchId` and the same event ids. Cloud treats that as a replay, not as a second run.
 
-A run that Cloud has expired, or a history conflict for a new batch, stays on the device. The local journal is not deleted to satisfy the collector. In the current default branch, a permanent rejection is remembered for that destination so the exporter does not rediscover it forever. npm 0.4.0 holds the destination on those responses instead. See [Troubleshooting](/cloud/troubleshooting).
+A run that Cloud has expired, or a history conflict for a new batch, stays on the device. The local journal is not deleted to satisfy the collector. In the current default branch, a permanent rejection is remembered for that destination so the exporter does not rediscover it forever. npm {{sdkVersion}} holds the destination on those responses instead. See [Troubleshooting](/cloud/troubleshooting).
 
 Cloud retention does not delete local SQLite. A 14-day Cloud window, when that is the policy of the deployed service, applies to stored observations, not to the device.

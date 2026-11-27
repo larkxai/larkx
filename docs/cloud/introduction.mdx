@@ -1,34 +1,51 @@
 ---
-title: Introduction
-description: LarkX Cloud is optional metadata. The agent runs without it.
+title: Overview
+description: Optional metadata for runs that already execute on the device. Cloud does not start or resume them.
 ---
 
-LarkX Cloud observes runs. It does not start them, retry them, reconcile them, or cancel them. The SQLite file on the device remains the execution record.
+Run the SDK first. Cloud does not make the agent work, and a local run does not need an account.
 
-Telemetry is off until you pass it to `createRuntime`. A runtime with no `telemetry` option does not open a socket for Cloud and does not create an export cursor.
+LarkX Cloud observes runs. It does not start them, retry them, reconcile them, or cancel them. The SQLite file on the device remains the execution record. There is no SDK execution quota in this service. Technical ingestion limits still apply. They are safeguards, not a plan that counts applications, devices, or runs.
 
-```typescript
-import { createRuntime, larkxCloud, sqlite } from "@larkxai/react-native";
+Cloud is free during the public beta. That does not change the on-device license. The SDK is Apache 2.0 either way.
 
-const runtime = await createRuntime({
-  storage: sqlite(),
-  telemetry: larkxCloud({
-    projectId: "my-project",
-    apiKey: "lkx_ing_…",
-  }),
-});
-```
+## Connect after a local run
 
-`larkxCloud` is in the published 0.4.0 package. The default endpoint is `https://cloud.larkx.ai`. The client posts `/v1/telemetry/batches`.
+<Steps>
+  <Step title="Install the SDK and finish a local run">
+    [Hello World](/getting-started/hello-world) or [your first on-device agent](/getting-started/on-device-agent). Telemetry stays off until you opt in.
+  </Step>
+  <Step title="Create an account and a project">
+    Open [cloud.larkx.ai](https://cloud.larkx.ai) and create the application you want to observe.
+  </Step>
+  <Step title="Create an ingestion key">
+    The key starts with `lkx_ing_`. Store it in the platform keystore. Do not put it in source. See [Ingestion keys](/cloud/ingestion-keys).
+  </Step>
+  <Step title="Enable telemetry and run the agent again">
+    Install the optional `expo-crypto` peer, pass `larkxCloud` to `createRuntime`, and start a new run. Earlier runs are not backfilled.
+
+    ```typescript
+    import { createRuntime, larkxCloud, sqlite } from "@larkxai/react-native";
+
+    const runtime = await createRuntime({
+      storage: sqlite(),
+      telemetry: larkxCloud({
+        projectId: "my-project",
+        apiKey: "lkx_ing_…",
+      }),
+    });
+    ```
+
+  </Step>
+  <Step title="Open the trace">
+    [Execution traces](/cloud/traces) and [Recovery insights](/cloud/recovery) show the metadata that arrived. Prompts, model text, tool arguments, and tool results are not in the export. See [Privacy](/cloud/privacy).
+  </Step>
+</Steps>
+
+`larkxCloud` is in the published {{sdkVersion}} package. The default endpoint is `https://cloud.larkx.ai`. The client posts `/v1/telemetry/batches`.
 
 Local execution continues when Cloud is unreachable, when the key is rejected, and when a run is refused. `close()` does not wait for the collector.
 
-## What you can see
+The device posts the telemetry schema this SDK implements. The Cloud repository accepts the current storage schema. Production `https://cloud.larkx.ai` was last recorded in this repository as a 20 November 2026 deployment that still accepted an older schema, so a phone upload to production is not verified here.
 
-The exporter sends metadata from the native journal: run identity, status, step categories, and safe error codes. It does not send prompts, model text, tool arguments, or tool results. See [Privacy and telemetry](/cloud/privacy).
-
-## Production and source
-
-The device posts telemetry version 1. The Cloud repository accepts the current storage schema. Production `https://cloud.larkx.ai` was last recorded in this repository as a 20 November 2026 deployment that still accepted an older schema, so a phone upload to production is not verified here.
-
-The default branch also contains exporter behavior that is newer than npm 0.4.0: a permanently rejected run stays rejected, and other runs continue. That behavior ships in source until the next release. See [Troubleshooting](/cloud/troubleshooting).
+The default branch also contains exporter behavior that is newer than npm {{sdkVersion}}: a permanently rejected run stays rejected, and other runs continue. That behavior ships in source until a release whose changelog includes it. See [Troubleshooting](/cloud/troubleshooting).
