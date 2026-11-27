@@ -1,0 +1,46 @@
+---
+title: Remote agents
+description: remoteAgent for HTTP and A2A transports.
+---
+
+```typescript
+import { remoteAgent, A2A_PROTOCOL_VERSION, A2A_REMOTE_CAPABILITIES } from "@larkxai/react-native";
+```
+
+`A2A_PROTOCOL_VERSION` is the only A2A version the client accepts. `A2A_REMOTE_CAPABILITIES` is the capability set A2A uses. It does not enable HTTP dedupe or lookup.
+
+## `remoteAgent`
+
+| Field         | Required | Meaning                                                            |
+| ------------- | -------- | ------------------------------------------------------------------ |
+| `name`        | Yes      | `^[a-z][a-z0-9-]{0,63}$`                                           |
+| `description` | Yes      | Non-empty.                                                         |
+| `schema`      | No       | Object schema for the delegated input. Defaults to an open object. |
+| `transport`   | Yes      | `http` or `a2a`.                                                   |
+
+### HTTP transport
+
+| Field            | Meaning                                                                       |
+| ---------------- | ----------------------------------------------------------------------------- |
+| `type`           | `"http"`                                                                      |
+| `endpoint`       | `http` or `https` URL. No userinfo, query, or fragment.                       |
+| `capabilities`   | Declare only what the peer implements.                                        |
+| `headers`        | `(endpoint) => headers`. The result is not written to the execution database. |
+| `timeoutMs`      | 1 to 120000. Default 15000.                                                   |
+| `pollIntervalMs` | Omit for 1000 ms. 50 to 60000 chooses an interval. `0` selects the default.   |
+
+HTTP capabilities are `dedupe`, `lookup`, `taskId`, `poll`, `cancel`, and `persistent`.
+
+### A2A transport
+
+| Field             | Meaning                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| `type`            | `"a2a"`                                                                                                    |
+| `endpoint`        | The authorized JSON-RPC endpoint. An agent card cannot replace it.                                         |
+| `protocolVersion` | Optional. Must equal `A2A_PROTOCOL_VERSION` when set.                                                      |
+| `headers`         | `(endpoint) => headers`, for authentication. Not `provideInput`.                                           |
+| `discover`        | When true, fetch the agent card before the first submission. Its JSON-RPC interface must be this endpoint. |
+| `timeoutMs`       | Same bounds as HTTP.                                                                                       |
+| `pollIntervalMs`  | Same bounds as HTTP.                                                                                       |
+
+Register the returned object on `createAgent({ remoteAgents })`. The default with an empty list is device-only.

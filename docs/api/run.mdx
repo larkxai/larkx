@@ -1,0 +1,40 @@
+---
+title: Run
+description: Wait, pause, cancel, reconcile, and answer a remote question.
+---
+
+A `Run` is the handle for one `runId` in this process. After a restart, get a new handle with `runtime.resume`.
+
+| Method               | Meaning                                                                       |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `result()`           | Promise of `AgentResult`. Does not start a second driver.                     |
+| `schedule()`         | Start the one driver for this id. A second call joins it.                     |
+| `pause()`            | Ask the runtime to pause. A committed step stays committed.                   |
+| `resume()`           | Continue a paused run in this process.                                        |
+| `cancel()`           | Request cancellation. Does not roll back a committed step or a remote effect. |
+| `reconcile(input)`   | Resolve a run that is waiting for reconciliation.                             |
+| `provideInput(text)` | Answer one ordinary A2A question. Not a credential.                           |
+| `getDelegations()`   | The remote delegations stored for this run.                                   |
+
+## `AgentResult`
+
+| Field        | Type                   |
+| ------------ | ---------------------- |
+| `message`    | `string`               |
+| `finish`     | `"stop"` or `"length"` |
+| `iterations` | `number`               |
+| `toolCalls`  | `number`               |
+
+## `reconcile`
+
+```typescript
+await run.reconcile({
+  resolution: "retry",
+});
+```
+
+`resolution` is `"retry"`, `"complete"`, or `"fail"`. `output` and `message` are optional. The call throws `invalid_state_transition` when the run is not waiting.
+
+## `provideInput`
+
+Accepts a non-empty string. Throws when the run is blocked on remote authentication. Put credentials in the transport headers, then reconcile. The text is stored until it is sent.

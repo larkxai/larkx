@@ -1,0 +1,20 @@
+---
+title: Offline execution
+description: Local steps do not wait for the network. Remote steps wait until the device can send them.
+---
+
+A run with only local tools and a local model does not open a socket. `createRuntime` without `telemetry` does not create an export cursor and does not contact Cloud.
+
+When the device is offline:
+
+- Local model and tool steps continue as long as the process is running and the model is already on the device.
+- A remote delegation stays in SQLite until the host can send it. It is not dropped to keep the local run moving.
+- Cloud telemetry, if enabled, keeps the unsent batch and retries later. The agent does not wait for that upload.
+
+`runtime` checks reachability for remote work and for telemetry. A failed collector does not fail the run.
+
+## What offline does not mean
+
+Offline execution is implemented in the runtime and covered by host tests. A physical device with the radio off, a force-quit, and a later resume is still on the device-validation checklist. Do not treat a green Node suite as that phone run.
+
+Remote capabilities you did not declare are not assumed. An HTTP peer without `dedupe` and `lookup` cannot be safely retried after a lost acknowledgement. The run blocks instead of sending a second copy.

@@ -1,0 +1,41 @@
+---
+title: Tools
+description: defineTool, ToolContext, ToolFailure, and the effect class.
+---
+
+```typescript
+import { defineTool, ToolFailure } from "@larkxai/react-native";
+```
+
+## `defineTool`
+
+| Field         | Required | Meaning                                                             |
+| ------------- | -------- | ------------------------------------------------------------------- |
+| `name`        | Yes      | `^[a-z][a-z0-9_]{0,63}$`                                            |
+| `description` | Yes      | Non-empty. Shown to the model.                                      |
+| `effects`     | Yes      | `"pure"`, `"idempotent"`, or `"non-idempotent"`.                    |
+| `schema`      | Yes      | JSON schema with `type: "object"`. `inputSchema` is the same field. |
+| `handler`     | Yes      | `(input, context) => JsonValue`. `run` is an alias.                 |
+| `retry`       | No       | `maxAttempts`, `initialIntervalMs`, `maxIntervalMs`, `backoff`.     |
+
+## `ToolContext`
+
+| Field         | Meaning                                          |
+| ------------- | ------------------------------------------------ |
+| `operationId` | Stable id for an idempotent effect.              |
+| `attempt`     | Attempt count for this step.                     |
+| `runId`       | The run that called the tool.                    |
+| `stepKey`     | The stored step key.                             |
+| `callId`      | The model tool-call id.                          |
+| `signal`      | Aborted when the run cancels the in-flight call. |
+
+## `ToolFailure`
+
+```typescript
+new ToolFailure("The note store is locked.", {
+  retryable: true,
+  code: "transient_execution_failure",
+});
+```
+
+`retryable` defaults to false. The default code is `transient_execution_failure` when retryable and `permanent_execution_failure` otherwise.

@@ -1,0 +1,37 @@
+---
+title: Creating a runtime
+description: Open SQLite, set an owner, and close the runtime when the app is done with it.
+---
+
+```typescript
+import { createRuntime, sqlite } from "@larkxai/react-native";
+
+const runtime = await createRuntime({
+  storage: sqlite(),
+  ownerId: "field",
+});
+```
+
+One runtime owns one database. Pass `sqlite("file:///path/to/agent.db")` only when you already have a file path. The no-argument form is the one that uses the document directory.
+
+`ownerId` defaults when you omit it. Set it when more than one process or session might open the same file. A stolen or expired claim cannot commit.
+
+## Observing the host
+
+`runtime.observe` reports model requests, tool requests, commits, and the point where reconciliation is required. The listener is local. It is not a Cloud upload.
+
+```typescript
+const stop = runtime.observe((event) => {
+  console.log(event);
+});
+```
+
+Call the function it returns to remove the listener.
+
+## Closing
+
+```typescript
+await runtime.close();
+```
+
+`close()` waits for in-flight steps, releases ownership, and stops the telemetry timer if one is running. It does not flush telemetry and it does not delete the database. Do not call `close()` from an engine hook.

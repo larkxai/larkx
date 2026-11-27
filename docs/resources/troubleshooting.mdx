@@ -1,0 +1,32 @@
+---
+title: Troubleshooting
+description: The failures that show up when the native module, the database, or a tool class is wrong.
+---
+
+## `LarkXNativeCore is not installed`
+
+The running binary does not include the native module. Expo Go never does. Make a development build after installing `@larkxai/react-native`, then run that build.
+
+## The SQLite file is rejected
+
+The runtime accepts files it created, stamped with application id `LXRT`. Any other file is left unchanged. Point `sqlite()` at a new path.
+
+## A tool ran twice
+
+That is recovery of a `pure` or `idempotent` step that had not committed. If the effect must not repeat, declare `non-idempotent` and handle `run.reconcile`. See [Tool side effects](/concepts/tool-side-effects).
+
+## `resume` cannot find the agent
+
+Call `createAgent` with the same `name` and `version` before `runtime.resume`. A different version does not replay the old run.
+
+## The remote call was sent twice, or not retried
+
+HTTP `dedupe` and `lookup` are off until you set them, and only when that peer implements them. A2A does not enable them. A lost acknowledgement then blocks the parent. That is intentional.
+
+## Cloud rejected the batch and the agent stopped
+
+The agent should not stop. Telemetry failures stay in `telemetryStatus()`. If your own code awaits a throw from a tool, that throw is the tool, not Cloud. See [Cloud troubleshooting](/cloud/troubleshooting).
+
+## A scripted model throws "no response left"
+
+`scriptedModel` has one response per invocation. A replayed model step does not call it again. If you see this during a first run, the script is shorter than the number of model turns.

@@ -1,0 +1,60 @@
+---
+title: HTTP remote agents
+description: Delegate one task to an independent HTTP agent. The parent run stays on the device.
+---
+
+`remoteAgent` with `transport.type: "http"` is the generic remote transport. The remote process is not a LarkX runtime. It can be any service that implements the task protocol. This repository does not host that service.
+
+```typescript
+import { createRuntime, remoteAgent, sqlite } from "@larkxai/react-native";
+
+const procurement = remoteAgent({
+  name: "procurement-agent",
+  description: "Find compatible replacement parts and suppliers.",
+  transport: {
+    type: "http",
+    endpoint: "http://192.168.1.20:8787",
+    capabilities: {
+      dedupe: true,
+      lookup: true,
+      taskId: true,
+      poll: true,
+      cancel: true,
+      persistent: true,
+    },
+  },
+});
+
+const runtime = await createRuntime({ storage: sqlite() });
+const agent = runtime.createAgent({
+  name: "field-assistant",
+  version: 1,
+  model,
+  instructions: "Inspect equipment and identify replacement parts.",
+  tools: [readInspectionNotes],
+  remoteAgents: [procurement],
+});
+```
+
+The agent name must match `^[a-z][a-z0-9-]{0,63}$`. The endpoint is `http` or `https`, with no userinfo, query, or fragment. Use a LAN address when the phone and the peer are on the same network. Do not use `localhost` for that path.
+
+## Capabilities
+
+`dedupe` and `lookup` stay off until you set them. `taskId`, `poll`, `cancel`, and `persistent` default to on for this task protocol. Turn one off when that peer does not implement it. Declare a capability only when the peer implements it.
+
+- `dedupe` and `lookup` let recovery ask about a send whose response was lost. Leave them off and a lost acknowledgement blocks the parent instead of creating another task.
+- `taskId`, `poll`, `cancel`, and `persistent` describe what the peer can do after it has accepted a task.
+
+The client operation id and the remote task id are stored separately. A known task is polled after a restart and is not submitted again.
+
+## Redirects and cancellation
+
+SDK requests are not meant to follow redirects, including a same-origin `Location`. The credential and body are not sent to the next URL. Rejecting a redirect does not prove the original request had no effect.
+
+The current default branch rejects those redirects in the React Native HTTP module. npm 0.4.0 was published before that module. Check the release notes of the version you install before relying on the native behavior.
+
+Cancelling the local run does not prove the remote agent stopped, and it does not roll back an effect the peer already applied.
+
+`timeoutMs` defaults to 15000 and must be from 1 to 120000. Omit `pollIntervalMs` for a 1000 ms poll. Pass 50 to 60000 to choose an interval. `0` selects that same default.
+
+The reference fixture is `examples/remote-task` in the repository. It is a development process, not a hosted product.

@@ -1,0 +1,32 @@
+---
+title: Runtime
+description: The runtime owns the SQLite file, the registered agents, and the host driver.
+---
+
+`createRuntime` opens one SQLite database and one native session. The C++ runtime decides the next step. The host driver performs the model call, tool call, or remote request the runtime asked for and submits the result. The host does not plan the next step and it does not keep a second database.
+
+```typescript
+import { createRuntime, sqlite } from "@larkxai/react-native";
+
+const runtime = await createRuntime({
+  storage: sqlite(),
+  ownerId: "notes",
+});
+```
+
+`ownerId` is the ownership name for this process. Ownership writes carry an epoch. A stale owner cannot commit.
+
+## What the runtime stores
+
+The database is the execution record. The runtime stamps SQLite `application_id` `LXRT` (`0x4C585254`) on files it creates. A file with any other id, including a database written by the removed TypeScript engine, is rejected and left unchanged. There is no migration. Open a new file.
+
+`sqlite("/path/to/agent.db")` chooses the file. `sqlite()` with no argument uses the application document directory.
+
+## What the runtime does not do
+
+- It does not download or run a model unless you pass one.
+- It does not send telemetry unless you pass `larkxCloud` or another exporter.
+- It does not call a remote agent unless that agent is registered on the local agent.
+- It does not follow the application into the background by itself. Bind the app state when you want suspension to pause execution. See [Lifecycle and recovery](/react-native/lifecycle).
+
+Call `runtime.close()` when the process is done. It waits for in-flight steps and releases ownership.

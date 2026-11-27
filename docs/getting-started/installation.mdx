@@ -1,0 +1,45 @@
+---
+title: Installation
+description: Install the published React Native SDK and the peers a development build needs.
+---
+
+```bash
+npm install @larkxai/react-native
+```
+
+The package on npm is `@larkxai/react-native` **0.4.0**. Import the public API from that package:
+
+```typescript
+import { createRuntime, defineTool, sqlite, remoteAgent } from "@larkxai/react-native";
+```
+
+Optional peers:
+
+| Peer                                                                          | When you need it                                                                                    |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `react`, `react-native`                                                       | Always. They are required peers.                                                                    |
+| `expo-file-system`                                                            | `sqlite()` with no path stores `larkx.db` in the application document directory.                    |
+| `expo-crypto`                                                                 | Only when Cloud telemetry is enabled. The runtime uses `randomUUID` for installation and batch ids. |
+| `cactus-react-native` 1.13.1 and `react-native-nitro-modules` 0.33.9 or newer | Only when you import `@larkxai/react-native/cactus`. The root import does not load them.            |
+
+## Development build
+
+`createRuntime` requires the native module `LarkXNativeCore`. Expo Go does not load it. There is no JavaScript fallback.
+
+Use an Expo development build, or a React Native app that runs CocoaPods and Gradle autolinking. The published package includes the C++ sources, the Android and iOS projects, the podspec, and Expo autolinking. `prepack` copies the shared C++ sources into the package, so an npm install does not need this git repository.
+
+## Published package and git source
+
+npm 0.4.0 matches the 0.4.0 changelog: A2A 1.0, `run.provideInput`, and `larkxCloud`. It was published before the later reliability work on the default branch.
+
+That later source, which is not a separate npm version yet, rejects redirects inside the React Native HTTP module and keeps a permanently rejected telemetry run from blocking other runs. Treat the npm release notes as the contract for an installed package. Treat the default branch as newer source.
+
+## Packages that are not the SDK
+
+Do not install these names in an application:
+
+- `@larkxai/node`, `@larkxai/host`, `@larkxai/protocol`, `@larkxai/telemetry`, and `@larkxai/cactus` are private workspace packages. The React Native package bundles the JavaScript it needs.
+- Older published names such as `@larkxai/core` belong to the removed TypeScript engine. Open a new SQLite file for the C++ runtime. It does not migrate those databases.
+- The unscoped npm name `larkx` is an unrelated project.
+
+Swift and Kotlin distributions are planned and are not in this repository as installable SDKs.

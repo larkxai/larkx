@@ -1,0 +1,31 @@
+---
+title: Roadmap
+description: What is implemented, what is planned, and what is not a commitment.
+---
+
+The source of truth is [ROADMAP.md](https://github.com/larkxai/larkx/blob/main/ROADMAP.md). This page is the public summary. A capability is implemented when code and automated checks exist. A phone run is a separate gate.
+
+## Implemented in the public SDK
+
+- Shared C++ runtime behind `@larkxai/react-native`.
+- SQLite persistence, replay, retries, cancellation, and reconciliation.
+- Native tools and the `pure` / `idempotent` / `non-idempotent` classes.
+- Optional Cactus adapter.
+- HTTP remote delegation and A2A 1.0.
+- Opt-in metadata telemetry with `larkxCloud`.
+
+## Implemented in the repository, not yet a phone claim
+
+- Process-death tests on the Node host.
+- The LangGraph A2A example and the field-inspection demo.
+- Native redirect rejection and per-run telemetry rejection on the default branch, after npm 0.4.0.
+
+## Not available
+
+- Swift and Kotlin SDKs.
+- A physical-device pass of the validation checklist.
+- Production Cloud ingestion verified against the current telemetry schema from a phone.
+- Additional inference providers.
+- A hosted remote-agent service in this repository.
+
+Google ADK interoperability, a Rust port, and a second TypeScript engine are not current work. The roadmap says so explicitly.

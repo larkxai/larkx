@@ -1,0 +1,37 @@
+---
+title: Contributing
+description: How to work in the larkx repository without publishing private packages.
+---
+
+LarkX is Apache-2.0. The repository is [github.com/larkxai/larkx](https://github.com/larkxai/larkx).
+
+```bash
+pnpm install
+pnpm build
+pnpm typecheck
+pnpm lint
+pnpm format:check
+pnpm test
+```
+
+Node.js 22.13 or newer. The lockfile is pinned to pnpm 10.33.4.
+
+`pnpm test` builds `dist` and runs Vitest. Package exports point at `dist`. Crash tests spawn an example and send `SIGKILL`. Do not replace them with a thrown exception.
+
+## What not to publish
+
+`@larkxai/react-native` is the public npm SDK. Do not publish `@larkxai/node`, `@larkxai/host`, `@larkxai/protocol`, `@larkxai/telemetry`, or `@larkxai/cactus`. Do not publish anything under `examples/`.
+
+Do not add an empty package and describe it as available. Do not restore the TypeScript workflow engine.
+
+## Native checks
+
+```bash
+cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
+cmake --build native/build
+ctest --test-dir native/build --output-on-failure
+```
+
+A green Node suite is not a mobile device run. Say so when you describe what you tested.
+
+The longer contributor notes are [CONTRIBUTING.md](https://github.com/larkxai/larkx/blob/main/CONTRIBUTING.md).

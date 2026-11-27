@@ -1,0 +1,37 @@
+---
+title: Run
+description: A run is one stored execution of an agent, addressed by a caller-supplied run id.
+---
+
+`agent.start` stores a run and starts its driver.
+
+```typescript
+const run = await agent.start({
+  message: "Inspect pump 12",
+  runId: "notes-1",
+});
+const result = await run.result();
+```
+
+`runId` is yours. Use a stable id when you need to find the run after a restart. If you omit it, the runtime assigns one.
+
+`run.result()` waits until the run reaches a terminal message. It does not start a second driver. `run.schedule()` starts the driver when you already hold the run and want it to proceed in the background.
+
+## Status
+
+`runtime.listRuns()` returns stored runs. `status` is the native workflow status. Terminal statuses are `COMPLETED`, `FAILED`, and `CANCELLED`. They have no exits. `FAILED` is not retried in place.
+
+`BLOCKED` is not terminal. It means the run is waiting for reconciliation, or for a remote condition the application has to resolve. Continue a blocked tool outcome with `run.reconcile`. See [Tool side effects](/concepts/tool-side-effects).
+
+## Result
+
+`AgentResult` is the terminal local message:
+
+| Field        | Meaning                                         |
+| ------------ | ----------------------------------------------- |
+| `message`    | The model message stored for the completed run. |
+| `finish`     | `"stop"` or `"length"`.                         |
+| `iterations` | Model turns recorded for the run.               |
+| `toolCalls`  | Tool calls recorded for the run.                |
+
+`run.cancel()` requests cancellation. A step that already committed stays committed. Cancelling a remote call does not prove the remote agent stopped.

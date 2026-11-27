@@ -1,0 +1,26 @@
+---
+title: Cactus
+description: Optional on-device inference through cactus-react-native. The root SDK import does not load it.
+---
+
+```typescript
+import { cactusModel } from "@larkxai/react-native/cactus";
+
+const model = cactusModel({ model: "qwen3-0.6b" });
+await model.download();
+await model.init();
+```
+
+Install the peers only in an app that imports this subpath:
+
+```bash
+npm install cactus-react-native@1.13.1 react-native-nitro-modules@^0.33.9
+```
+
+`cactusModel` returns the host `Model`. Pass it to `createAgent` as `model`. Download and `init` stay outside the run. They are not steps, and they are not replayed by the runtime.
+
+Completions on one instance are serialized. A cancellation that is still queued does not cancel the completion already inside Cactus. Create a second `cactusModel` when you need an independent queue.
+
+The adapter rejects a Cactus response that requests a cloud handoff. LarkX does not turn that signal into a remote agent call.
+
+This repository has not run download or inference on a phone. Host tests cover the adapter contract with a stand-in, not a device model.

@@ -1,0 +1,43 @@
+---
+title: Local inference
+description: Cactus is optional. Download and init happen before the run.
+---
+
+LarkX does not ship a model and it does not vendor an inference engine in the root import. The supported on-device adapter is Cactus, loaded from `@larkxai/react-native/cactus`.
+
+```typescript
+import { createRuntime, defineTool, sqlite } from "@larkxai/react-native";
+import { cactusModel } from "@larkxai/react-native/cactus";
+
+const model = cactusModel({ model: "qwen3-0.6b" });
+await model.download();
+await model.init();
+
+const runtime = await createRuntime({ storage: sqlite() });
+const agent = runtime.createAgent({
+  name: "personal-assistant",
+  version: 1,
+  model,
+  instructions: "Help the user.",
+  tools: [
+    defineTool({
+      name: "read_notes",
+      description: "Read locally stored notes.",
+      effects: "idempotent",
+      schema: { type: "object", properties: {} },
+      handler: (_input, context) => ({
+        notes: ["Example note"],
+        operationId: context.operationId,
+      }),
+    }),
+  ],
+});
+```
+
+`qwen3-0.6b` is the model name the adapter passes to Cactus. The Cactus SDK's default quantization is int8, so a loaded model can report a name such as `qwen3-0.6b-int8`.
+
+Download and initialization are not agent steps. Do them before `agent.start`. Completions for one model instance are queued. Cancelling a call that is still waiting does not stop the completion that is already running. A second model instance has its own queue.
+
+A Cactus response that asks for a cloud handoff is rejected. This repository has not executed download or inference on a phone.
+
+Install `cactus-react-native` 1.13.1 and `react-native-nitro-modules` 0.33.9 or newer in the app. See [Cactus](/integrations/cactus).

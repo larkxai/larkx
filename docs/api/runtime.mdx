@@ -1,0 +1,39 @@
+---
+title: Runtime
+description: createRuntime, sqlite, and the methods on the Runtime object.
+---
+
+Import from `@larkxai/react-native`.
+
+## `sqlite(path?)`
+
+Returns the storage object `createRuntime` expects. Omit `path` to use `larkx.db` in the application document directory. The runtime does not delete an existing database.
+
+## `createRuntime(options)`
+
+Opens the native session. Resolves to a `Runtime`.
+
+| Option      | Required | Meaning                                                                   |
+| ----------- | -------- | ------------------------------------------------------------------------- |
+| `storage`   | No       | Defaults to `sqlite()`.                                                   |
+| `ownerId`   | No       | Ownership name for this process.                                          |
+| `telemetry` | No       | `larkxCloud(...)` or `{ exporter }`. Omitted means no upload.             |
+| `http`      | No       | Test hook. The React Native SDK supplies its own client when you omit it. |
+
+Throws if `LarkXNativeCore` is not in the binary.
+
+## Methods
+
+| Method                    | Returns                            | Meaning                                                                      |
+| ------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
+| `createAgent(options)`    | `Agent`                            | Register one definition.                                                     |
+| `listRuns()`              | `Promise<readonly RunStatus[]>`    | Stored runs in this database.                                                |
+| `resume(runId, options?)` | `Promise<Run>`                     | Continue a stored run. Register the agent first.                             |
+| `observe(listener)`       | `() => void`                       | Local host events. Call the return value to unsubscribe.                     |
+| `telemetryStatus()`       | `TelemetryDeliveryStatus`          | Last exporter state. Empty when telemetry is off.                            |
+| `flushTelemetry()`        | `Promise<TelemetryDeliveryStatus>` | Send now. Retries an authorization failure. Does not throw when Cloud fails. |
+| `setSuspended(suspended)` | `void`                             | Prefer `bindNativeAppState`.                                                 |
+| `diagnostics()`           | `RuntimeDiagnostics`               | Local counters.                                                              |
+| `close()`                 | `Promise<void>`                    | Wait for in-flight steps and release ownership.                              |
+
+`RunStatus` includes `runId`, `status`, `workflowName`, `workflowVersion`, `cancelRequested`, `ownershipEpoch`, `ownerId`, and `blockedReason`.

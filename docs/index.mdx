@@ -1,0 +1,44 @@
+---
+title: Introduction
+description: LarkX is the durable execution runtime for on-device AI agents.
+---
+
+LarkX keeps one execution record for an on-device agent. The model and the tools stay in your application. The runtime decides the next model call, tool call, or remote delegation, and it can resume that same run after the process starts again.
+
+Inference engines run models. LarkX brings durable agent execution to the device.
+
+## What you install
+
+The public SDK is [`@larkxai/react-native`](https://www.npmjs.com/package/@larkxai/react-native). The published version is **0.4.0**. It includes the C++ runtime, SQLite, local agents, native tools, optional Cactus, crash recovery, HTTP remote delegation, A2A 1.0, and optional Cloud telemetry.
+
+<Note>
+  Swift and Kotlin packages are planned. They are not published. `@larkxai/node` is the private test
+  host in this repository. Do not install it in an application.
+</Note>
+
+Expo Go cannot load the native module. Use a [development build](/getting-started/installation).
+
+## What a run survives
+
+A model call and a tool call are separate effects. The operating system can suspend or kill the process after a tool has changed local data and before that result is stored. Starting the prompt over can repeat that effect.
+
+LarkX stores the run in SQLite on the device. A committed step is not executed again. A `pure` or `idempotent` step that was still running may retry. A `non-idempotent` step that was interrupted becomes an unknown outcome and the run stays blocked until the application reconciles it.
+
+An external effect is not exactly-once. The process can die after the effect and before the commit.
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Install the SDK" icon="download" href="/getting-started/installation">
+    Add the React Native package and create a development build.
+  </Card>
+  <Card title="Quickstart" icon="play" href="/getting-started/quickstart">
+    Run a scripted agent against a local SQLite file.
+  </Card>
+  <Card title="Durable execution" icon="database" href="/concepts/durable-execution">
+    Committed steps, retries, and unknown outcomes.
+  </Card>
+  <Card title="LarkX Cloud" icon="cloud" href="/cloud/introduction">
+    Optional metadata. Local execution does not depend on it.
+  </Card>
+</CardGroup>

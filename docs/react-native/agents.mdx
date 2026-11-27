@@ -1,0 +1,28 @@
+---
+title: Defining agents
+description: Register a named agent with a model, instructions, and tools.
+---
+
+```typescript
+import { createRuntime, scriptedModel, sqlite } from "@larkxai/react-native";
+
+const runtime = await createRuntime({ storage: sqlite() });
+
+const agent = runtime.createAgent({
+  name: "notes",
+  version: 1,
+  instructions: "Read the note and answer in one line.",
+  model: scriptedModel([{ message: "Done.", finish: "stop", calls: [] }]),
+  tools: [],
+});
+
+const run = await agent.start({ message: "Summarize my notes" });
+console.log(await run.result());
+await runtime.close();
+```
+
+`name` must stay stable for the life of any run you want to resume. Bump `version` when the definition should not replay old runs.
+
+Add tools with [Defining tools](/react-native/tools). Add a remote peer with `remoteAgents`. See [HTTP remote agents](/integrations/http).
+
+`scriptedModel` is a real export. It is the stand-in used by tests and by this page. It is not an inference provider. When the scripted list runs out, `complete` throws, because a committed model step must not invent a new response.

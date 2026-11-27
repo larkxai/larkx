@@ -1,0 +1,193 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "LarkX",
+  "description": "Durable execution for on-device AI agents. The public reference for the React Native SDK.",
+  "colors": {
+    "primary": "#4d7a2e",
+    "light": "#c7fa75",
+    "dark": "#3d6b22"
+  },
+  "appearance": {
+    "default": "system"
+  },
+  "fonts": {
+    "family": "Inter"
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://www.larkx.ai"
+  },
+  "favicon": "/favicon.svg",
+  "navbar": {
+    "links": [
+      {
+        "label": "Website",
+        "href": "https://www.larkx.ai"
+      },
+      {
+        "label": "Cloud",
+        "href": "https://cloud.larkx.ai"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/larkxai/larkx"
+    }
+  },
+  "footer": {
+    "socials": {
+      "website": "https://www.larkx.ai",
+      "github": "https://github.com/larkxai/larkx"
+    },
+    "links": [
+      {
+        "header": "LarkX",
+        "items": [
+          {
+            "label": "Website",
+            "href": "https://www.larkx.ai"
+          },
+          {
+            "label": "Cloud",
+            "href": "https://cloud.larkx.ai"
+          },
+          {
+            "label": "GitHub",
+            "href": "https://github.com/larkxai/larkx"
+          }
+        ]
+      },
+      {
+        "header": "SDK",
+        "items": [
+          {
+            "label": "npm",
+            "href": "https://www.npmjs.com/package/@larkxai/react-native"
+          },
+          {
+            "label": "Examples",
+            "href": "https://github.com/larkxai/larkx/tree/main/examples"
+          },
+          {
+            "label": "Roadmap",
+            "href": "https://github.com/larkxai/larkx/blob/main/ROADMAP.md"
+          }
+        ]
+      }
+    ]
+  },
+  "contextual": {
+    "display": "header",
+    "options": ["copy", "view", "cursor", "mcp", "assistant"]
+  },
+  "markdown": {
+    "schema": true,
+    "instructions": [
+      "LarkX is a durable execution runtime for on-device AI agents. The public SDK is the npm package @larkxai/react-native.",
+      "Do not import @larkxai/node, @larkxai/host, @larkxai/protocol, @larkxai/telemetry, or @larkxai/cactus in an application. Those packages are private workspace modules.",
+      "Swift and Kotlin SDKs are planned and are not published.",
+      "Prefer the published npm version. The GitHub default branch can contain behavior that is not in that release yet.",
+      "Expo Go cannot load the native module. Use a development build.",
+      "Do not describe external tool or remote effects as exactly-once."
+    ]
+  },
+  "seo": {
+    "indexing": "navigable",
+    "organization": {
+      "name": "LarkX",
+      "url": "https://www.larkx.ai",
+      "sameAs": ["https://github.com/larkxai/larkx", "https://cloud.larkx.ai"]
+    }
+  },
+  "search": {
+    "prompt": "Search LarkX"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "icon": "rocket",
+        "pages": ["index", "getting-started/installation", "getting-started/quickstart"]
+      },
+      {
+        "group": "Core Concepts",
+        "icon": "layers",
+        "pages": [
+          "concepts/runtime",
+          "concepts/agent",
+          "concepts/run",
+          "concepts/durable-execution",
+          "concepts/tool-side-effects",
+          "concepts/crash-recovery"
+        ]
+      },
+      {
+        "group": "React Native",
+        "icon": "smartphone",
+        "pages": [
+          "react-native/installation",
+          "react-native/runtime",
+          "react-native/agents",
+          "react-native/tools",
+          "react-native/local-inference",
+          "react-native/offline",
+          "react-native/lifecycle"
+        ]
+      },
+      {
+        "group": "Integrations",
+        "icon": "plug",
+        "pages": [
+          "integrations/cactus",
+          "integrations/http",
+          "integrations/a2a",
+          "integrations/langgraph"
+        ]
+      },
+      {
+        "group": "LarkX Cloud",
+        "icon": "cloud",
+        "pages": [
+          "cloud/introduction",
+          "cloud/connecting",
+          "cloud/ingestion-keys",
+          "cloud/traces",
+          "cloud/recovery",
+          "cloud/privacy",
+          "cloud/troubleshooting"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "icon": "braces",
+        "pages": [
+          "api/runtime",
+          "api/agent",
+          "api/run",
+          "api/tools",
+          "api/models",
+          "api/remote-agents",
+          "api/telemetry"
+        ]
+      },
+      {
+        "group": "Resources",
+        "icon": "library",
+        "pages": [
+          "resources/examples",
+          "resources/architecture",
+          "resources/troubleshooting",
+          "resources/faq",
+          "resources/contributing",
+          "resources/roadmap",
+          "resources/documentation-site"
+        ]
+      }
+    ]
+  }
+}

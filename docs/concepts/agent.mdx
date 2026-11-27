@@ -1,0 +1,27 @@
+---
+title: Agent
+description: An agent is a named, versioned definition of instructions, a model, tools, and remote agents.
+---
+
+`runtime.createAgent` registers a definition. The name and version identify that definition for later recovery. A missing version does not replay a run onto a different definition.
+
+```typescript
+const agent = runtime.createAgent({
+  name: "notes",
+  version: 1,
+  instructions: "Read the note and answer in one line.",
+  model,
+  tools: [readNotes],
+});
+```
+
+`name` is the workflow name stored with the run. Keep it stable. Changing the version is how you stop an old run from replaying on a new definition.
+
+## What belongs on the agent
+
+- `instructions` are the local system guidance for the model.
+- `model` implements `complete(request, context)`. Use `scriptedModel` in tests and examples. Use [Cactus](/integrations/cactus) for on-device inference.
+- `tools` are local functions. Each tool declares an effect class. See [Tool side effects](/concepts/tool-side-effects).
+- `remoteAgents` are optional. With none, the agent stays on the device. Registering a remote agent authorizes the runtime to send that tool's arguments to that endpoint.
+
+The agent does not own the SQLite file. The runtime does. Create the agent again after a restart, with the same name and version, before `runtime.resume`.

@@ -1,0 +1,36 @@
+---
+title: FAQ
+description: Short answers about the SDK, Cloud, and what is not shipped.
+---
+
+## Which package do I install?
+
+`@larkxai/react-native`. The published version is 0.4.0. Do not install `@larkxai/node` or the private workspace packages.
+
+## Does it work in Expo Go?
+
+No. The C++ runtime is a native module. Use a development build.
+
+## Does the SDK include a model?
+
+No. Use `scriptedModel` when you want a fixed response, or [Cactus](/integrations/cactus) for on-device inference. Other providers are not shipped.
+
+## Is a remote effect exactly-once?
+
+No. The runtime records the attempt and can avoid a second send when the peer's declared capabilities allow it. It cannot promise the peer never saw the first send.
+
+## Does Cloud run my agent?
+
+No. Cloud, when you enable it, receives metadata. The agent runs from the local database. See [Privacy and telemetry](/cloud/privacy).
+
+## Are Swift and Kotlin available?
+
+They are planned. They are not packages you can add today. `examples/swift-agent` calls the C ABI and is not a Swift SDK.
+
+## Is the phone demo finished?
+
+The field-inspection example exists. Physical-device validation, including real Cactus inference and force-quit recovery, is still open. Node `SIGKILL` tests are not that phone run.
+
+## Where are the internal design docs?
+
+They stay in the git repository under `docs/architecture/` and `docs/validation/`. This site links to them from [Architecture](/resources/architecture) and does not list them in the public navigation.

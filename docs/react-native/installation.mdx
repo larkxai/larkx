@@ -1,0 +1,26 @@
+---
+title: Installation and native setup
+description: Load the C++ runtime in a React Native development build.
+---
+
+```bash
+npm install @larkxai/react-native expo-file-system
+```
+
+`expo-file-system` is a peer. `sqlite()` uses it to place `larkx.db` under the application documents directory.
+
+The native module name is `LarkXNativeCore`. Expo autolinking, the podspec, and the Android package register it. After installing, create a new development build. Expo Go cannot load this module, and there is no JavaScript fallback.
+
+If `createRuntime` throws `LarkXNativeCore is not installed`, the binary that is running was built without the native module. Rebuild the development client. Do not catch that error and substitute a JavaScript engine.
+
+## iOS and Android
+
+The published package contains the iOS project, the podspec, and the Android project. A normal Expo or React Native prebuild picks them up. You do not add a second copy of the C++ sources to the app.
+
+The runtime rejects a SQLite file whose `application_id` is not `LXRT`. Create a new file for this SDK. Do not point it at a database from the removed TypeScript engine.
+
+## Optional native pieces
+
+Install `expo-crypto` only with [Cloud telemetry](/cloud/connecting). Install `cactus-react-native@1.13.1` and `react-native-nitro-modules@0.33.9` or newer only with [Cactus](/integrations/cactus).
+
+Neither optional stack is loaded by the root import.

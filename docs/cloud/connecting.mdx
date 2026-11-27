@@ -1,0 +1,38 @@
+---
+title: Connecting the SDK
+description: Pass larkxCloud to createRuntime. Install expo-crypto when telemetry is on.
+---
+
+```bash
+npm install expo-crypto
+```
+
+React Native uses `expo-crypto` `randomUUID` for installation and batch ids. The time-and-counter fallback is not used. Without the peer, enabling telemetry cannot mint those ids.
+
+```typescript
+import { createRuntime, larkxCloud, sqlite } from "@larkxai/react-native";
+
+const runtime = await createRuntime({
+  storage: sqlite(),
+  telemetry: larkxCloud({
+    projectId: "my-project",
+    apiKey: process.env.EXPO_PUBLIC_LARKX_INGESTION_KEY ?? "",
+    appId: "field-inspection",
+  }),
+});
+```
+
+`projectId` is sent as `source.appId` unless you set `appId`. Cloud authorizes the ingestion key, not the project id string. `endpoint` overrides the origin. An `http` URL is accepted only when you set it, for a development collector. The endpoint cannot contain userinfo, a query, or a fragment.
+
+`flushIntervalMs` defaults to 15 seconds. Set it to `0` to disable the timer. Call `flushTelemetry()` yourself in that case.
+
+```typescript
+await runtime.flushTelemetry();
+const status = runtime.telemetryStatus();
+```
+
+`{ exporter }` is the other accepted config, for a sink you implement. Do not combine it with `larkxCloud` in one object. The type is one or the other.
+
+Enabling telemetry does not backfill runs that already had events. Those runs are sealed for that destination. Runs created after authorization export from sequence 1, including events committed while the device was offline.
+
+Changing the endpoint, the project id, or the ingestion key is a new destination and seals the runs that exist at that moment.
