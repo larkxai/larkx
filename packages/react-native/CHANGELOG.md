@@ -1,5 +1,13 @@
 # @larkxai/react-native
 
+## 0.4.0
+
+### Minor Changes
+
+- 538aed1: Add A2A protocol 1.0 to `remoteAgent` and `run.provideInput` for a remote agent that asks for more information. Authentication required is a separate blocked condition, and credentials are not accepted as that input. JSON-RPC responses must match the request id before a result is committed. The HTTP task transport is unchanged. A lost A2A acknowledgement still blocks the parent when the task id was never stored.
+- d1bafe2: Use `expo-crypto` for Cloud telemetry installation and batch ids on React Native. The time-and-counter identifier fallback is no longer used. Host observations include the tool or remote agent name when the runtime provides one.
+- d9316be: Add opt-in execution telemetry. `larkxCloud({ projectId, apiKey })` exports metadata from the native journal, and `{ exporter }` accepts another sink. The default runtime does not transmit telemetry. `flushTelemetry` and `telemetryStatus` report delivery. Prompts, model text, tool arguments, and tool results are not included.
+
 ## 0.3.0
 
 ### Minor Changes
