@@ -6,10 +6,18 @@
   "colors": {
     "primary": "#4d7a2e",
     "light": "#c7fa75",
-    "dark": "#3d6b22"
+    "dark": "#c7fa75"
   },
   "appearance": {
-    "default": "system"
+    "default": "dark"
+  },
+  "background": {
+    "color": {
+      "dark": "#0b0d10"
+    }
+  },
+  "styling": {
+    "codeblocks": "dark"
   },
   "fonts": {
     "family": "Inter"
