@@ -303,15 +303,19 @@ function stringMap(value: unknown): Record<string, string> {
   return result;
 }
 
-/** At most 64 short reason codes. Older documents without the field stay empty. */
+/**
+ * One short reason per run. The count is not capped: dropping a run would make
+ * it eligible for export again. Callers keep the map for the life of the destination.
+ */
 function boundedStringMap(value: unknown): Record<string, string> {
   const parsed = stringMap(value);
   const result: Record<string, string> = {};
-  for (const key of Object.keys(parsed).slice(0, 64)) {
+  for (const key of Object.keys(parsed)) {
     const reason = parsed[key];
-    if (reason !== undefined && reason.length > 0 && reason.length <= 40 && key.length <= 200) {
-      result[key] = reason;
+    if (key.length > 200 || reason === undefined || reason.length === 0) {
+      continue;
     }
+    result[key] = reason.slice(0, 40);
   }
   return result;
 }

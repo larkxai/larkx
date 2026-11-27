@@ -12,22 +12,32 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.json.JSONObject;
 
 /**
- * SDK HTTP client. Redirects are not followed. The process-wide
- * {@code HttpURLConnection.setFollowRedirects} flag is left unchanged, and this
- * module does not install a cookie store or a custom trust manager.
+ * SDK HTTP client. Redirects are not followed. The process-wide follow-redirects
+ * flag, cookie handler, and trust manager are left unchanged.
+ *
+ * <p>{@code HttpURLConnection} has no per-connection switch that ignores a
+ * {@code CookieHandler} installed by the host app. This module does not install
+ * one and does not replace the process default. If the app has set a default
+ * handler, that handler can still attach cookies. A separate HTTP stack would
+ * be required to prevent that, and this package does not add one.
  */
 public class LarkXHttpModule extends ReactContextBaseJavaModule {
-  private final ExecutorService executor = Executors.newCachedThreadPool();
-  private final ConcurrentHashMap<Integer, HttpURLConnection> live = new ConcurrentHashMap<>();
-  private final ConcurrentHashMap<Integer, AtomicBoolean> settled = new ConcurrentHashMap<>();
-  private final ConcurrentHashMap<Integer, Boolean> cancelled = new ConcurrentHashMap<>();
+  private final ThreadPoolExecutor executor = HttpLane.create();
+  private final ScheduledExecutorService clocks = Executors.newSingleThreadScheduledExecutor(runnable -> {
+    Thread thread = new Thread(runnable, "larkx-http-deadline");
+    thread.setDaemon(true);
+    return thread;
+  });
+  private final HttpAttempts attempts = new HttpAttempts();
 
   public LarkXHttpModule(ReactApplicationContext context) {
     super(context);
@@ -41,140 +51,205 @@ public class LarkXHttpModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void request(double requestId, String payload, Promise promise) {
     final int id = (int) requestId;
-    settled.put(id, new AtomicBoolean(false));
-    executor.execute(
-        () -> {
-          HttpURLConnection connection = null;
-          try {
-            if (cancelled.containsKey(id)) {
-              resolveOnce(id, promise, "{\"ok\":false,\"error\":\"cancelled\"}");
-              return;
-            }
-            JSONObject document = new JSONObject(payload);
-            String urlText = document.optString("url", "");
-            String method = document.optString("method", "GET");
-            URI uri;
-            try {
-              uri = URI.create(urlText);
-            } catch (IllegalArgumentException error) {
-              resolveOnce(id, promise, "{\"ok\":false,\"error\":\"invalid_url\"}");
-              return;
-            }
-            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.US);
-            if ((!"https".equals(scheme) && !"http".equals(scheme))
-                || uri.getHost() == null
-                || uri.getRawUserInfo() != null
-                || (!"GET".equals(method) && !"POST".equals(method))) {
-              resolveOnce(id, promise, "{\"ok\":false,\"error\":\"invalid_url\"}");
-              return;
-            }
-            int timeoutMs = document.optInt("timeoutMs", 10_000);
-            int maxBytes = Math.max(1, document.optInt("maxBytes", 65_536));
-            connection = (HttpURLConnection) uri.toURL().openConnection();
-            connection.setInstanceFollowRedirects(false);
-            connection.setConnectTimeout(Math.max(1, timeoutMs));
-            connection.setReadTimeout(Math.max(1, timeoutMs));
-            connection.setUseCaches(false);
-            connection.setRequestMethod(method);
-            JSONObject headers = document.optJSONObject("headers");
-            if (headers != null) {
-              java.util.Iterator<String> names = headers.keys();
-              while (names.hasNext()) {
-                String name = names.next();
-                String value = headers.optString(name, "");
-                if (name.indexOf('\n') >= 0 || name.indexOf('\r') >= 0 || value.indexOf('\n') >= 0 || value.indexOf('\r') >= 0) {
-                  continue;
-                }
-                connection.setRequestProperty(name, value);
-              }
-            }
-            String body = document.isNull("body") ? null : document.optString("body", null);
-            if ("POST".equals(method) && body != null) {
-              byte[] encoded = body.getBytes(StandardCharsets.UTF_8);
-              connection.setDoOutput(true);
-              try (java.io.OutputStream output = connection.getOutputStream()) {
-                output.write(encoded);
-              }
-            }
-            live.put(id, connection);
-            if (cancelled.containsKey(id)) {
-              connection.disconnect();
-              resolveOnce(id, promise, "{\"ok\":false,\"error\":\"cancelled\"}");
-              return;
-            }
-            int status = connection.getResponseCode();
-            if (status >= 300 && status < 400) {
-              resolveOnce(id, promise, "{\"ok\":false,\"error\":\"redirect\",\"status\":" + status + "}");
-              connection.disconnect();
-              return;
-            }
-            InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
-            String responseBody = readBounded(stream, maxBytes);
-            if (responseBody == null) {
-              resolveOnce(id, promise, "{\"ok\":false,\"error\":\"oversized\"}");
-              connection.disconnect();
-              return;
-            }
-            JSONObject result = new JSONObject();
-            result.put("ok", true);
-            result.put("status", status);
-            result.put("body", responseBody);
-            JSONObject responseHeaders = new JSONObject();
-            Map<String, List<String>> headerFields = connection.getHeaderFields();
-            if (headerFields != null) {
-              for (Map.Entry<String, List<String>> entry : headerFields.entrySet()) {
-                if (entry.getKey() == null || entry.getValue() == null) {
-                  continue;
-                }
-                responseHeaders.put(
-                    entry.getKey().toLowerCase(Locale.US), String.join(", ", entry.getValue()));
-              }
-            }
-            result.put("headers", responseHeaders);
-            resolveOnce(id, promise, result.toString());
-          } catch (java.net.SocketTimeoutException error) {
-            String kind = cancelled.containsKey(id) ? "cancelled" : "timeout";
-            resolveOnce(id, promise, "{\"ok\":false,\"error\":\"" + kind + "\"}");
-          } catch (Exception error) {
-            String kind = cancelled.containsKey(id) ? "cancelled" : "network";
-            resolveOnce(id, promise, "{\"ok\":false,\"error\":\"" + kind + "\"}");
-          } finally {
-            live.remove(id);
-            if (connection != null) {
-              connection.disconnect();
-            }
-          }
-        });
+    JSONObject document;
+    try {
+      document = new JSONObject(payload);
+    } catch (Exception error) {
+      promise.resolve("{\"ok\":false,\"error\":\"invalid_url\"}");
+      return;
+    }
+    int timeoutMs = Math.max(1, document.optInt("timeoutMs", 10_000));
+    long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+    HttpAttempts.Attempt attempt = attempts.open(id, deadline, promise::resolve);
+    try {
+      executor.execute(() -> perform(id, attempt, document));
+    } catch (RejectedExecutionException error) {
+      resolve(id, "{\"ok\":false,\"error\":\"network\"}");
+    }
   }
 
   @ReactMethod
   public void cancel(double requestId) {
     int id = (int) requestId;
-    cancelled.put(id, Boolean.TRUE);
-    HttpURLConnection connection = live.remove(id);
-    if (connection != null) {
-      connection.disconnect();
+    HttpAttempts.Attempt attempt = attempts.get(id);
+    if (attempt == null) {
+      return;
     }
+    attempt.cancelled = true;
+    Object connection = attempt.connection;
+    if (connection instanceof HttpURLConnection) {
+      ((HttpURLConnection) connection).disconnect();
+    }
+    resolve(id, "{\"ok\":false,\"error\":\"cancelled\"}");
   }
 
   @Override
   public void invalidate() {
-    for (Integer id : live.keySet()) {
+    for (Integer id : attempts.ids()) {
       cancel(id);
     }
     executor.shutdownNow();
+    clocks.shutdownNow();
     super.invalidate();
   }
 
-  private void resolveOnce(int id, Promise promise, String payload) {
-    AtomicBoolean flag = settled.computeIfAbsent(id, ignored -> new AtomicBoolean(false));
-    if (!flag.compareAndSet(false, true)) {
-      return;
+  private void perform(int id, HttpAttempts.Attempt attempt, JSONObject document) {
+    HttpURLConnection connection = null;
+    ScheduledFuture<?> alarm = null;
+    try {
+      if (attempt.cancelled || attempt.settled.get()) {
+        resolve(id, "{\"ok\":false,\"error\":\"cancelled\"}");
+        return;
+      }
+      if (HttpAttempts.remainingMillis(attempt.deadlineNanos) == 0) {
+        resolve(id, "{\"ok\":false,\"error\":\"timeout\"}");
+        return;
+      }
+      String urlText = document.optString("url", "");
+      String method = document.optString("method", "GET");
+      URI uri;
+      try {
+        uri = URI.create(urlText);
+      } catch (IllegalArgumentException error) {
+        resolve(id, "{\"ok\":false,\"error\":\"invalid_url\"}");
+        return;
+      }
+      String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.US);
+      if ((!"https".equals(scheme) && !"http".equals(scheme))
+          || uri.getHost() == null
+          || uri.getRawUserInfo() != null
+          || (!"GET".equals(method) && !"POST".equals(method))) {
+        resolve(id, "{\"ok\":false,\"error\":\"invalid_url\"}");
+        return;
+      }
+      int maxBytes = Math.max(1, document.optInt("maxBytes", 65_536));
+      int remaining = HttpAttempts.remainingMillis(attempt.deadlineNanos);
+      if (remaining == 0) {
+        resolve(id, "{\"ok\":false,\"error\":\"timeout\"}");
+        return;
+      }
+      connection = (HttpURLConnection) uri.toURL().openConnection();
+      connection.setInstanceFollowRedirects(false);
+      connection.setConnectTimeout(remaining);
+      connection.setReadTimeout(remaining);
+      connection.setUseCaches(false);
+      connection.setRequestMethod(method);
+      attempt.connection = connection;
+      if (attempt.cancelled) {
+        connection.disconnect();
+        resolve(id, "{\"ok\":false,\"error\":\"cancelled\"}");
+        return;
+      }
+      int budget = HttpAttempts.remainingMillis(attempt.deadlineNanos);
+      if (budget == 0) {
+        resolve(id, "{\"ok\":false,\"error\":\"timeout\"}");
+        return;
+      }
+      final HttpURLConnection socket = connection;
+      alarm = clocks.schedule(socket::disconnect, budget, TimeUnit.MILLISECONDS);
+      JSONObject headers = document.optJSONObject("headers");
+      if (headers != null) {
+        java.util.Iterator<String> names = headers.keys();
+        while (names.hasNext()) {
+          String name = names.next();
+          String value = headers.optString(name, "");
+          if (name.indexOf('\n') >= 0
+              || name.indexOf('\r') >= 0
+              || value.indexOf('\n') >= 0
+              || value.indexOf('\r') >= 0) {
+            continue;
+          }
+          connection.setRequestProperty(name, value);
+        }
+      }
+      String body = document.isNull("body") ? null : document.optString("body", null);
+      if ("POST".equals(method) && body != null) {
+        byte[] encoded = body.getBytes(StandardCharsets.UTF_8);
+        connection.setDoOutput(true);
+        try (java.io.OutputStream output = connection.getOutputStream()) {
+          if (attempt.cancelled || HttpAttempts.remainingMillis(attempt.deadlineNanos) == 0) {
+            throw new java.io.InterruptedIOException();
+          }
+          output.write(encoded);
+        }
+      }
+      if (attempt.cancelled) {
+        resolve(id, "{\"ok\":false,\"error\":\"cancelled\"}");
+        return;
+      }
+      if (HttpAttempts.remainingMillis(attempt.deadlineNanos) == 0) {
+        resolve(id, "{\"ok\":false,\"error\":\"timeout\"}");
+        return;
+      }
+      int status = connection.getResponseCode();
+      if (status >= 300 && status < 400) {
+        resolve(id, "{\"ok\":false,\"error\":\"redirect\",\"status\":" + status + "}");
+        return;
+      }
+      InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
+      String responseBody = readBounded(stream, maxBytes, attempt);
+      if (attempt.cancelled) {
+        resolve(id, "{\"ok\":false,\"error\":\"cancelled\"}");
+        return;
+      }
+      if (responseBody == null) {
+        String kind =
+            HttpAttempts.remainingMillis(attempt.deadlineNanos) == 0 ? "timeout" : "oversized";
+        resolve(id, "{\"ok\":false,\"error\":\"" + kind + "\"}");
+        return;
+      }
+      JSONObject result = new JSONObject();
+      result.put("ok", true);
+      result.put("status", status);
+      result.put("body", responseBody);
+      JSONObject responseHeaders = new JSONObject();
+      Map<String, List<String>> headerFields = connection.getHeaderFields();
+      if (headerFields != null) {
+        for (Map.Entry<String, List<String>> entry : headerFields.entrySet()) {
+          if (entry.getKey() == null || entry.getValue() == null) {
+            continue;
+          }
+          responseHeaders.put(
+              entry.getKey().toLowerCase(Locale.US), String.join(", ", entry.getValue()));
+        }
+      }
+      result.put("headers", responseHeaders);
+      resolve(id, result.toString());
+    } catch (java.net.SocketTimeoutException error) {
+      String kind = attempt.cancelled ? "cancelled" : "timeout";
+      resolve(id, "{\"ok\":false,\"error\":\"" + kind + "\"}");
+    } catch (Exception error) {
+      String kind;
+      if (attempt.cancelled) {
+        kind = "cancelled";
+      } else if (HttpAttempts.remainingMillis(attempt.deadlineNanos) == 0) {
+        kind = "timeout";
+      } else {
+        kind = "network";
+      }
+      resolve(id, "{\"ok\":false,\"error\":\"" + kind + "\"}");
+    } finally {
+      if (alarm != null) {
+        alarm.cancel(false);
+      }
+      if (connection != null) {
+        connection.disconnect();
+      }
     }
-    promise.resolve(payload);
   }
 
-  private static String readBounded(InputStream stream, int maxBytes) throws java.io.IOException {
+  private void resolve(int id, String payload) {
+    HttpAttempts.Attempt attempt = attempts.get(id);
+    if (attempt == null || !attempts.finish(id)) {
+      return;
+    }
+    if (attempt.settlement != null) {
+      attempt.settlement.accept(payload);
+    }
+  }
+
+  private static String readBounded(InputStream stream, int maxBytes, HttpAttempts.Attempt attempt)
+      throws java.io.IOException {
     if (stream == null) {
       return "";
     }
@@ -183,6 +258,10 @@ public class LarkXHttpModule extends ReactContextBaseJavaModule {
     int total = 0;
     int read;
     while ((read = stream.read(buffer)) >= 0) {
+      if (attempt.cancelled || HttpAttempts.remainingMillis(attempt.deadlineNanos) == 0) {
+        stream.close();
+        return null;
+      }
       total += read;
       if (total > maxBytes) {
         stream.close();

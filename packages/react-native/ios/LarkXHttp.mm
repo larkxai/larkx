@@ -9,7 +9,10 @@
   NSMutableDictionary<NSNumber *, NSMutableDictionary *> *_requests;
   NSMutableDictionary<NSNumber *, NSNumber *> *_taskRequests;
   NSMutableSet<NSNumber *> *_cancelled;
+  NSInteger _maxStarted;
 }
+// `_cancelled` holds ids cancelled before `request` registers them.
+// A cancel after the request has finished is ignored, so the set does not grow.
 
 RCT_EXPORT_MODULE(LarkXHttp);
 
@@ -42,14 +45,33 @@ RCT_EXPORT_MODULE(LarkXHttp);
 RCT_EXPORT_METHOD(request : (nonnull NSNumber *)requestId payload : (NSString *)payload resolver : (
     RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
   (void)reject;
-  NSData *encoded = [payload dataUsingEncoding:NSUTF8StringEncoding];
-  id parsed = encoded == nil ? nil : [NSJSONSerialization JSONObjectWithData:encoded options:0 error:nil];
   __block BOOL alreadyCancelled = NO;
   dispatch_sync(_queue, ^{
     alreadyCancelled = [_cancelled containsObject:requestId];
+    [_cancelled removeObject:requestId];
+    if (requestId.integerValue > _maxStarted) {
+      _maxStarted = requestId.integerValue;
+    }
+    if (alreadyCancelled) {
+      return;
+    }
+    _requests[requestId] = [@{
+      @"resolve" : resolve,
+      @"settled" : @NO,
+      @"data" : [NSMutableData data],
+      @"maxBytes" : @65536,
+    } mutableCopy];
   });
-  if (alreadyCancelled || ![parsed isKindOfClass:[NSDictionary class]]) {
-    resolve([self encode:@{@"ok" : @NO, @"error" : alreadyCancelled ? @"cancelled" : @"invalid_url"}]);
+  if (alreadyCancelled) {
+    resolve([self encode:@{@"ok" : @NO, @"error" : @"cancelled"}]);
+    return;
+  }
+  NSData *encoded = [payload dataUsingEncoding:NSUTF8StringEncoding];
+  id parsed = encoded == nil ? nil : [NSJSONSerialization JSONObjectWithData:encoded options:0 error:nil];
+  if (![parsed isKindOfClass:[NSDictionary class]]) {
+    dispatch_sync(_queue, ^{
+      [self finishLocked:requestId payload:@{@"ok" : @NO, @"error" : @"invalid_url"}];
+    });
     return;
   }
   NSDictionary *document = (NSDictionary *)parsed;
@@ -57,15 +79,6 @@ RCT_EXPORT_METHOD(request : (nonnull NSNumber *)requestId payload : (NSString *)
   NSString *method = [document[@"method"] isKindOfClass:[NSString class]] ? document[@"method"] : @"GET";
   NSURL *url = [NSURL URLWithString:urlText];
   NSString *scheme = url.scheme.lowercaseString;
-  if (url == nil || url.host.length == 0 || url.user.length > 0 || url.password.length > 0 ||
-      !([scheme isEqualToString:@"https"] || [scheme isEqualToString:@"http"])) {
-    resolve([self encode:@{@"ok" : @NO, @"error" : @"invalid_url"}]);
-    return;
-  }
-  if (!([method isEqualToString:@"GET"] || [method isEqualToString:@"POST"])) {
-    resolve([self encode:@{@"ok" : @NO, @"error" : @"invalid_url"}]);
-    return;
-  }
   NSTimeInterval timeout = 10;
   if ([document[@"timeoutMs"] isKindOfClass:[NSNumber class]]) {
     timeout = MAX(0.001, [document[@"timeoutMs"] doubleValue] / 1000.0);
@@ -73,6 +86,15 @@ RCT_EXPORT_METHOD(request : (nonnull NSNumber *)requestId payload : (NSString *)
   NSUInteger maxBytes = 65536;
   if ([document[@"maxBytes"] isKindOfClass:[NSNumber class]]) {
     maxBytes = (NSUInteger)MAX(1, [document[@"maxBytes"] integerValue]);
+  }
+  BOOL supported = url != nil && url.host.length > 0 && url.user.length == 0 && url.password.length == 0 &&
+                   ([scheme isEqualToString:@"https"] || [scheme isEqualToString:@"http"]) &&
+                   ([method isEqualToString:@"GET"] || [method isEqualToString:@"POST"]);
+  if (!supported) {
+    dispatch_sync(_queue, ^{
+      [self finishLocked:requestId payload:@{@"ok" : @NO, @"error" : @"invalid_url"}];
+    });
+    return;
   }
   NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
   request.HTTPMethod = method;
@@ -94,24 +116,36 @@ RCT_EXPORT_METHOD(request : (nonnull NSNumber *)requestId payload : (NSString *)
   if ([document[@"body"] isKindOfClass:[NSString class]] && [method isEqualToString:@"POST"]) {
     request.HTTPBody = [(NSString *)document[@"body"] dataUsingEncoding:NSUTF8StringEncoding];
   }
-  dispatch_sync(_queue, ^{
-    _requests[requestId] = [@{
-      @"resolve" : resolve,
-      @"settled" : @NO,
-      @"data" : [NSMutableData data],
-      @"maxBytes" : @(maxBytes),
-    } mutableCopy];
+  int64_t delay = (int64_t)(timeout * (NSTimeInterval)NSEC_PER_SEC);
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay), _queue, ^{
+    NSMutableDictionary *state = _requests[requestId];
+    if (state == nil || [state[@"settled"] boolValue]) {
+      return;
+    }
+    NSURLSessionTask *late = state[@"task"];
+    [self finishLocked:requestId payload:@{@"ok" : @NO, @"error" : @"timeout"}];
+    if (late != nil) {
+      dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        [late cancel];
+      });
+    }
   });
   NSURLSessionDataTask *task = [_session dataTaskWithRequest:request];
+  __block BOOL dropped = NO;
   dispatch_sync(_queue, ^{
     NSMutableDictionary *state = _requests[requestId];
     if (state == nil || [state[@"settled"] boolValue]) {
-      [task cancel];
+      dropped = YES;
       return;
     }
     state[@"task"] = task;
+    state[@"maxBytes"] = @(maxBytes);
     _taskRequests[@(task.taskIdentifier)] = requestId;
   });
+  if (dropped) {
+    [task cancel];
+    return;
+  }
   [task resume];
 }
 
@@ -120,13 +154,17 @@ RCT_EXPORT_METHOD(cancel : (nonnull NSNumber *)requestId) {
   dispatch_sync(_queue, ^{
     NSMutableDictionary *state = _requests[requestId];
     if (state == nil) {
-      [_cancelled addObject:requestId];
+      if (requestId.integerValue > _maxStarted) {
+        [_cancelled addObject:requestId];
+      }
       return;
     }
     task = state[@"task"];
     [self finishLocked:requestId payload:@{@"ok" : @NO, @"error" : @"cancelled"}];
   });
-  [task cancel];
+  if (task != nil) {
+    [task cancel];
+  }
 }
 
 - (void)URLSession:(NSURLSession *)session
@@ -144,6 +182,7 @@ RCT_EXPORT_METHOD(cancel : (nonnull NSNumber *)requestId) {
     }
   });
   completionHandler(nil);
+  [task cancel];
   if (requestId == nil) {
     return;
   }
@@ -158,7 +197,8 @@ RCT_EXPORT_METHOD(cancel : (nonnull NSNumber *)requestId) {
 }
 
 - (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)task didReceiveData:(NSData *)data {
-  dispatch_async(_queue, ^{
+  __block BOOL tooBig = NO;
+  dispatch_sync(_queue, ^{
     NSNumber *requestId = _taskRequests[@(task.taskIdentifier)];
     NSMutableDictionary *state = requestId == nil ? nil : _requests[requestId];
     if (state == nil || [state[@"settled"] boolValue]) {
@@ -167,11 +207,14 @@ RCT_EXPORT_METHOD(cancel : (nonnull NSNumber *)requestId) {
     NSMutableData *body = state[@"data"];
     if (body.length + data.length > [state[@"maxBytes"] unsignedIntegerValue]) {
       [self finishLocked:requestId payload:@{@"ok" : @NO, @"error" : @"oversized"}];
-      [task cancel];
+      tooBig = YES;
       return;
     }
     [body appendData:data];
   });
+  if (tooBig) {
+    [task cancel];
+  }
 }
 
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {

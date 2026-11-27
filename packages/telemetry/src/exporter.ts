@@ -109,8 +109,9 @@ export interface CloudTelemetry {
   setActive(active: boolean): void;
   /**
    * Send pending batches.
-   * A manual flush retries an authorization failure, a held batch, or a permanently
-   * rejected run once. The foreground timer does not retry those.
+   * A manual flush retries an authorization failure, a held batch, or a
+   * `quota_exceeded` run once. Historical conflicts stay rejected. The
+   * foreground timer retries none of those.
    */
   flush(options?: { readonly manual?: boolean }): Promise<FlushResult>;
   stop(): Promise<void>;
@@ -297,7 +298,7 @@ class CloudExporter implements CloudTelemetry {
         ...destination,
         authBlocked: false,
         hold: null,
-        rejectedRuns: {},
+        rejectedRuns: withoutQuotaRejections(destination.rejectedRuns),
         backoffAttempt: 0,
         nextAttemptAt: 0,
       };
@@ -310,7 +311,7 @@ class CloudExporter implements CloudTelemetry {
       return this.result(false);
     }
     let delivered = false;
-    for (let turn = 0; turn < 8; turn += 1) {
+    for (let turn = 0, guard = 0; turn < 8 && guard < 10_000; turn += 1, guard += 1) {
       if (this.stopped) {
         this.lastError = "stopped";
         break;
@@ -460,6 +461,7 @@ class CloudExporter implements CloudTelemetry {
         this.phase = "pending";
         this.lastError = "rejected";
         destination = await this.persist(destinationKey, destination);
+        turn -= 1;
         continue;
       }
       if (outcome.kind === "unauthorized") {
@@ -883,6 +885,9 @@ function interpretResponse(status: number, text: string, pending: PendingBatch):
     return status >= 200 && status < 300 ? { kind: "malformed" } : holdFor(status);
   }
   if (status === 409 && body["error"] === "sequence_gap") {
+    if (!sameRun(body, pending)) {
+      return { kind: "hold", error: "unsupported" };
+    }
     const have = body["haveThroughSequence"];
     if (
       typeof have === "number" &&
@@ -895,13 +900,19 @@ function interpretResponse(status: number, text: string, pending: PendingBatch):
     return { kind: "reject-run", error: "sequence_gap" };
   }
   if (status === 409 && body["error"] === "history_conflict") {
+    if (!sameRun(body, pending)) {
+      return { kind: "hold", error: "unsupported" };
+    }
     return { kind: "reject-run", error: "history_conflict" };
   }
   if (status === 409 && body["error"] === "run_rejected") {
+    if (!sameRun(body, pending)) {
+      return { kind: "hold", error: "unsupported" };
+    }
     return { kind: "reject-run", error: "rejected" };
   }
   if (status === 409) {
-    return { kind: "reject-run", error: "history_conflict" };
+    return { kind: "hold", error: "unsupported" };
   }
   if (status === 400 && body["error"] === "quota_exceeded") {
     return { kind: "reject-run", error: "quota_exceeded" };
@@ -909,11 +920,21 @@ function interpretResponse(status: number, text: string, pending: PendingBatch):
   if (status === 400) {
     return { kind: "hold", error: "invalid_batch" };
   }
-  if (status === 413) {
+  if (status === 413 && body["error"] === "batch_too_large") {
     return { kind: "reject-run", error: "batch_too_large" };
   }
-  if (status === 422) {
+  if (status === 413) {
+    return { kind: "hold", error: "unsupported" };
+  }
+  if (status === 422 && body["error"] === "sensitive_payload") {
+    const named = body["runId"];
+    if (typeof named === "string" && named !== pending.runId) {
+      return { kind: "hold", error: "unsupported" };
+    }
     return { kind: "reject-run", error: "sensitive_payload" };
+  }
+  if (status === 422) {
+    return { kind: "hold", error: "unsupported" };
   }
   if (status < 200 || status >= 300) {
     return { kind: "retry" };
@@ -950,7 +971,7 @@ function holdFor(status: number): PostOutcome {
     return { kind: "hold", error: "batch_too_large" };
   }
   if (status === 422) {
-    return { kind: "hold", error: "sensitive_payload" };
+    return { kind: "hold", error: "unsupported" };
   }
   return { kind: "retry" };
 }
@@ -997,27 +1018,29 @@ function retryAfterMilliseconds(
   return Math.min(Math.max(0, date - Date.now()), 5 * 60 * 1000);
 }
 
-const MAX_REJECTED_RUNS = 64;
+function sameRun(body: Record<string, unknown>, pending: PendingBatch): boolean {
+  return body["runId"] === pending.runId;
+}
+
+/** A later manual flush may retry a quota rejection. Historical conflicts stay. */
+function withoutQuotaRejections(
+  rejectedRuns: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const next: Record<string, string> = {};
+  for (const [runId, reason] of Object.entries(rejectedRuns)) {
+    if (reason !== "quota_exceeded") {
+      next[runId] = reason;
+    }
+  }
+  return next;
+}
 
 function rememberRejection(
   destination: DestinationState,
   runId: string,
   reason: string,
 ): Record<string, string> {
-  const next = { ...destination.rejectedRuns, [runId]: reason.slice(0, 40) };
-  const ids = Object.keys(next);
-  if (ids.length <= MAX_REJECTED_RUNS) {
-    return next;
-  }
-  const oldest = ids
-    .filter((id) => id !== runId)
-    .sort(
-      (left, right) => (destination.observedAt[left] ?? 0) - (destination.observedAt[right] ?? 0),
-    )[0];
-  if (oldest !== undefined) {
-    delete next[oldest];
-  }
-  return next;
+  return { ...destination.rejectedRuns, [runId]: reason.slice(0, 40) };
 }
 
 function asTelemetryError(value: string | null): TelemetryError {

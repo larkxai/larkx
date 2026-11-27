@@ -6,6 +6,8 @@ import type { SecureHttp, SecureHttpRequestInput, SecureHttpResult } from "@lark
 /**
  * Node transport for SDK-managed requests. It does not follow redirects, does
  * not send cookies of its own, and completes the promise exactly once.
+ * `timeoutMs` is a wall-clock deadline for the socket operation. It is not
+ * reset when response bytes arrive.
  */
 export function createNodeSecureHttp(): SecureHttp {
   return { request: nodeRequest };
@@ -14,26 +16,22 @@ export function createNodeSecureHttp(): SecureHttp {
 function nodeRequest(input: SecureHttpRequestInput): Promise<SecureHttpResult> {
   return new Promise((resolve) => {
     let settled = false;
+    const clock: { timer?: ReturnType<typeof setTimeout> } = {};
     const finish = (result: SecureHttpResult): void => {
       if (settled) {
         return;
       }
       settled = true;
+      clearTimeout(clock.timer);
       resolve(result);
     };
-    let target: URL;
-    try {
-      target = new URL(input.url);
-    } catch {
+    const target = parseTarget(input.url);
+    if (target === null) {
       finish({ ok: false, error: "invalid_url" });
       return;
     }
-    if (
-      (target.protocol !== "http:" && target.protocol !== "https:") ||
-      target.username.length > 0 ||
-      target.password.length > 0
-    ) {
-      finish({ ok: false, error: "invalid_url" });
+    if (input.signal.aborted) {
+      finish({ ok: false, error: "cancelled" });
       return;
     }
     const send = target.protocol === "https:" ? httpsRequest : httpRequest;
@@ -42,12 +40,12 @@ function nodeRequest(input: SecureHttpRequestInput): Promise<SecureHttpResult> {
       {
         method: input.method,
         headers: { ...input.headers },
-        timeout: input.timeoutMs,
       },
       (response) => {
         const status = response.statusCode ?? 0;
         if (status >= 300 && status < 400) {
           response.resume();
+          request.destroy();
           finish({ ok: false, error: "redirect", status });
           return;
         }
@@ -83,24 +81,18 @@ function nodeRequest(input: SecureHttpRequestInput): Promise<SecureHttpResult> {
         });
       },
     );
-    const fail = (error: SecureHttpResult): void => {
+    clock.timer = setTimeout(() => {
       request.destroy();
-      finish(error);
-    };
-    if (input.signal.aborted) {
-      fail({ ok: false, error: "cancelled" });
-      return;
-    }
+      finish({ ok: false, error: "timeout" });
+    }, input.timeoutMs);
     input.signal.addEventListener(
       "abort",
       () => {
-        fail({ ok: false, error: "cancelled" });
+        request.destroy();
+        finish({ ok: false, error: "cancelled" });
       },
       { once: true },
     );
-    request.on("timeout", () => {
-      fail({ ok: false, error: "timeout" });
-    });
     request.on("error", () => {
       finish({ ok: false, error: input.signal.aborted ? "cancelled" : "network" });
     });
@@ -109,4 +101,20 @@ function nodeRequest(input: SecureHttpRequestInput): Promise<SecureHttpResult> {
     }
     request.end();
   });
+}
+
+function parseTarget(url: string): URL | null {
+  try {
+    const target = new URL(url);
+    if (
+      (target.protocol !== "http:" && target.protocol !== "https:") ||
+      target.username.length > 0 ||
+      target.password.length > 0
+    ) {
+      return null;
+    }
+    return target;
+  } catch {
+    return null;
+  }
 }

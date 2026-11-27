@@ -116,6 +116,24 @@ describe("node secure http", () => {
     await close(server.server);
   });
 
+  it("stops a slow streaming response at the overall deadline", async () => {
+    const server = await listen((_request, response) => {
+      response.writeHead(200, { "content-type": "text/plain" });
+      const timer = setInterval(() => {
+        response.write("x");
+      }, 40);
+      response.on("close", () => {
+        clearInterval(timer);
+      });
+    });
+    const started = Date.now();
+    const result = await http.request(input(server.url, { method: "GET", timeoutMs: 180 }));
+    const elapsed = Date.now() - started;
+    expect(result).toEqual({ ok: false, error: "timeout" });
+    expect(elapsed).toBeLessThan(1_000);
+    await close(server.server);
+  });
+
   it("rejects unsupported URLs and embedded credentials", async () => {
     const controller = new AbortController();
     await expect(
