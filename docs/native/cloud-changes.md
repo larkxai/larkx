@@ -1,6 +1,6 @@
 # Cloud changes required later
 
-Nothing in `larkxai/cloud` changes in this milestone. The host posts metadata-only batches from the native journal when the application passes telemetry. Local execution must keep working when Cloud is absent or the export fails. Cloud still has to accept storage schema 3 before those batches ingest.
+The Cloud repository accepts storage schema 3. Production `https://cloud.larkx.ai` has not been redeployed with that change, so a production upload is not verified. The host posts metadata-only batches from the native journal when the application passes telemetry. Local execution must keep working when Cloud is absent or the export fails.
 
 ## Keep telemetry version 1
 

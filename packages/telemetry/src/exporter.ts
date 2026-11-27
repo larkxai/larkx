@@ -952,9 +952,11 @@ interface SubtleDigest {
   digest(algorithm: "SHA-256", data: Uint8Array): Promise<ArrayBuffer>;
 }
 
-let fallbackCounter = 0;
-
-/** UUID-shaped id. Uses Web Crypto when the runtime has it, including Hermes `getRandomValues`. */
+/**
+ * UUID from Web Crypto.
+ * `randomUUID` is preferred. `getRandomValues` is the cryptographic fallback.
+ * There is no time-and-counter fallback. React Native telemetry passes `createId` from `expo-crypto`.
+ */
 export function createTelemetryId(): string {
   const cryptoApi = (
     globalThis as {
@@ -964,20 +966,13 @@ export function createTelemetryId(): string {
   if (typeof cryptoApi?.randomUUID === "function") {
     return cryptoApi.randomUUID();
   }
-  const bytes = new Uint8Array(16);
-  if (typeof cryptoApi?.getRandomValues === "function") {
-    cryptoApi.getRandomValues(bytes);
-  } else {
-    fallbackCounter += 1;
-    const now = Date.now();
-    for (let index = 0; index < bytes.length; index += 1) {
-      bytes[index] = Math.floor(Math.random() * 256);
-    }
-    bytes[0] = now & 0xff;
-    bytes[1] = (now >>> 8) & 0xff;
-    bytes[2] = fallbackCounter & 0xff;
-    bytes[3] = (fallbackCounter >>> 8) & 0xff;
+  if (typeof cryptoApi?.getRandomValues !== "function") {
+    throw new Error(
+      "No cryptographic UUID source is available. Pass createId from expo-crypto randomUUID.",
+    );
   }
+  const bytes = new Uint8Array(16);
+  cryptoApi.getRandomValues(bytes);
   bytes[6] = (bytes[6]! & 0x0f) | 0x40;
   bytes[8] = (bytes[8]! & 0x3f) | 0x80;
   const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");

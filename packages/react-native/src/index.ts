@@ -1,6 +1,8 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { NativeModules } from "react-native";
 
+import { requireNativeUuid } from "./native-id.js";
+
 import {
   createRuntime as openHostRuntime,
   sqlite as sqliteFile,
@@ -101,7 +103,7 @@ export async function createRuntime(
       ? fileTelemetryStore(storage.path)
       : options.telemetryState;
   return openHostRuntime({
-    ...options,
+    ...withNativeTelemetryIdentity(options),
     storage,
     runtimeName: "react-native",
     ...(telemetryState !== undefined ? { telemetryState } : {}),
@@ -111,6 +113,27 @@ export async function createRuntime(
       },
     },
   });
+}
+
+function withNativeTelemetryIdentity<
+  T extends { readonly telemetry?: CreateRuntimeOptions["telemetry"] },
+>(options: T): T {
+  const telemetry = options.telemetry;
+  if (
+    telemetry === undefined ||
+    !("kind" in telemetry) ||
+    telemetry.kind !== "larkx-cloud" ||
+    telemetry.createId !== undefined
+  ) {
+    return options;
+  }
+  return {
+    ...options,
+    telemetry: {
+      ...telemetry,
+      createId: requireNativeUuid(),
+    },
+  };
 }
 
 const fileQueues = new Map<string, Promise<void>>();

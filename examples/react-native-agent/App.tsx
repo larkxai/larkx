@@ -4,49 +4,25 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { FieldInspection } from "./src/FieldInspection";
 import { NativeAgentDemo } from "./src/NativeAgentDemo";
 
-type Screen = "scripted" | "field";
+type Screen = "field" | "lab";
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>("scripted");
-  return (
-    <View style={styles.page}>
-      <View style={styles.switcher}>
-        <Tab
-          label="Scripted agent"
-          selected={screen === "scripted"}
-          onPress={() => setScreen("scripted")}
-        />
-        <Tab
-          label="Field inspection"
-          selected={screen === "field"}
-          onPress={() => setScreen("field")}
-        />
+  const [screen, setScreen] = useState<Screen>("field");
+  if (screen === "lab") {
+    return (
+      <View style={styles.page}>
+        <Pressable onPress={() => setScreen("field")} style={styles.back}>
+          <Text style={styles.backText}>Back to field inspection</Text>
+        </Pressable>
+        <NativeAgentDemo />
       </View>
-      {screen === "scripted" ? <NativeAgentDemo /> : <FieldInspection />}
-    </View>
-  );
-}
-
-function Tab({
-  label,
-  selected,
-  onPress,
-}: {
-  readonly label: string;
-  readonly selected: boolean;
-  readonly onPress: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} style={[styles.tab, selected ? styles.tabSelected : null]}>
-      <Text style={styles.tabLabel}>{label}</Text>
-    </Pressable>
-  );
+    );
+  }
+  return <FieldInspection onOpenLab={() => setScreen("lab")} />;
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#f6f3ec" },
-  switcher: { flexDirection: "row", gap: 8, padding: 16, paddingBottom: 0 },
-  tab: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: "#e7e1d6" },
-  tabSelected: { backgroundColor: "#1f6b4a" },
-  tabLabel: { color: "#1c1915", fontWeight: "600" },
+  page: { flex: 1, backgroundColor: "#10140f", paddingTop: 48 },
+  back: { paddingHorizontal: 20, paddingBottom: 8 },
+  backText: { color: "#c6f26d", fontWeight: "700" },
 });

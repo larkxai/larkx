@@ -285,6 +285,8 @@ export interface HostEvent {
     | "remote-auth-required";
   readonly runId: string;
   readonly stepKey?: string;
+  /** Registered tool or remote agent name for this observation, when the runtime named one. */
+  readonly toolName?: string;
   readonly operationId?: string;
   readonly attempt?: number;
   readonly status?: string;
@@ -1689,6 +1691,7 @@ export class Run {
       stepKey: request.stepKey,
       operationId: request.operationId,
       attempt: request.attempt,
+      ...(request.toolName.length > 0 ? { toolName: request.toolName } : {}),
       atMs: this.runtime.now(),
     };
   }

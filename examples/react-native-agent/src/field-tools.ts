@@ -3,24 +3,23 @@ import { openDatabaseSync, type SQLiteDatabase } from "expo-sqlite";
 import { defineTool } from "@larkxai/react-native";
 
 import { commitOnce, type EffectStore } from "./field-effects";
+import { INSPECTION_NOTES, PREVIOUS_INSPECTIONS, PUMP } from "./equipment";
 import type { FailureGate } from "./failure-gate";
 
-const NOTES = [
-  "Pump 12: vibration increased after the last night shift.",
-  "Seal weeps when pressure is above 80 psi.",
-  "Last filter change was 140 days ago. The interval is 90 days.",
-];
-
 const EQUIPMENT: Record<string, { readonly spec: string; readonly limit: string }> = {
-  "pump-12": {
-    spec: "Centrifugal pump, 15 horsepower, mechanical seal, 90-day filter interval.",
-    limit: "Normal vibration is under 4 mm/s. Seal leakage is not normal above 60 psi.",
+  [PUMP.id]: {
+    spec: PUMP.spec,
+    limit: PUMP.limit,
   },
 };
 
-let effectsStore: EffectStore | undefined;
+interface FieldStore extends EffectStore {
+  list(): readonly string[];
+}
 
-function effects(): EffectStore {
+let effectsStore: FieldStore | undefined;
+
+function effects(): FieldStore {
   if (effectsStore === undefined) {
     const db: SQLiteDatabase = openDatabaseSync("larkx-field-data.db");
     db.execSync(
@@ -40,6 +39,11 @@ function effects(): EffectStore {
           [operationId, body],
         );
       },
+      list() {
+        return db
+          .getAllSync<{ body: string }>("SELECT body FROM tool_effects")
+          .map((row) => row.body);
+      },
     };
   }
   return effectsStore;
@@ -57,7 +61,27 @@ export function readInspectionNotes() {
     description: "Read the locally stored inspection notes for this site.",
     schema: { type: "object", properties: {} },
     effects: "pure",
-    handler: () => ({ notes: NOTES }),
+    handler: () => ({ notes: [...INSPECTION_NOTES] }),
+  });
+}
+
+export function getPreviousInspections() {
+  return defineTool({
+    name: "get_previous_inspections",
+    description: "Read earlier inspection notes stored on this device for this equipment.",
+    schema: {
+      type: "object",
+      properties: { equipmentId: { type: "string" } },
+      required: ["equipmentId"],
+    },
+    effects: "pure",
+    handler: async (input) => ({
+      equipmentId: textField(input, "equipmentId"),
+      inspections: [
+        ...PREVIOUS_INSPECTIONS.map((item) => ({ ...item })),
+        ...(await savedReports()),
+      ],
+    }),
   });
 }
 
@@ -136,9 +160,31 @@ export function fieldTools(gate?: FailureGate) {
   return [
     readInspectionNotes(),
     getEquipmentDetails(),
+    getPreviousInspections(),
     saveInspectionReport(gate),
     recordPartReplacement(gate),
   ];
+}
+
+async function savedReports(): Promise<readonly { id: string; date: string; note: string }[]> {
+  const bodies = effects().list();
+  const reports = [];
+  for (const body of bodies) {
+    let parsed: { report?: unknown };
+    try {
+      parsed = JSON.parse(body) as { report?: unknown };
+    } catch {
+      continue;
+    }
+    if (typeof parsed.report === "string" && parsed.report.length > 0) {
+      reports.push({
+        id: "saved-report",
+        date: "saved on this device",
+        note: parsed.report,
+      });
+    }
+  }
+  return reports;
 }
 
 function textField(input: unknown, key: string): string {

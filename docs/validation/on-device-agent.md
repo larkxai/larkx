@@ -76,6 +76,6 @@ These steps have not been run on a phone. The Node exporter tests do not complet
 5. Apply telemetry only after a scripted run has finished. Flush. That finished run must not appear in the collector. A run started after Apply telemetry must appear from its first event.
 6. Point the endpoint at an HTTP development collector that answers `302` to another host. The ingestion key must not arrive at the second host. Closing the screen while the collector is down must return the UI promptly, and the next flush after the collector is back must deliver the pending batch.
 
-React Native 0.88 follows redirects inside `NSURLSession` and OkHttp even when JavaScript passes `redirect: "manual"`. Step 6 is the check that this build does not deliver the ingestion key to that second host. Identifier generation without `crypto.randomUUID` is covered by the Node tests and has not been exercised on Hermes.
+React Native 0.88 follows redirects inside `NSURLSession` and OkHttp even when JavaScript passes `redirect: "manual"`. The JavaScript exporter refuses to treat that response as an acknowledgement. It does not stop the platform from sending the body. Step 6 is still required, and it has not passed. Installation and batch ids on React Native come from `expo-crypto` `randomUUID`. That path has not been exercised on Hermes. The walkthrough is [docs/demo/flagship-mobile-demo.md](../demo/flagship-mobile-demo.md).
 
 Record the device, OS, and run id after a real run. Until that note exists, do not describe this checklist as completed.

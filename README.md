@@ -269,22 +269,22 @@ Implemented:
 Not implemented, and not claimed by a green host test:
 
 - A development build on a physical iPhone or Android phone, real Cactus download and inference, offline tool calling, force-quit recovery, mobile lifecycle behavior, and a phone reaching the reference remote fixture or the LangGraph example. The checklist is [docs/validation/on-device-agent.md](docs/validation/on-device-agent.md).
-- Production Cloud ingestion. The device posts telemetry version 1 with storage schema 3. Current Cloud accepts schema 1 only, so those batches are rejected until the Cloud contract in [docs/cloud-native-telemetry.md](docs/cloud-native-telemetry.md) lands. The device-side exporter and the local collector fixture are implemented.
+- Production Cloud ingestion. The device posts telemetry version 1 with storage schema 3. The Cloud repository accepts that schema. Production `https://cloud.larkx.ai` was last deployed on 20 November 2026 and still accepts schema 1 only, so those batches are rejected there. The device-side exporter and the local collector fixture are implemented. The field-inspection walkthrough is [docs/demo/flagship-mobile-demo.md](docs/demo/flagship-mobile-demo.md).
 - Production Swift and Kotlin SDKs.
 
 Opt-in telemetry reads the native journal and posts metadata. It is off by default. Prompts, model text, tool arguments, and tool results stay on the device. A failed export does not fail a run. See [docs/architecture/telemetry.md](docs/architecture/telemetry.md).
 
 ## Examples
 
-| Example                                                                | What it shows                                                                                      |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| [examples/node-agent](examples/node-agent/README.md)                   | Internal Node host: scripted agent, local tools, SQLite, and process termination                   |
-| [examples/node-hybrid](examples/node-hybrid/README.md)                 | Internal Node host delegating over HTTP or A2A. Not a public SDK                                   |
-| [examples/remote-task](examples/remote-task/README.md)                 | HTTP task fixture used by the hybrid example. Not a hosted product                                 |
-| [examples/a2a-fixture](examples/a2a-fixture/README.md)                 | A2A 1.0 fixture for failure injection. Not a LangGraph agent                                       |
-| [examples/langgraph-a2a-agent](examples/langgraph-a2a-agent/README.md) | Independently deployed LangGraph agent with an A2A 1.0 endpoint                                    |
-| [examples/react-native-agent](examples/react-native-agent)             | Scripted agent, Cactus download and init, field inspection, idempotent and non-idempotent recovery |
-| [examples/swift-agent](examples/swift-agent)                           | Small Swift program that calls the C ABI. It is not a Swift SDK                                    |
+| Example                                                                | What it shows                                                                                |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| [examples/node-agent](examples/node-agent/README.md)                   | Internal Node host: scripted agent, local tools, SQLite, and process termination             |
+| [examples/node-hybrid](examples/node-hybrid/README.md)                 | Internal Node host delegating over HTTP or A2A. Not a public SDK                             |
+| [examples/remote-task](examples/remote-task/README.md)                 | HTTP task fixture used by the hybrid example. Not a hosted product                           |
+| [examples/a2a-fixture](examples/a2a-fixture/README.md)                 | A2A 1.0 fixture for failure injection. Not a LangGraph agent                                 |
+| [examples/langgraph-a2a-agent](examples/langgraph-a2a-agent/README.md) | Independently deployed LangGraph agent with an A2A 1.0 endpoint                              |
+| [examples/react-native-agent](examples/react-native-agent)             | Field-inspection demo: local tools, optional Cactus, LangGraph over A2A, and Cloud telemetry |
+| [examples/swift-agent](examples/swift-agent)                           | Small Swift program that calls the C ABI. It is not a Swift SDK                              |
 
 ## Roadmap
 
