@@ -1,5 +1,11 @@
 # @larkxai/react-native
 
+## 0.4.1
+
+### Patch Changes
+
+- 23cd5d4: Reject redirects in the React Native HTTP transport, and keep a permanently rejected telemetry run from blocking export of other runs. A rejected run stays rejected across restart. A manual flush retries a quota rejection only. The request timeout covers the whole attempt.
+
 ## 0.4.0
 
 ### Minor Changes
