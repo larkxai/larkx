@@ -2,7 +2,9 @@
 
 A technician inspects a fictional cooling-water pump, identifies a seal problem from local notes, asks an independent LangGraph agent for supplier research, and keeps the inspection when the app is force-quit. The application is `examples/react-native-agent`. It demonstrates LarkX. It is not a commercial inspection product.
 
-The code for this walkthrough is in the repository. The sequence has not been run on a physical phone. A green Node suite, a Metro bundle, or a simulator does not complete the device checklist below.
+The code for this walkthrough is in the repository. Build commands, expected results, and the pending device rows are in [docs/validation/on-device-agent.md](../validation/on-device-agent.md). The sequence has not been run on a physical phone. A green Node suite, a Metro bundle, or a simulator does not complete that checklist.
+
+The example resolves `@larkxai/react-native` from this checkout. That source is version 0.4.1, the same version as the published npm package. It is not a second install of the tarball.
 
 ## Product story
 
@@ -52,7 +54,7 @@ Local AI mode: open Settings, choose Local AI, and download `qwen3-0.6b` before 
 
 Cloud: create a project and a scoped `lkx_ing_` key in a collector that accepts storage schema 3. In Settings, enter the project id, the key, and the collector origin, then Apply and reopen before starting the recorded inspection. The key is stored in the platform keystore. It is not written to SQLite. Leave the fields empty to run with telemetry disabled.
 
-Production `https://cloud.larkx.ai` was last deployed on 20 November 2026. That deployment accepts schema 1 only. The Cloud repository accepts schema 3. Do not point the recorded run at production until a deploy that accepts schema 3 has been verified. A local collector is the development destination. Configure it before the run. Runs that already existed are not backfilled.
+Do not point the recorded run at production until an authorized Cloud application has accepted one real batch from this SDK. `GET /v1/health` is not that check. A local collector that accepts storage schema 3 is the development destination. Configure it before the run. Runs that already existed are not backfilled.
 
 The runtime network switch in Settings is the value `isOnline` returns. Turning on airplane mode does not change it by itself. For the offline stage, turn the switch off and enable airplane mode.
 
@@ -81,7 +83,22 @@ When the collector accepts schema 3 and telemetry was applied before the run:
 
 ## Recording script
 
-Record a physical phone beside the real collector trace. This repository does not contain that recording.
+Record a physical phone beside a real collector trace after the device rows for this clip have passed. This repository does not contain that recording. Do not generate a stand-in, and do not add an empty video to the website or the README.
+
+If the full story will not fit in 60–90 seconds, record durable recovery as the flagship clip and keep offline execution and hybrid delegation as two shorter clips. The flagship clip still has to show a real force-quit and the same run id afterward. Scripted mode is allowed only when the narration says the steps are scripted. Do not present it as model inference. Local AI mode is the inference clip, and only after scenario B has passed.
+
+Flagship cut, about 60–90 seconds:
+
+1. Show the dashboard and the cooling-water pump.
+2. Start the inspection. In Local AI mode, show one on-device tool choice. In scripted mode, say that the tool order is fixed.
+3. Show developer details with the run id.
+4. Show the remote task id once supplier research has been accepted. Skip this step in the short cut if the LangGraph server is not part of this take.
+5. Force-quit the app from the system switcher.
+6. Reopen it and continue the same run id. Show that the remote task id did not change when this take included one.
+7. Show the saved report.
+8. Show the Cloud trace only when scenario F has passed for this same run. Otherwise omit Cloud rather than showing a fabricated trace.
+
+The longer sequence below is the full demonstration when there is time for separate clips.
 
 1. Show the dashboard and the cooling-water pump. The phone is in airplane mode and the runtime network switch is off.
 2. Open the pump. The notes are already on the device. Run the inspection.
@@ -141,7 +158,7 @@ Hermes:
 - Production Cloud ingestion is not verified.
 - The LangGraph example stores tasks in memory. Restarting that server drops them. The phone's recovery cannot retrieve a task the server forgot.
 - The runtime network switch is not the radio.
-- Published npm `@larkxai/react-native` 0.3.0 does not include A2A or `larkxCloud`. This demo uses the workspace source.
+- The demo builds this checkout's `@larkxai/react-native` 0.4.1. That version includes A2A and `larkxCloud`. The npm README for 0.4.1 still contains an older sentence about redirects. The module in that tarball rejects them.
 
 ## Troubleshooting
 

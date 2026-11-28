@@ -30,3 +30,19 @@ The agent should not stop. Telemetry failures stay in `telemetryStatus()`. If yo
 ## A scripted model throws "no response left"
 
 `scriptedModel` has one response per invocation. A replayed model step does not call it again. If you see this during a first run, the script is shorter than the number of model turns.
+
+## The model download never starts
+
+`cactusModel` is not part of the root import. Install `cactus-react-native` 1.13.1 and `react-native-nitro-modules` 0.33.9 or newer, rebuild the development client, then call `download()` and `init()` before `agent.start`. Hello World does not do this. A scripted result is not inference.
+
+## The phone cannot reach the remote agent
+
+`localhost` and `127.0.0.1` on a phone are the phone. Use the computer's LAN address, and set `PUBLIC_URL` to that address before the LangGraph example listens. Airplane mode does not change the runtime network switch in the field-inspection example. Turn that switch off when the scenario is supposed to be offline.
+
+## `expo-crypto is required for LarkX Cloud telemetry`
+
+Telemetry is off until you pass `larkxCloud`. When you do, install `expo-crypto` and pass an ingestion key that starts with `lkx_ing_`. An organization admin credential is not that key. A rejected batch does not fail the agent. Read `telemetryStatus().lastError`.
+
+## A step is `BLOCKED` after a force-quit
+
+An interrupted `non-idempotent` tool is an unknown outcome. The handler is not called again. Continue with `run.reconcile` after the application decides what happened. A `pure` or `idempotent` tool that had not committed may run again. A committed result is reused.

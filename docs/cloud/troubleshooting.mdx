@@ -5,14 +5,14 @@ description: Cloud errors stay in the exporter. They do not fail the agent.
 
 `runtime.telemetryStatus()` and the value returned by `flushTelemetry()` use `lastError`.
 
-| `lastError`    | What to do                                                                                                                                                                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `unauthorized` | The key was rejected or does not start with `lkx_ing_`. Fix the key, then call `flushTelemetry()`.                                                                                                                                         |
-| `rate_limited` | The organization is over the temporary request or event limit. Wait for the backoff. HTTP 429 is also what Cloud returns today for the permanent per-run event cap, so a 429 is not treated as a dead run.                                 |
-| `rejected`     | One run was refused. Other runs can still export. On npm {{sdkVersion}} the destination may hold until a manual flush. On the current default branch, `flushTelemetry()` retries `quota_exceeded` only. A history conflict stays rejected. |
-| `offline`      | The batch is still local. Execution is unaffected.                                                                                                                                                                                         |
-| `redirected`   | The collector returned a 3xx. The exporter does not follow it.                                                                                                                                                                             |
-| `unsupported`  | The response was not one this client will treat as success or as a named run rejection. The batch is not marked delivered.                                                                                                                 |
+| `lastError`    | What to do                                                                                                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unauthorized` | The key was rejected or does not start with `lkx_ing_`. Fix the key, then call `flushTelemetry()`.                                                                                                      |
+| `rate_limited` | The collector returned HTTP 429. Wait for the backoff. A 429 is not a permanent per-run rejection, even if an older collector used it for a stored-event cap.                                           |
+| `rejected`     | One run was refused. Other runs can still export. `flushTelemetry()` retries `quota_exceeded` only. A history conflict and `run_rejected` stay rejected across restart. The local journal is unchanged. |
+| `offline`      | The batch is still local. Execution is unaffected.                                                                                                                                                      |
+| `redirected`   | The collector returned a 3xx. The exporter does not follow it.                                                                                                                                          |
+| `unsupported`  | The response was not one this client will treat as success or as a named run rejection. The batch is not marked delivered.                                                                              |
 
 `rejectedRuns` on the status is the count of runs the exporter is skipping, not a list of Cloud dashboard ids.
 
@@ -22,4 +22,4 @@ None of these statuses throw out of a tool or a model call. If a run is `BLOCKED
 
 ## Production schema
 
-If every batch is rejected with an unrecognized payload and the key is valid, compare the deployed Cloud schema with telemetry version 1. This repository records that production on 20 November 2026 still accepted an older schema. Do not point a production app at a collector you have not tried with the installed SDK.
+If every batch is rejected with an unrecognized payload and the key is valid, compare the deployed collector with telemetry version 1 and the storage schema this SDK sends. A health check is not that comparison. Do not point a production app at a collector you have not tried with the installed SDK.

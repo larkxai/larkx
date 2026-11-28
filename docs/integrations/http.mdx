@@ -51,7 +51,7 @@ The client operation id and the remote task id are stored separately. A known ta
 
 SDK requests are not meant to follow redirects, including a same-origin `Location`. The credential and body are not sent to the next URL. Rejecting a redirect does not prove the original request had no effect.
 
-The current default branch rejects those redirects in the React Native HTTP module. npm {{sdkVersion}} was published before that module. Check the release notes of the version you install before relying on the native behavior.
+npm {{sdkVersion}} rejects those redirects in the React Native HTTP module. The iOS session does not follow the `Location`, and Android disables instance redirects on `HttpURLConnection`. A device check is still required before treating that as verified on a phone. Node socket tests cover the same contract for the Node client.
 
 Cancelling the local run does not prove the remote agent stopped, and it does not roll back an effect the peer already applied.
 

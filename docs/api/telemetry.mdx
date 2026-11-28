@@ -46,6 +46,4 @@ Returned by `telemetryStatus()` and `flushTelemetry()`.
 | `observations`        | Host lifecycle observations still held for export.                                                               |
 | `droppedObservations` | Host observations dropped because the local observation buffer was full.                                         |
 
-`lastError: "rejected"` means synchronization is partial. It does not mean the local run failed.
-
-npm {{sdkVersion}} and the current default branch differ on how long a rejected run stays skipped. The type above is the same. See [Troubleshooting](/cloud/troubleshooting).
+`lastError: "rejected"` means synchronization is partial. It does not mean the local run failed. npm {{sdkVersion}} keeps that run skipped across restart and continues other runs. See [Troubleshooting](/cloud/troubleshooting).

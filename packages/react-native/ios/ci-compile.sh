@@ -33,6 +33,7 @@ clang++ -std=c++20 -fPIC -c \
 clang++ -dynamiclib \
   -o "$CORE/libLarkXNativeCore.dylib" \
   "$CORE/LarkXNativeCore.o" \
+  "$CORE/LarkXHttp.o" \
   "$CORE/host_session.o" \
   "$CORE/utf.o" \
   "$CORE/liblarkx_core.a" \

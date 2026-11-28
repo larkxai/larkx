@@ -231,11 +231,20 @@ describe("public documentation snippets", () => {
       "@larkxai/telemetry",
       "@larkxai/cactus",
     ];
+    const stale = [
+      "are on the default branch and are not in that changelog",
+      "was published before that module",
+      "holds the destination on those responses",
+      "still accepts schema 1 only",
+    ];
     for (const page of pages) {
       const source = readFileSync(page, "utf8");
       expect(source, page).not.toContain(packageJson.version);
       for (const name of forbidden) {
         expect(source.includes(`"${name}"`) || source.includes(`'${name}'`), page).toBe(false);
+      }
+      for (const phrase of stale) {
+        expect(source, page).not.toContain(phrase);
       }
     }
   });

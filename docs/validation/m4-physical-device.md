@@ -1,5 +1,5 @@
 # Device procedure for Cloud export
 
-Not completed. No phone has uploaded a journal from this repository.
+This page is the older name for the same founder checklist. Use [on-device-agent.md](on-device-agent.md).
 
-The native runtime can export a metadata-only batch when the application passes telemetry. Node tests cover the cursor, the historical-run boundary, shutdown, and the Node redirect client. They are not a device run. React Native routes SDK HTTP through `LarkXHttp`, which rejects redirects in URLSession and HttpURLConnection. Those native modules have not been run on a phone. `expo-crypto` supplies installation and batch ids, and that path has not been run on a phone. The checks that remain are in [on-device-agent.md](on-device-agent.md#telemetry): metadata only, no prompt or tool output, no export of a run that finished before telemetry was enabled, the same run id before and after force-quit, a prompt close while the collector is down, and a `302` that does not deliver the ingestion key or the body to another host. The Cloud repository accepts schema 3. Production `https://cloud.larkx.ai` does not, until it is redeployed. Delete the agent database and the telemetry store together on reset. This file is not that result. The demo setup is [docs/demo/flagship-mobile-demo.md](../demo/flagship-mobile-demo.md).
+Cloud export on a phone is manual scenario F. It has not been completed. No phone has uploaded a journal from this repository. A health check is not that upload.

@@ -78,7 +78,7 @@ The native compile is separate from the first run. After the development build e
 
 ## Published package and git source
 
-npm {{sdkVersion}} is the contract for an installed app. The changelog for that version includes A2A 1.0, `run.provideInput`, and `larkxCloud`. Redirect rejection inside the React Native HTTP module, and keeping one permanently rejected telemetry run from blocking other runs, are on the default branch and are not in that changelog. Treat the release notes of the version you install as the contract.
+npm {{sdkVersion}} is the contract for an installed app. That release includes A2A 1.0, `run.provideInput`, and `larkxCloud`. It also rejects redirects in the React Native HTTP module, applies the request timeout to the whole attempt, and keeps one permanently rejected telemetry run from blocking export of other runs. A rejected run stays rejected across restart. Read the changelog for the version you install.
 
 Do not install `@larkxai/node`, `@larkxai/host`, `@larkxai/protocol`, `@larkxai/telemetry`, or `@larkxai/cactus` in an application. The React Native package bundles the JavaScript it needs. The unscoped npm name `larkx` is an unrelated project. Swift and Kotlin distributions are not published.
 
